@@ -29826,6 +29826,8 @@ fi
     fi
 fi
 
+LIBS="-ljson $LIBS"
+
 # let's make some fixes..
 
 CFLAGS=`echo $CFLAGS | sed -e 's/-I\/usr\/include //g'`
