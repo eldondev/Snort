@@ -152,7 +152,7 @@ struct routtablerec {
 /* utilities */
 #ifndef boolean
 #ifndef HAVE_BOOLEAN
- typedef unsigned char boolean;
+/* typedef unsigned char boolean; */
 #endif
 #endif
 #ifndef TRUE
