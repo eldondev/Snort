@@ -2,7 +2,8 @@
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -37,12 +38,12 @@ typedef struct st_mem_root
   USED_MEM *used;                  /* blocks almost without free memory */
   USED_MEM *pre_alloc;             /* preallocated block */
   /* if block have less memory it will be put in 'used' list */
-  size_t min_malloc;
-  size_t block_size;               /* initial block size */
+  unsigned int min_malloc;
+  unsigned int block_size;         /* initial block size */
   unsigned int block_num;          /* allocated blocks counter */
   /* 
      first free block in queue test counter (if it exceed 
-     MAX_BLOCK_USAGE_BEFORE_DROP block will be dropped in 'used' list)
+     MAX_BLOCK_USAGE_BEFORE_DROP block will be droped in 'used' list)
   */
   unsigned int first_block_usage;
 

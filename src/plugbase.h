@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: plugbase.h,v 1.87 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 #ifndef __PLUGBASE_H__
 #define __PLUGBASE_H__
 
@@ -28,9 +28,8 @@
 
 #include "bitop_funcs.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "sf_types.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 #ifndef WIN32
 # include <sys/ioctl.h>
@@ -80,7 +79,7 @@
 #define DETAIL_FULL  1
 
 
-/**************************** Rule Option Plugin API **************************/
+/**************************** Detection Plugin API ****************************/
 typedef enum _RuleOptType
 {
 	OPT_TYPE_ACTION = 0,
@@ -91,27 +90,18 @@ typedef enum _RuleOptType
 } RuleOptType;
 
 typedef void (*RuleOptConfigFunc)(char *, OptTreeNode *, int);
-typedef void (*RuleOptOtnHandler)(OptTreeNode *);
 typedef void (*RuleOptOverrideFunc)(char *, char *, char *, OptTreeNode *, int);
 typedef void (*RuleOptOverrideInitFunc)(char *, char *, RuleOptOverrideFunc);
 typedef int (*RuleOptEvalFunc)(void *, Packet *);
-typedef int (*ResponseFunc)(Packet*, void*);
+typedef int (*ResponseFunc)(Packet *, RspFpList *);
 typedef void (*PluginSignalFunc)(int, void *);
 typedef void (*RuleOptParseCleanupFunc)(void);
-typedef int (*RuleOptByteOrderFunc)(void *, int32_t);
-
-#define func fptr.fptr
-#define vfunc fptr.void_fptr
 
 typedef struct _RuleOptConfigFuncNode
 {
     char *keyword;
     RuleOptType type;
-    union {
-        RuleOptConfigFunc fptr;
-        void *void_fptr;
-    } fptr;
-    RuleOptOtnHandler otn_handler;
+    RuleOptConfigFunc func;
     struct _RuleOptConfigFuncNode *next;
 
 } RuleOptConfigFuncNode;
@@ -120,39 +110,21 @@ typedef struct _RuleOptOverrideInitFuncNode
 {
     char *keyword;
     RuleOptType type;
-    union {
-        RuleOptOverrideInitFunc fptr;
-        void *void_fptr;
-    } fptr;
-    RuleOptOtnHandler otn_handler;
+    RuleOptOverrideInitFunc func;
     struct _RuleOptOverrideInitFuncNode *next;
 
 } RuleOptOverrideInitFuncNode;
 
 typedef struct _RuleOptParseCleanupNode
 {
-    union {
-        RuleOptParseCleanupFunc fptr;
-        void *void_fptr;
-    } fptr;
+    RuleOptParseCleanupFunc func;
     struct _RuleOptParseCleanupNode *next;
 
 } RuleOptParseCleanupNode;
 
-typedef struct _RuleOptByteOrderFuncNode
-{
-    char *keyword;
-    union {
-        RuleOptByteOrderFunc fptr;
-        void *void_fptr;
-    } fptr;
-    struct _RuleOptByteOrderFuncNode *next;
-} RuleOptByteOrderFuncNode;
-
 void RegisterRuleOptions(void);
-void RegisterRuleOption(char *, RuleOptConfigFunc, RuleOptOverrideInitFunc, RuleOptType, RuleOptOtnHandler);
+void RegisterRuleOption(char *, RuleOptConfigFunc, RuleOptOverrideInitFunc, RuleOptType);
 void RegisterOverrideKeyword(char *, char *, RuleOptOverrideFunc);
-void RegisterByteOrderKeyword(char *, RuleOptByteOrderFunc);
 void DumpRuleOptions(void);
 OptFpList * AddOptFuncToList(RuleOptEvalFunc, OptTreeNode *);
 void AddRspFuncToList(ResponseFunc, OptTreeNode *, void *);
@@ -162,30 +134,6 @@ void AddFuncToRuleOptParseCleanupList(RuleOptParseCleanupFunc);
 void RuleOptParseCleanup(void);
 void FreeRuleOptParseCleanupList(RuleOptParseCleanupNode *);
 
-void RegisterByteOrderKeyword(char *, RuleOptByteOrderFunc);
-RuleOptByteOrderFunc GetByteOrderFunc(char *);
-void FreeRuleOptByteOrderFuncs(RuleOptByteOrderFuncNode *);
-
-/***************************** Non Rule Detection API *************************/
-typedef void (*DetectionEvalFunc)(Packet *, void *);
-typedef struct _DetectionEvalFuncNode
-{
-    void *context;
-    uint16_t priority;
-    uint32_t detect_id;
-    //uint32_t detect_bit;
-    uint32_t proto_mask;
-    union
-    {
-        DetectionEvalFunc fptr;
-        void *void_fptr;
-    } fptr;
-    struct _DetectionEvalFuncNode *next;
-
-} DetectionEvalFuncNode;
-
-DetectionEvalFuncNode * AddFuncToDetectionList(DetectionEvalFunc, uint16_t, uint32_t, uint32_t);
-void FreeDetectionEvalFuncs(DetectionEvalFuncNode *);
 
 /***************************** Preprocessor API *******************************/
 typedef void (*PreprocConfigFunc)(char *);
@@ -203,15 +151,10 @@ typedef void * (*PreprocReloadSwapFunc)(void);
 typedef void (*PreprocReloadSwapFreeFunc)(void *);
 #endif
 
-#define config_func cfptr.fptr
-#define config_vfunc cfptr.void_fptr
 typedef struct _PreprocConfigFuncNode
 {
     char *keyword;
-    union {
-        PreprocConfigFunc fptr;
-        void *void_fptr;
-    } cfptr;
+    PreprocConfigFunc config_func;
 
 #ifdef SNORT_RELOAD
     /* Tells whether we call the config func or reload func */
@@ -230,11 +173,7 @@ typedef struct _PreprocConfigFuncNode
 typedef struct _PreprocStatsFuncNode
 {
     char *keyword;
-    union
-    {
-        PreprocStatsFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocStatsFunc func;
     struct _PreprocStatsFuncNode *next;
 
 } PreprocStatsFuncNode;
@@ -246,22 +185,14 @@ typedef struct _PreprocEvalFuncNode
     uint32_t preproc_id;
     uint32_t preproc_bit;
     uint32_t proto_mask;
-    union
-    {
-        PreprocEvalFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocEvalFunc func;
     struct _PreprocEvalFuncNode *next;
 
 } PreprocEvalFuncNode;
 
 typedef struct _PreprocCheckConfigFuncNode
 {
-    union
-    {
-        PreprocCheckConfigFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocCheckConfigFunc func;
     struct _PreprocCheckConfigFuncNode *next;
 
 } PreprocCheckConfigFuncNode;
@@ -271,11 +202,7 @@ typedef struct _PreprocSignalFuncNode
     void *arg;
     uint16_t priority;
     uint32_t preproc_id;
-    union
-    {
-        PreprocSignalFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocSignalFunc func;
     struct _PreprocSignalFuncNode *next;
 
 } PreprocSignalFuncNode;
@@ -283,11 +210,7 @@ typedef struct _PreprocSignalFuncNode
 typedef struct _PreprocReassemblyPktFuncNode
 {
     unsigned int preproc_id;
-    union
-    {
-        PreprocReassemblyPktFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocReassemblyPktFunc func;
     struct _PreprocReassemblyPktFuncNode *next;
 
 } PreprocReassemblyPktFuncNode;
@@ -295,11 +218,7 @@ typedef struct _PreprocReassemblyPktFuncNode
 typedef struct _PreprocPostConfigFuncNode
 {
     void *data;
-    union
-    {
-        PreprocPostConfigFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocPostConfigFunc func;
     struct _PreprocPostConfigFuncNode *next;
 
 } PreprocPostConfigFuncNode;
@@ -307,11 +226,7 @@ typedef struct _PreprocPostConfigFuncNode
 #ifdef SNORT_RELOAD
 typedef struct _PreprocReloadVerifyFuncNode
 {
-    union
-    {
-        PreprocReloadVerifyFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PreprocReloadVerifyFunc func;
     struct _PreprocReloadVerifyFuncNode *next;
 
 } PreprocReloadVerifyFuncNode;
@@ -322,9 +237,9 @@ struct _SnortConfig;
 
 void RegisterPreprocessors(void);
 #ifndef SNORT_RELOAD
-void RegisterPreprocessor(const char *, PreprocConfigFunc);
+void RegisterPreprocessor(char *, PreprocConfigFunc);
 #else
-void RegisterPreprocessor(const char *, PreprocConfigFunc, PreprocReloadFunc,
+void RegisterPreprocessor(char *, PreprocConfigFunc, PreprocReloadFunc,
                           PreprocReloadSwapFunc, PreprocReloadSwapFreeFunc);
 #endif
 PreprocConfigFuncNode * GetPreprocConfig(char *);
@@ -335,6 +250,7 @@ void AddFuncToConfigCheckList(PreprocCheckConfigFunc);
 void AddFuncToPreprocPostConfigList(PreprocPostConfigFunc, void *);
 void CheckPreprocessorsConfig(struct _SnortConfig *);
 PreprocEvalFuncNode * AddFuncToPreprocList(PreprocEvalFunc, uint16_t, uint32_t, uint32_t);
+void AddFuncToPreprocRestartList(PreprocSignalFunc, void *, uint16_t, uint32_t);
 void AddFuncToPreprocCleanExitList(PreprocSignalFunc, void *, uint16_t, uint32_t);
 void AddFuncToPreprocShutdownList(PreprocSignalFunc, void *, uint16_t, uint32_t);
 void AddFuncToPreprocResetList(PreprocSignalFunc, void *, uint16_t, uint32_t);
@@ -359,42 +275,33 @@ void FreeSwappedPreprocConfigurations(void);
 void FreePreprocReloadVerifyFuncList(PreprocReloadVerifyFuncNode *);
 #endif
 
-static inline void DisablePreprocessors(Packet *p)
+static INLINE void DisablePreprocessors(Packet *p) 
 {
     p->preprocessor_bits = PP_ALL_OFF;
 }
 
-static inline void EnablePreprocessors(Packet *p)
+static INLINE void EnablePreprocessors(Packet *p) 
 {
     p->preprocessor_bits = PP_ALL_ON;
 }
 
-static inline int IsPreprocBitSet(Packet *p, unsigned int preproc_bit)
+static INLINE int IsPreprocBitSet(Packet *p, unsigned int preproc_bit)
 {
     return (p->preprocessor_bits & preproc_bit);
 }
 
-static inline int SetPreprocBit(Packet *p, unsigned int preproc_id)
+static INLINE int SetPreprocBit(Packet *p, unsigned int preproc_id)
 {
     p->preprocessor_bits |= (1 << preproc_id);
     return 0;
 }
 
-static inline int SetAllPreprocBits(Packet *p)
-{
-    SetPreprocBit(p, PP_SFPORTSCAN);
-    SetPreprocBit(p, PP_PERFMONITOR);
-    SetPreprocBit(p, PP_STREAM5);
-    SetPreprocBit(p, PP_SDF);
-    return 0;
-}
-
-static inline int IsPreprocReassemblyPktBitSet(Packet *p, unsigned int preproc_id)
+static INLINE int IsPreprocReassemblyPktBitSet(Packet *p, unsigned int preproc_id)
 {
     return (p->preproc_reassembly_pkt_bits & (1 << preproc_id)) != 0;
 }
 
-static inline int SetPreprocReassemblyPktBit(Packet *p, unsigned int preproc_id)
+static INLINE int SetPreprocReassemblyPktBit(Packet *p, unsigned int preproc_id)
 {
     p->preproc_reassembly_pkt_bits |= (1 << preproc_id);
     p->packet_flags |= PKT_PREPROC_RPKT;
@@ -406,11 +313,7 @@ static inline int SetPreprocReassemblyPktBit(Packet *p, unsigned int preproc_id)
 typedef struct _PluginSignalFuncNode
 {
     void *arg;
-    union
-    {
-        PluginSignalFunc fptr;
-        void *void_fptr;
-    } fptr;
+    PluginSignalFunc func;
     struct _PluginSignalFuncNode *next;
 
 } PluginSignalFuncNode;
@@ -423,6 +326,5 @@ void AddFuncToPostConfigList(PluginSignalFunc, void *);
 void AddFuncToSignalList(PluginSignalFunc, void *, PluginSignalFuncNode **);
 void PostConfigInitPlugins(PluginSignalFuncNode *);
 void FreePluginSigFuncs(PluginSignalFuncNode *);
-
 
 #endif /* __PLUGBASE_H__ */

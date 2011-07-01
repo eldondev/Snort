@@ -1,0 +1,60 @@
+Rule: 
+
+--
+Sid: 
+100000162
+
+-- 
+Summary: 
+This event is generated when an abnormally larger number of 401 Unauthorized 
+messages are returned by an SIP-enabled host.
+
+--
+Impact:
+This can be an indication of either a brute force authentication attack or a 
+denial of service in progress.
+
+--
+Detailed Information:
+When a user attempts to send a REGISTER message with invalid credentials, a SIP 
+server returns a 401 Unauthorized message. A high volume of these may indicate 
+that an authentication attack, likely brute-force style, or a denial of service 
+is in progress.
+
+--
+Affected Systems:
+Any which implement the SIP protocol.
+
+--
+Attack Scenarios:
+An attacker could use a script to attempt a brute-force authentication attack 
+or a denial of service.
+
+--
+Ease of Attack:
+Simple, as it is easy to write a script to cycle through all possible 
+authentication values or to simply flood a system with unauthorized data.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Use a firewall or other access-restriction device to block unwanted messages at 
+your network's border.
+
+--
+Contributors:
+Jiri Markl <jiri.markl@nextsoft.cz>
+Sourcefire Research Team
+
+--
+Additional References
+Other:
+
+--

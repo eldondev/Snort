@@ -1,4 +1,4 @@
-$Id: PROBLEMS,v 1.3 2002/08/16 15:32:26 chrisgreen Exp $
+$Id$
 
 This is the Snort problems file.  It is used to document bugs that we
 can't work around and provide a bit of documentation in case someone

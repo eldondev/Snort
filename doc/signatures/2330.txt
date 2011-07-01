@@ -12,7 +12,8 @@ exploit a buffer overflow condition.
 
 --
 Impact:
-Serious. Possible remote execution of arbitrary code, which may lead to a remote root compromise.
+Serious. Possible remote execution of arbitrary code, which may lead to
+a remote root compromise.
 
 --
 Detailed Information:
@@ -52,14 +53,11 @@ Check the host for signs of compromise.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Nigel Houghton <nigel.houghton@sourcefire.com>
 
 --
 Additional References:
-
-Bugtraq
-http://www.securityfocus.com/bid/8861
 
 --

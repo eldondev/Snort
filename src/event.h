@@ -1,6 +1,6 @@
-/* $Id: event.h,v 1.20 2011/06/08 00:33:05 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -23,11 +23,18 @@
 #ifndef __EVENT_H__
 #define __EVENT_H__
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #ifdef OSF1
 #include <sys/bitypes.h>
 #endif
 
 #include <sys/types.h>
+#ifndef WIN32
+#include <sys/time.h>
+#endif
 
 #include "pcap_pkthdr32.h"
 

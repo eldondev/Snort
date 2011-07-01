@@ -1,6 +1,8 @@
-/****************************************************************************
+/*
+ * sid109.c
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2008 Sourcefire,Inc
+ * Steven A. Sturges <ssturges@sourcefire.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,10 +19,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- ****************************************************************************/
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+ * Description:
+ *
+ * This file is part of an example of a dynamically loadable rules library.
+ *
+ * NOTES:
+ *
+ */
 
 #include "sf_snort_plugin_api.h"
 #include "sf_snort_packet.h"
@@ -37,7 +42,7 @@
  */
 
 /* flow:established, from_server; */
-static FlowFlags sid109flow =
+static FlowFlags sid109flow = 
 {
     FLOW_ESTABLISHED|FLOW_TO_CLIENT
 };
@@ -51,7 +56,7 @@ static RuleOption sid109option1 =
 };
 
 /* content:"NetBus";  */
-static ContentInfo sid109content =
+static ContentInfo sid109content = 
 {
     (u_int8_t *)"NetBus",               /* pattern to search for */
     0,                      /* depth */
@@ -60,13 +65,10 @@ static ContentInfo sid109content =
     NULL,                   /* holder for boyer/moore info */
     NULL,                   /* holder for byte representation of "NetBus" */
     0,                      /* holder for length of byte representation */
-    0,                      /* holder of increment length */
-    0,                      /* holder for fp offset */
-    0,                      /* holder for fp length */
-    0                       /* holder for fp only */
+    0                       /* holder of increment length */
 };
 
-static RuleOption sid109option2 =
+static RuleOption sid109option2 = 
 {
     OPTION_TYPE_CONTENT,
     {
@@ -106,15 +108,14 @@ Rule sid109 =
         ANY_PORT            /* destination port(s) */
     },
     /* metadata */
-    {
+    { 
         3,                  /* genid -- use 3 to distinguish a C rule */
         109,                /* sigid */
         5,                  /* revision */
         "misc-activity",    /* classification */
         0,                  /* priority */
        "BACKDOOR netbus active",    /* message */
-       sid109refs,          /* ptr to references */
-       NULL                 /* Meta data */
+       sid109refs           /* ptr to references */
     },
     sid109options, /* ptr to rule options */
     NULL,                   /* Use internal eval func */

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steve Sturges
  *         Andy Mullican
@@ -26,16 +26,12 @@
  *
  * Header Option operations for dynamic rule engine
  */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_dynamic_define.h"
 #include "sf_snort_packet.h"
 #include "sf_snort_plugin_api.h"
 #include "sf_dynamic_engine.h"
 #include "ipv6_port.h"
-#include "sf_snort_detection_engine.h"
+
+extern DynamicEngineData _ded; /* sf_detection_engine.c */
 
 int ValidateHeaderCheck(Rule *rule, HdrOptCheck *optData)
 {
@@ -50,7 +46,7 @@ int ValidateHeaderCheck(Rule *rule, HdrOptCheck *optData)
             _ded.errMsg("Invalid operator for Check Header IP Options: %d "
                 "for dynamic rule [%d:%d].\n"
                 "Must be either CHECK_EQ (option present) or "
-                "CHECK_NEQ (not present).\n",
+                "CHECK_NEQ (not present).\n", 
                 optData->op, rule->info.genID, rule->info.sigID);
             retVal = -1;
         }
@@ -62,7 +58,7 @@ int ValidateHeaderCheck(Rule *rule, HdrOptCheck *optData)
             _ded.errMsg("Invalid operator for Check Header IP Options: %d "
                 "for dynamic rule [%d:%d].\n"
                 "Must be either CHECK_EQ (option present) or "
-                "CHECK_NEQ (not present).\n",
+                "CHECK_NEQ (not present).\n", 
                 optData->op, rule->info.genID, rule->info.sigID);
             retVal = -1;
         }

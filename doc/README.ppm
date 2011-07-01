@@ -61,7 +61,7 @@ max-rule-time <micro-secs>
     - reasonable starting defaults: 100/250/1000 for 1G/100M/5M nets
 
 threshold <count>
-    - sets the number of cumulative rule time excesses before disabling
+    - sets the number of consecutive rule time excesses before disabling
       a rule
     - default is 5
 

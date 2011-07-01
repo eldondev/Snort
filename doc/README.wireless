@@ -1,0 +1,75 @@
+Wireless Sniffing
+4/4/02
+Nick Petroni <npetroni@cs.umd.edu>
+
+Overview: 
+--------
+Recent changes in the LAN market have placed an emphasis on wireless
+networking and specifically IEEE 802.11. As a result of the increasing
+popularity of wireless, network administrators benefit from tools that
+allow them to sniff, analyze, and audit wireless data frames. As a
+packet sniffer, logger, and IDS Snort can maintain all of its
+functionality while using a wireless device as the listening
+interface. The provided changes allow Snort to sniff over a wireless
+interface in RFMON (RF Monitor) mode and to decode packets. Further
+changes allow snort to be put in "wireless" mode with the '-w' flag
+in order to see all 802.11 frames.
+
+Regular Snort, wireless interface:
+---------------------------------
+To use Snort over a wireless interface in RFMON mode, simply set the
+card to that mode and start snort with the usual -i <interface>
+flag. How is sniffing in RFMON mode different from sniffing in
+Ethernet emulation mode (that is, the mode the card is usually in when
+you are operating on your own network)? In RFMON mode the card is
+associated with no particular network, rather it listens to all
+traffic it can see from any device using 802.11 within range. Similar
+to using different Virtual LANs on the same piece of wire, many 802.11
+networks operate in the same area. For those interested in
+monitoring only their own network, it is recommended that they leave
+their wireless card in Ethernet emulation mode. This is no different
+than snort in the wired environment (and, in fact snort won't even
+know the difference). For those interested in monitoring all wireless
+networks within range, RFMON mode should be used.
+
+Snort in wireless mode:
+----------------------
+IEEE 802.11 uses three types of frames: management, control, and
+data. Without going into too much detail, control frames are used to
+support delivery of management and data frames. Management frames
+provide a means for setting up and maintaining wireless associations
+(network connections). Data frames transport actual network messages
+(layer 3 and above). Contrary to the usual wired paradigm, network
+administrators are becoming increasingly concerned with layer 2 frames
+and associations due to the unbounded nature of the physical
+medium. For this reason, snort has a wireless mode in which all 802.11
+frames (including management and possibly control frames) are
+displayed. To use snort in wireless mode, simply use the '-w'
+flag. Along with the usual data frames, snort will also display any
+management or control frames that are passed up by the card.
+
+Test Setup:
+----------
+In order to use snort in wireless mode, you will need a wireless card
+and an associated driver that allows the card to be put in RFMON
+mode. Testing was done using a Cisco Aironet 340 PCMCIA card. There
+are multiple drivers available for this card. The one used for testing
+is available from http://airo-linux.sourceforge.net and works with the
+PCMCIA package included in the Linux kernel. 
+  
+Packet Filters:
+--------------
+Because of the nature of wireless communication, the medium is
+constantly filled with packets, even when data is not being
+transferred. Management and control frames, especially Access Point
+Beacons, tend to dominate traffic being captured in RFMON mode. For
+this reason, users may benefit from capture filters. Since BPF was
+written before the recent boom of wireless LANs there are no keywords
+available for the 802.11 MAC. However, one commonly desired filter is
+to do so by frame type. This can easily be achieved using link
+offsets, since the first byte of a wireless frame indicates its
+type. For example, a user wanting to run snort in wireless mode, but
+wanting to filter out all beacons could run 
+snort -w -i <interface> -v -X link[0] != 0x80
+This is because beacon frames will have a first byte of
+0x80. 

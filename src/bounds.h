@@ -1,7 +1,7 @@
 #ifndef _BOUNDS_H
 #define _BOUNDS_H
 /*
-** Copyright (C) 2003-2011 Sourcefire, Inc.
+** Copyright (C) 2003-2009 Sourcefire, Inc.
 **               Chris Green <cmg@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -58,30 +58,12 @@
  */
 static INLINE int inBounds(const uint8_t *start, const uint8_t *end, const uint8_t *p)
 {
-    if ((p >= start) && (p < end))
+    if(p >= start && p < end)
+    {
         return 1;
+    }
+    
     return 0;
-}
-
-static INLINE int SafeMemCheck(void *dst, size_t n,
-        const void *start, const void *end)
-{
-    void *tmp;
-
-    if (n < 1)
-        return SAFEMEM_ERROR;
-
-    if ((dst == NULL) || (start == NULL) || (end == NULL))
-        return SAFEMEM_ERROR;
-
-    tmp = ((uint8_t *)dst) + (n - 1);
-    if (tmp < dst)
-        return SAFEMEM_ERROR;
-
-    if (!inBounds(start, end, dst) || !inBounds(start, end, tmp))
-        return SAFEMEM_ERROR;
-
-    return SAFEMEM_SUCCESS;
 }
 
 /** 
@@ -93,15 +75,35 @@ static INLINE int SafeMemCheck(void *dst, size_t n,
  * @param start start of the dest buffer
  * @param end end of the dst buffer
  * 
- * @return SAFEMEM_ERROR on failure, SAFEMEM_SUCCESS on success
+ * @return 0 on failure, 1 on success
  */
 static INLINE int SafeMemcpy(void *dst, const void *src, size_t n, const void *start, const void *end)
 {
-    if (SafeMemCheck(dst, n, start, end) != SAFEMEM_SUCCESS)
+    void *tmp;
+
+    if(n < 1)
+    {
         ERRORRET;
-    if (src == NULL)
+    }
+
+    if (!dst || !src || !start || !end)                                                                         
+    {
         ERRORRET;
+    }
+
+    tmp = ((uint8_t*)dst) + (n-1);
+    if (tmp < dst)
+    {
+        ERRORRET;
+    }
+
+    if(!inBounds(start,end, dst) || !inBounds(start,end,tmp))
+    {
+        ERRORRET;
+    }
+
     memcpy(dst, src, n);
+
     return SAFEMEM_SUCCESS;
 }
 
@@ -115,35 +117,35 @@ static INLINE int SafeMemcpy(void *dst, const void *src, size_t n, const void *s
  * @param start start of the dest buffer
  * @param end end of the dst buffer
  *
- * @return SAFEMEM_ERROR on failure, SAFEMEM_SUCCESS on success
+ * @return 0 on failure, 1 on success
  */
 static INLINE int SafeMemmove(void *dst, const void *src, size_t n, const void *start, const void *end)         
 {
-    if (SafeMemCheck(dst, n, start, end) != SAFEMEM_SUCCESS)
+    void *tmp;
+    
+    if(n < 1)
+    {
         ERRORRET;
-    if (src == NULL)
-        ERRORRET;
-    memmove(dst, src, n);
-    return SAFEMEM_SUCCESS;
-}
+    }
 
-/**
- * A Safer Memset
- * dst and src can be in the same buffer
- *
- * @param dst where to copy to
- * @param c character to set memory with
- * @param n number of bytes to set
- * @param start start of the dst buffer
- * @param end end of the dst buffer
- *
- * @return SAFEMEM_ERROR on failure, SAFEMEM_SUCCESS on success
- */
-static INLINE int SafeMemset(void *dst, uint8_t c, size_t n, const void *start, const void *end)         
-{
-    if (SafeMemCheck(dst, n, start, end) != SAFEMEM_SUCCESS)
+    if (!dst || !src || !start || !end)
+    {
         ERRORRET;
-    memset(dst, c, n);
+    }
+
+    tmp = ((uint8_t*)dst) + (n-1);
+    if (tmp < dst)
+    {
+        ERRORRET;
+    }
+
+    if(!inBounds(start,end, dst) || !inBounds(start,end,tmp))
+    {
+        ERRORRET;
+    }
+
+    memmove(dst, src, n);
+
     return SAFEMEM_SUCCESS;
 }
 

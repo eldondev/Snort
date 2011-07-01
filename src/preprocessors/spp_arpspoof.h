@@ -1,6 +1,6 @@
-/* $Id: spp_arpspoof.h,v 1.12 2011/02/09 23:23:29 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2003-2011 Sourcefire, Inc.
+** Copyright (C) 2003-2009 Sourcefire, Inc.
 ** Copyright (C) 2001-2003 Jeff Nathan <jeff@snort.org>
 **
 ** This program is free software; you can redistribute it and/or modify

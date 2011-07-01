@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -60,6 +60,13 @@ typedef    unsigned short acstate_t;
 
 #endif
 
+typedef struct _acsm_userdata2
+{
+    uint32_t ref_count;
+    void *id;
+
+} ACSM_USERDATA2;
+
 /*
 *
 */
@@ -75,7 +82,7 @@ struct _acsm_pattern2
     int      offset;
     int      depth;
     int      negative;
-    void *udata;
+    ACSM_USERDATA2 *udata;
     int      iid;
     void   * rule_option_tree;
     void   * neg_list;
@@ -159,8 +166,6 @@ typedef struct {
     void         (*optiontreefree)(void **p);
     void         (*neg_list_free)(void **p);
     PMQ q;
-    int sizeofstate;
-    int compress_states;
 
 }ACSM_STRUCT2;
 
@@ -181,7 +186,6 @@ int acsmSearch2 ( ACSM_STRUCT2 * acsm,unsigned char * T, int n,
 void acsmFree2 ( ACSM_STRUCT2 * acsm );
 int acsmPatternCount2 ( ACSM_STRUCT2 * acsm );
 
-void acsmCompressStates(ACSM_STRUCT2 *, int);
 
 int  acsmSelectFormat2( ACSM_STRUCT2 * acsm, int format );
 int  acsmSelectFSA2( ACSM_STRUCT2 * acsm, int fsa );

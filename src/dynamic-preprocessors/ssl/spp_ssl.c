@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -31,11 +31,10 @@
 #include "sf_snort_packet.h"
 #include "sf_dynamic_preprocessor.h"
 #include "sf_snort_plugin_api.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 #include "preprocids.h"
 #include "spp_ssl.h"
-#include "sf_preproc_info.h"
 
 #include <stdio.h>
 #include <syslog.h>
@@ -52,17 +51,6 @@
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
 
-const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 1;
-const int BUILD_VERSION = 4;
-#ifdef SUP_IP6
-const char *PREPROC_NAME = "SF_SSLPP (IPV6)";
-#else
-const char *PREPROC_NAME = "SF_SSLPP";
-#endif
-
-#define SetupSSLPP DYNAMIC_PREPROC_SETUP
-
 #ifdef PERF_PROFILING
 PreprocStats sslpp_perf_stats;
 #endif
@@ -71,6 +59,7 @@ PreprocStats sslpp_perf_stats;
 int16_t ssl_app_id = SFTARGET_UNKNOWN_PROTOCOL;
 #endif
 
+#define GENERATOR_SPP_SSLPP	137
 
 /* Ultimately calls SnortEventqAdd */
 /* Arguments are: gid, sid, rev, classification, priority, message, rule_info */
@@ -78,6 +67,8 @@ int16_t ssl_app_id = SFTARGET_UNKNOWN_PROTOCOL;
 
 /* Wraps disabling detect with incrementing the counter */
 #define DISABLE_DETECT() { _dpd.disableDetect(packet); counts.disabled++; }
+
+extern DynamicPreprocessorData _dpd;
 
 static tSfPolicyUserContextId ssl_config = NULL;
 static SSLPP_counters_t counts;
@@ -90,14 +81,15 @@ static void * SSLReloadSwap(void);
 static void SSLReloadSwapFree(void *);
 #endif
 
-static inline void SSLSetPort(SSLPP_config_t *, int);
+static INLINE void SSLSetPort(SSLPP_config_t *, int);
 static void SSL_UpdateCounts(const uint32_t);
-#ifdef DEBUG_MSGS
+#if DEBUG
 static void SSL_PrintFlags(uint32_t);
 #endif
 
 static void SSLFreeConfig(tSfPolicyUserContextId config);
 static void SSLCleanExit(int, void *);
+static void SSLRestart(int, void *);
 static void SSLResetStats(int, void *);
 static void SSLPP_CheckConfig(void);
 
@@ -106,14 +98,7 @@ static void _addPortsToStream5Filter(SSLPP_config_t *, tSfPolicyId);
 static void _addServicesToStream5Filter(tSfPolicyId);
 #endif
 
-typedef struct _SslRuleOptData
-{
-    int flags;
-    int mask;
-
-} SslRuleOptData;
-
-static inline int SSLPP_is_encrypted(uint32_t ssl_flags, SFSnortPacket *packet)
+static INLINE int SSLPP_is_encrypted(uint32_t ssl_flags, SFSnortPacket *packet) 
 {
     SSLPP_config_t *config = NULL;
 
@@ -121,7 +106,7 @@ static inline int SSLPP_is_encrypted(uint32_t ssl_flags, SFSnortPacket *packet)
 
     if (config->flags & SSLPP_TRUSTSERVER_FLAG)
     {
-        if(ssl_flags & SSL_SAPP_FLAG)
+        if(ssl_flags & SSL_SAPP_FLAG) 
             return SSLPP_TRUE;
     }
 
@@ -133,12 +118,12 @@ static inline int SSLPP_is_encrypted(uint32_t ssl_flags, SFSnortPacket *packet)
             counts.completed_hs++;
             return SSLPP_TRUE;
         }
-        /* Check if we're either midstream or if packets were missed after the
+        /* Check if we're either midstream or if packets were missed after the 
          * connection was established */
         else if ((_dpd.streamAPI->get_session_flags (packet->stream_session_ptr) & SSNFLAG_MIDSTREAM) ||
                  (_dpd.streamAPI->missed_packets(packet->stream_session_ptr, SSN_DIR_BOTH)))
         {
-            if ((ssl_flags & (SSL_CAPP_FLAG | SSL_SAPP_FLAG)) == (SSL_CAPP_FLAG | SSL_SAPP_FLAG))
+            if ((ssl_flags & (SSL_CAPP_FLAG | SSL_SAPP_FLAG)) == (SSL_CAPP_FLAG | SSL_SAPP_FLAG)) 
             {
                 return SSLPP_TRUE;
             }
@@ -148,7 +133,7 @@ static inline int SSLPP_is_encrypted(uint32_t ssl_flags, SFSnortPacket *packet)
     return SSLPP_FALSE;
 }
 
-static inline uint32_t SSLPP_process_alert(
+static INLINE uint32_t SSLPP_process_alert(
         uint32_t ssn_flags, uint32_t new_flags, SFSnortPacket *packet)
 {
     SSLPP_config_t *config = NULL;
@@ -161,7 +146,7 @@ static inline uint32_t SSLPP_process_alert(
 
     /* Check if we've seen a handshake, that this isn't it,
      * that the cipher flags is not set, and that we are disabling detection */
-    if(SSL_IS_HANDSHAKE(ssn_flags) &&
+    if(SSL_IS_HANDSHAKE(ssn_flags) && 
        !SSL_IS_HANDSHAKE(new_flags) &&
        !(new_flags & SSL_CHANGE_CIPHER_FLAG) &&
        (config->flags & SSLPP_DISABLE_FLAG))
@@ -181,13 +166,13 @@ static inline uint32_t SSLPP_process_alert(
     return ssn_flags;
 }
 
-static inline uint32_t SSLPP_process_hs(uint32_t ssl_flags, uint32_t new_flags)
+static INLINE uint32_t SSLPP_process_hs(uint32_t ssl_flags, uint32_t new_flags)
 {
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Process Handshake\n"););
 
     if(!SSL_BAD_HS(new_flags))
     {
-        ssl_flags |= new_flags & (SSL_CLIENT_HELLO_FLAG |
+        ssl_flags |= new_flags & (SSL_CLIENT_HELLO_FLAG | 
                                   SSL_SERVER_HELLO_FLAG |
                                   SSL_CLIENT_KEYX_FLAG |
                                   SSL_SFINISHED_FLAG);
@@ -200,8 +185,8 @@ static inline uint32_t SSLPP_process_hs(uint32_t ssl_flags, uint32_t new_flags)
     return ssl_flags;
 }
 
-static inline uint32_t SSLPP_process_app(
-        uint32_t ssn_flags, uint32_t new_flags, SFSnortPacket *packet)
+static INLINE uint32_t SSLPP_process_app(
+        uint32_t ssn_flags, uint32_t new_flags, SFSnortPacket *packet) 
 {
     SSLPP_config_t *config = NULL;
 
@@ -212,7 +197,7 @@ static inline uint32_t SSLPP_process_app(
     if(!(config->flags & SSLPP_DISABLE_FLAG))
         return ssn_flags | new_flags;
 
-    if(SSLPP_is_encrypted(ssn_flags | new_flags, packet) )
+    if(SSLPP_is_encrypted(ssn_flags | new_flags, packet) ) 
     {
         ssn_flags |= SSL_ENCRYPTED_FLAG;
 
@@ -226,8 +211,8 @@ static inline uint32_t SSLPP_process_app(
     return ssn_flags | new_flags;
 }
 
-static inline void SSLPP_process_other(
-        uint32_t ssn_flags, uint32_t new_flags, SFSnortPacket *packet)
+static INLINE void SSLPP_process_other(
+        uint32_t ssn_flags, uint32_t new_flags, SFSnortPacket *packet) 
 {
     SSLPP_config_t *config = NULL;
 
@@ -236,7 +221,7 @@ static inline void SSLPP_process_other(
     /* Encrypted SSLv2 will appear unrecognizable.  Check if the handshake was
      * seen and stop inspecting if so. */
     /* Check for an existing handshake from both sides */
-    if((ssn_flags & SSL_VER_SSLV2_FLAG) &&
+    if((ssn_flags & SSL_VER_SSLV2_FLAG) && 
        SSL_IS_CHELLO(ssn_flags) && SSL_IS_SHELLO(ssn_flags) &&
        (config->flags & SSLPP_DISABLE_FLAG) && !(new_flags & SSL_CHANGE_CIPHER_FLAG))
     {
@@ -251,14 +236,14 @@ static inline void SSLPP_process_other(
         counts.unrecognized++;
 
         /* Special handling for SSLv2 */
-        if(new_flags & SSL_VER_SSLV2_FLAG)
+        if(new_flags & SSL_VER_SSLV2_FLAG) 
             ssn_flags |= new_flags;
 
         if(new_flags & SSL_UNKNOWN_FLAG)
             ssn_flags |= new_flags;
 
 /* The following block is intentionally disabled. */
-/* If we were unable to decode the packet, and previous packets had been
+/* If we were unable to decode the packet, and previous packets had been 
  * missed,  we will not assume it is encrypted SSLv2. */
 #if 0
         /* More special handling for SSLv2.
@@ -267,10 +252,10 @@ static inline void SSLPP_process_other(
         if( !(ssn_flags & ( SSL_VER_SSLV3_FLAG | SSL_VER_TLS10_FLAG |
                             SSL_VER_TLS11_FLAG | SSL_VER_TLS12_FLAG)) )
         {
-            if(packet->stream_session_ptr &&
+            if(packet->stream_session_ptr && 
                 _dpd.streamAPI->missed_packets(
-                    packet->stream_session_ptr, SSN_DIR_SERVER) &&
-                _dpd.streamAPI->missed_packets(
+                    packet->stream_session_ptr, SSN_DIR_SERVER) && 
+                _dpd.streamAPI->missed_packets( 
                     packet->stream_session_ptr, SSN_DIR_CLIENT) )
 
                 ssn_flags |= SSL_VER_SSLV2_FLAG;
@@ -302,15 +287,16 @@ static void SSLPP_process(void *raw_packet, void *context)
     if (config == NULL)
         return;
 
+    PREPROC_PROFILE_START(sslpp_perf_stats);
 
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL Start ================================\n"););
 
     packet = (SFSnortPacket*)raw_packet;
 
-    if(!packet || !packet->payload || !packet->payload_size ||
+    if(!packet || !packet->payload || !packet->payload_size || 
             !packet->tcp_header || !packet->stream_session_ptr)
     {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         if (packet == NULL)
         {
             DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL - Packet is NULL\n"););
@@ -339,6 +325,7 @@ static void SSLPP_process(void *raw_packet, void *context)
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL - Not inspecting packet\n"););
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL End ================================\n"););
 #endif
+        PREPROC_PROFILE_END(sslpp_perf_stats);
         return;
     }
 #ifdef TARGET_BASED
@@ -361,6 +348,7 @@ static void SSLPP_process(void *raw_packet, void *context)
            !(config->ports[PORT_INDEX(packet->dst_port)] & CONV_PORT(packet->dst_port)))
         {
             DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL - Not configured for these ports\n"););
+            PREPROC_PROFILE_END(sslpp_perf_stats);
             DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL End ================================\n"););
             return;
         }
@@ -368,7 +356,7 @@ static void SSLPP_process(void *raw_packet, void *context)
     }
 #endif
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     if (packet->flags & FLAG_FROM_SERVER)
     {
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Server packet\n"););
@@ -383,8 +371,6 @@ static void SSLPP_process(void *raw_packet, void *context)
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Packet is rebuilt\n"););
     }
 #endif
-
-    PREPROC_PROFILE_START(sslpp_perf_stats);
 
     ssn_flags = (uint32_t)(uintptr_t)
         _dpd.streamAPI->get_application_data(packet->stream_session_ptr, PP_SSL);
@@ -423,18 +409,14 @@ static void SSLPP_process(void *raw_packet, void *context)
         }
     }
 
-#if 0
-    /* XXX If the preprocessor should in the future need to do any data
-     * reassembly, one or the other of raw or reassembled needs to be used */
     if (packet->flags & FLAG_STREAM_INSERT)
     {
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Packet is stream inserted - not inspecting\n"););
         DEBUG_WRAP(DebugMessage(DEBUG_SSL, "SSL End ================================\n"););
         return;
     }
-#endif
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Ssn flags before ----------------------\n"););
     SSL_PrintFlags(ssn_flags);
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "---------------------------------------\n"););
@@ -442,7 +424,7 @@ static void SSLPP_process(void *raw_packet, void *context)
 
     SSL_CLEAR_TEMPORARY_FLAGS(ssn_flags);
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     if (packet->payload_size >= 5)
     {
         const uint8_t *pkt = packet->payload;
@@ -456,25 +438,11 @@ static void SSLPP_process(void *raw_packet, void *context)
     }
 #endif
 
-    new_flags = SSL_decode(packet->payload, (int)packet->payload_size, packet->flags);
-
-    if( SSL_IS_CHELLO(new_flags) && SSL_IS_CHELLO(ssn_flags) && SSL_IS_SHELLO(ssn_flags) )
-    {
-        ALERT(SSL_INVALID_CLIENT_HELLO, SSL_INVALID_CLIENT_HELLO_STR);
-    }
-    else if(!(config->flags & SSLPP_TRUSTSERVER_FLAG))
-    {
-        if( (SSL_IS_SHELLO(new_flags) && !SSL_IS_CHELLO(ssn_flags) ))
-        {
-            if(!(_dpd.streamAPI->missed_packets( packet->stream_session_ptr, SSN_DIR_CLIENT)))
-                ALERT(SSL_INVALID_SERVER_HELLO, SSL_INVALID_SERVER_HELLO_STR);
-        }
-    }
-
+    new_flags = SSL_decode(packet->payload, packet->payload_size, packet->flags);
 
     counts.decoded++;
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "New flags -----------------------------\n"););
     SSL_PrintFlags(new_flags);
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "---------------------------------------\n"););
@@ -498,7 +466,7 @@ static void SSLPP_process(void *raw_packet, void *context)
     {
         ssn_flags = SSLPP_process_app(ssn_flags, new_flags, packet);
     }
-    else
+    else 
     {
         /* Different record type that we don't care about.
          * Either it's a 'change cipher spec' or we failed to recognize the
@@ -514,7 +482,7 @@ static void SSLPP_process(void *raw_packet, void *context)
 
     ssn_flags |= new_flags;
 
-#ifdef DEBUG_MSGS
+#if DEBUG
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "Ssn flags after -----------------------\n"););
     SSL_PrintFlags(ssn_flags);
     DEBUG_WRAP(DebugMessage(DEBUG_SSL, "---------------------------------------\n"););
@@ -530,7 +498,7 @@ static void SSLPP_process(void *raw_packet, void *context)
 
 static void SSL_UpdateCounts(const uint32_t new_flags)
 {
-    if(new_flags & SSL_CHANGE_CIPHER_FLAG)
+    if(new_flags & SSL_CHANGE_CIPHER_FLAG) 
         counts.cipher_change++;
 
     if (new_flags & SSL_ALERT_FLAG)
@@ -565,12 +533,11 @@ static void SSL_UpdateCounts(const uint32_t new_flags)
 }
 
 /* Parsing for the ssl_state rule option */
-static int SSLPP_state_init(char *name, char *params, void **data)
+static int SSLPP_state_init(char *name, char *params, void **data) 
 {
-    int flags = 0, mask = 0;
+    int flags = 0;
     char *end = NULL;
     char *tok;
-    SslRuleOptData *sdata;
 
     tok = strtok_r(params, ",", &end);
 
@@ -580,74 +547,34 @@ static int SSLPP_state_init(char *name, char *params, void **data)
 
     do
     {
-        int negated = 0;
-
-        if (tok[0] == '!')
-        {
-            negated = 1;
-            tok++;
-        }
-
         if(!strcasecmp("client_hello", tok))
-        {
             flags |= SSL_CUR_CLIENT_HELLO_FLAG;
-            if (negated)
-                mask |= SSL_CUR_CLIENT_HELLO_FLAG;
-        }
         else if(!strcasecmp("server_hello", tok))
-        {
             flags |= SSL_CUR_SERVER_HELLO_FLAG;
-            if (negated)
-                mask |= SSL_CUR_SERVER_HELLO_FLAG;
-        }
         else if(!strcasecmp("client_keyx", tok))
-        {
             flags |= SSL_CUR_CLIENT_KEYX_FLAG;
-            if (negated)
-                mask |= SSL_CUR_CLIENT_KEYX_FLAG;
-        }
         else if(!strcasecmp("server_keyx", tok))
-        {
             flags |= SSL_CUR_SERVER_KEYX_FLAG;
-            if (negated)
-                mask |= SSL_CUR_SERVER_KEYX_FLAG;
-        }
         else if(!strcasecmp("unknown", tok))
-        {
             flags |= SSL_UNKNOWN_FLAG;
-            if (negated)
-                mask |= SSL_UNKNOWN_FLAG;
-        }
-        else
-        {
+        else 
             DynamicPreprocessorFatalMessage(
-                    "%s(%d) => %s is not a recognized argument to %s.\n",
-                    *(_dpd.config_file), _dpd.config_file, tok, name);
-        }
+                "%s(%d) => %s is not a recognized argument to %s.\n", 
+                *(_dpd.config_file), _dpd.config_file, tok, name);
 
     } while( (tok = strtok_r(NULL, ",", &end)) != NULL );
 
-    sdata = (SslRuleOptData *)calloc(1, sizeof(*sdata));
-    if (sdata == NULL)
-    {
-        DynamicPreprocessorFatalMessage("Could not allocate memory for the "
-                "ssl_state preprocessor rule option.\n");
-    }
+    *data = (void *)(uintptr_t)flags;
 
-    sdata->flags = flags;
-    sdata->mask = mask;
-    *data = (void *)sdata;
-
-    return 1;
+    return 0;
 }
 
 /* Parsing for the ssl_version rule option */
-static int SSLPP_ver_init(char *name, char *params, void **data)
+static int SSLPP_ver_init(char *name, char *params, void **data) 
 {
-    int flags = 0, mask = 0;
+    int flags = 0;
     char *end = NULL;
     char *tok;
-    SslRuleOptData *sdata;
 
     tok = strtok_r(params, ",", &end);
 
@@ -657,84 +584,44 @@ static int SSLPP_ver_init(char *name, char *params, void **data)
 
     do
     {
-        int negated = 0;
-
-        if (tok[0] == '!')
-        {
-            negated = 1;
-            tok++;
-        }
-
         if(!strcasecmp("sslv2", tok))
-        {
             flags |= SSL_VER_SSLV2_FLAG;
-            if (negated)
-                mask |= SSL_VER_SSLV2_FLAG;
-        }
         else if(!strcasecmp("sslv3", tok))
-        {
             flags |= SSL_VER_SSLV3_FLAG;
-            if (negated)
-                mask |= SSL_VER_SSLV3_FLAG;
-        }
         else if(!strcasecmp("tls1.0", tok))
-        {
             flags |= SSL_VER_TLS10_FLAG;
-            if (negated)
-                mask |= SSL_VER_TLS10_FLAG;
-        }
         else if(!strcasecmp("tls1.1", tok))
-        {
             flags |= SSL_VER_TLS11_FLAG;
-            if (negated)
-                mask |= SSL_VER_TLS11_FLAG;
-        }
         else if(!strcasecmp("tls1.2", tok))
-        {
             flags |= SSL_VER_TLS12_FLAG;
-            if (negated)
-                mask |= SSL_VER_TLS12_FLAG;
-        }
-        else
-        {
+        else 
             DynamicPreprocessorFatalMessage(
-                    "%s(%d) => %s is not a recognized argument to %s.\n",
-                    *(_dpd.config_file), _dpd.config_file, tok, name);
-        }
+                "%s(%d) => %s is not a recognized argument to %s.\n", 
+                *(_dpd.config_file), _dpd.config_file, tok, name);
 
     } while( (tok = strtok_r(NULL, ",", &end)) != NULL );
 
-    sdata = (SslRuleOptData *)calloc(1, sizeof(*sdata));
-    if (sdata == NULL)
-    {
-        DynamicPreprocessorFatalMessage("Could not allocate memory for the "
-                "ssl_version preprocessor rule option.\n");
-    }
+    *data = (void *)(uintptr_t)flags;
 
-    sdata->flags = flags;
-    sdata->mask = mask;
-    *data = (void *)sdata;
-
-    return 1;
+    return 0;
 }
 
 /* Rule option evaluation (for both rule options) */
 static int SSLPP_rule_eval(void *raw_packet, const uint8_t **cursor, void *data)
 {
-    int ssn_data;
-    SFSnortPacket *p = (SFSnortPacket*)raw_packet;
-    SslRuleOptData *sdata = (SslRuleOptData *)data;
+    int ssn_data; 
+    SFSnortPacket *p = (SFSnortPacket*)raw_packet; 
 
-    if (!p || !p->tcp_header || !p->stream_session_ptr || !data)
-        return RULE_NOMATCH;
+    if (!p || !p->tcp_header || !p->stream_session_ptr)
+        return 0; 
 
-    ssn_data = (int)(uintptr_t)_dpd.streamAPI->get_application_data(
-            p->stream_session_ptr, PP_SSL);
+    ssn_data = (int)(uintptr_t)_dpd.streamAPI->get_application_data( 
+                p->stream_session_ptr, PP_SSL); 
 
-    if ((sdata->flags & ssn_data) ^ sdata->mask)
-        return RULE_MATCH;
+    if((int)(uintptr_t)data & ssn_data)
+        return 1;
 
-    return RULE_NOMATCH;
+    return 0;
 }
 
 /* SSL Preprocessor configuration parsing */
@@ -747,15 +634,15 @@ static void SSLPP_config(SSLPP_config_t *config, char *conf)
     char *search;
     SFP_errstr_t err;
 
-    if(!conf)
+    if(!conf) 
         return;
 
     if (config == NULL)
         return;
-
+    
     search = conf;
 
-    while( (comma_tok = strtok_r(search, ",", &saveptr)) != NULL )
+    while( (comma_tok = strtok_r(search, ",", &saveptr)) != NULL ) 
     {
         search = NULL;
 
@@ -763,7 +650,7 @@ static void SSLPP_config(SSLPP_config_t *config, char *conf)
 
         if(!space_tok)
             return;
-
+        
         if(!strcasecmp(space_tok, "ports"))
         {
             memset(config->ports, 0, sizeof(config->ports));
@@ -774,14 +661,14 @@ static void SSLPP_config(SSLPP_config_t *config, char *conf)
                    *(_dpd.config_file), *(_dpd.config_line), SFP_GET_ERR(err));
 
         }
-        else if(!strcasecmp(space_tok, "noinspect_encrypted"))
+        else if(!strcasecmp(space_tok, "noinspect_encrypted")) 
         {
             char *tmpChar;
             tmpChar = strtok_r(NULL, " \t\n", &portptr);
             if(tmpChar)
             {
         	    DynamicPreprocessorFatalMessage("%s(%d) => Invalid argument to the"
-        	                    " SSL preprocessor: '%s' in %s\n",
+        	                    " SSL preprocessor: '%s' in %s\n", 
         	                    *(_dpd.config_file), *(_dpd.config_line), space_tok, tmpChar);
             }
             config->flags |= SSLPP_DISABLE_FLAG;
@@ -793,7 +680,7 @@ static void SSLPP_config(SSLPP_config_t *config, char *conf)
             if(tmpChar)
             {
                 DynamicPreprocessorFatalMessage("%s(%d) => Invalid argument to the"
-                    " SSL preprocessor: '%s' in %s\n",
+                    " SSL preprocessor: '%s' in %s\n", 
                     *(_dpd.config_file), *(_dpd.config_line), space_tok, tmpChar);
             }
             config->flags |= SSLPP_TRUSTSERVER_FLAG;
@@ -801,10 +688,10 @@ static void SSLPP_config(SSLPP_config_t *config, char *conf)
         else
         {
             DynamicPreprocessorFatalMessage("%s(%d) => Invalid argument to the"
-                " SSL preprocessor: '%s' in %s\n",
+                " SSL preprocessor: '%s' in %s\n", 
                 *(_dpd.config_file), *(_dpd.config_line), comma_tok, conf);
         }
-    }
+    } 
 
     /* Verify configured options make sense */
     if ((config->flags & SSLPP_TRUSTSERVER_FLAG) &&
@@ -833,12 +720,12 @@ static void SSLPP_print_config(SSLPP_config_t *config)
 
     _dpd.logMsg("    Ports:\n");
 
-    for(newline = 0, i = 0; i < MAXPORTS; i++)
+    for(newline = 0, i = 0; i < MAXPORTS; i++) 
     {
         if( config->ports[ PORT_INDEX(i) ] & CONV_PORT(i) )
         {
             SFP_snprintfa(buf, sizeof(buf), "    %5d", i);
-            if( !((++newline) % 5) )
+            if( !((++newline) % 5) ) 
             {
                 SFP_snprintfa(buf, sizeof(buf), "\n");
                 _dpd.logMsg(buf);
@@ -851,7 +738,7 @@ static void SSLPP_print_config(SSLPP_config_t *config)
         SFP_snprintfa(buf, sizeof(buf), "\n");
 
     _dpd.logMsg(buf);
-
+    
     if ( config->flags & SSLPP_TRUSTSERVER_FLAG )
     {
         _dpd.logMsg("    Server side data is trusted\n");
@@ -875,15 +762,15 @@ static void SSLPP_init_config(SSLPP_config_t *config)
     SSLSetPort(config, 995); /* POPS */
 }
 
-static inline void SSLSetPort(SSLPP_config_t *config, int port)
+static INLINE void SSLSetPort(SSLPP_config_t *config, int port)
 {
     if (config == NULL)
         return;
 
-    config->ports[ PORT_INDEX(port) ] |= CONV_PORT(port);
+    config->ports[ PORT_INDEX(port) ] |= CONV_PORT(port);  
 }
 
-static void SSLPP_drop_stats(int exiting)
+static void SSLPP_drop_stats(int exiting) 
 {
     if(!counts.decoded)
         return;
@@ -935,6 +822,7 @@ static void SSLPP_init(char *args)
         _dpd.registerPreprocStats("ssl", SSLPP_drop_stats);
         _dpd.addPreprocConfCheck(SSLPP_CheckConfig);
         _dpd.addPreprocExit(SSLCleanExit, NULL, PRIORITY_LAST, PP_SSL);
+        _dpd.addPreprocRestart(SSLRestart, NULL, PRIORITY_LAST, PP_SSL);
         _dpd.addPreprocResetStats(SSLResetStats, NULL, PRIORITY_LAST, PP_SSL);
 
 #ifdef PERF_PROFILING
@@ -964,17 +852,15 @@ static void SSLPP_init(char *args)
         DynamicPreprocessorFatalMessage("Could not allocate memory for the "
                                         "SSL preprocessor configuration.\n");
     }
-
+ 
     sfPolicyUserDataSetCurrent(ssl_config, pPolicyConfig);
 
     SSLPP_init_config(pPolicyConfig);
 	SSLPP_config(pPolicyConfig, args);
     SSLPP_print_config(pPolicyConfig);
 
-    _dpd.preprocOptRegister("ssl_state", SSLPP_state_init, SSLPP_rule_eval,
-            free, NULL, NULL, NULL, NULL);
-    _dpd.preprocOptRegister("ssl_version", SSLPP_ver_init, SSLPP_rule_eval,
-            free, NULL, NULL, NULL, NULL);
+    _dpd.preprocOptRegister("ssl_state", SSLPP_state_init, SSLPP_rule_eval, NULL, NULL, NULL);
+    _dpd.preprocOptRegister("ssl_version", SSLPP_ver_init, SSLPP_rule_eval, NULL, NULL, NULL);
 
 	_dpd.addPreproc( SSLPP_process, PRIORITY_TUNNEL, PP_SSL, PROTO_BIT__TCP );
 
@@ -995,7 +881,7 @@ void SetupSSLPP(void)
 #endif
 }
 
-#ifdef DEBUG_MSGS
+#if DEBUG
 static void SSL_PrintFlags(uint32_t flags)
 {
     if (flags & SSL_CHANGE_CIPHER_FLAG)
@@ -1194,7 +1080,7 @@ static void _addServicesToStream5Filter(tSfPolicyId policy_id)
 
 static int SSLFreeConfigPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -1225,6 +1111,11 @@ static void SSLCleanExit(int signal, void *data)
     }
 }
 
+static void SSLRestart(int signal, void *data)
+{
+    SSLCleanExit(signal, data);
+}
+
 static void SSLResetStats(int signal, void *data)
 {
     memset(&counts, 0, sizeof(counts));
@@ -1232,7 +1123,7 @@ static void SSLResetStats(int signal, void *data)
 
 static int SSLPP_CheckPolicyConfig(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -1296,10 +1187,8 @@ static void SSLReload(char *args)
 	SSLPP_config(pPolicyConfig, args);
     SSLPP_print_config(pPolicyConfig);
 
-    _dpd.preprocOptRegister("ssl_state", SSLPP_state_init, SSLPP_rule_eval,
-            free, NULL, NULL, NULL, NULL);
-    _dpd.preprocOptRegister("ssl_version", SSLPP_ver_init, SSLPP_rule_eval,
-            free, NULL, NULL, NULL, NULL);
+    _dpd.preprocOptRegister("ssl_state", SSLPP_state_init, SSLPP_rule_eval, NULL, NULL, NULL);
+    _dpd.preprocOptRegister("ssl_version", SSLPP_ver_init, SSLPP_rule_eval, NULL, NULL, NULL);
 
 	_dpd.addPreproc(SSLPP_process, PRIORITY_TUNNEL, PP_SSL, PROTO_BIT__TCP);
     _dpd.addPreprocReloadVerify(SSLReloadVerify);

@@ -1,0 +1,75 @@
+Rule: 
+
+--
+Sid: 
+100000117
+
+-- 
+Summary: 
+This event is generated when an attempt is made to execute arbitrary commands 
+on a web server via the VBulliten system.
+
+-- 
+
+Impact: 
+Attackers may execute arbitrary code of their choosing with the privileges of 
+the affected script.
+
+--
+Detailed Information:
+The "comma" parameter of VBulliten's "forumdisplay.php" script is not 
+sufficiently santitized, and will allow users to run arbitrary commands with 
+the privileges of the affected script on the host system when the 
+"showforumusers" option has been enabled by the system administrator.
+
+--
+Affected Systems:
+VBulletin 3.0
+VBulletin 3.0 Beta 2
+VBulletin 3.0 Beta 3
+VBulletin 3.0 Beta 4
+VBulletin 3.0 Beta 5
+VBulletin 3.0 Beta 6
+VBulletin 3.0 Beta 7
+VBulletin 3.0 Gamma
+VBulletin 3.0.1
+VBulletin 3.0.2
+VBulletin 3.0.3
+VBulletin 3.0.4
+
+--
+
+Attack Scenarios: 
+A web browser or an automated script may be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as public exploits exist.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+It has been reported that VBulliten versions 3.0.5 and above are not 
+vulnerable. Additionally, administrators may disable the "showforumusers" 
+configuration option as a workaround.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+http://www.vbulletin.com/
+
+--

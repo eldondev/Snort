@@ -1,6 +1,6 @@
 /* $Id */
-/*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+/*  
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -19,7 +19,7 @@
 */
 
 /*
- * sp_urilen_check.c: Detection plugin to expose URI length to
+ * sp_urilen_check.c: Detection plugin to expose URI length to 
  * 			user rules.
  */
 
@@ -31,12 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sf_types.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "parser.h"
 #include "plugin_enum.h"
 #include "util.h"
@@ -53,7 +51,8 @@ extern PreprocStats ruleOTNEvalPerfStats;
 
 #include "sfhashfcn.h"
 #include "detection_options.h"
-#include "detection_util.h"
+
+extern HttpUri UriBufs[URI_COUNT];
 
 void UriLenCheckInit( char*, OptTreeNode*, int );
 void ParseUriLen( char*, OptTreeNode* );
@@ -97,33 +96,33 @@ int UriLenCheckCompare(void *l, void *r)
 
 
 /* Called from plugbase to register any detection plugin keywords.
-*
+* 
  * PARAMETERS:	None.
  *
  * RETURNS:	Nothing.
  */
-void
+void 
 SetupUriLenCheck(void)
 {
-	RegisterRuleOption("urilen", UriLenCheckInit, NULL, OPT_TYPE_DETECTION, NULL);
+	RegisterRuleOption("urilen", UriLenCheckInit, NULL, OPT_TYPE_DETECTION);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("urilen_check", &urilenCheckPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
 }
 
-/* Parses the urilen rule arguments and attaches info to
+/* Parses the urilen rule arguments and attaches info to 
  * the rule data structure for later use. Attaches detection
  * function to OTN function list.
- *
- * PARAMETERS:
+ * 
+ * PARAMETERS: 
  *
  * argp:	Rule arguments
  * otnp:  	Pointer to the current rule option list node
- * protocol:    Pointer specified for the rule currently being parsed
+ * protocol:    Pointer specified for the rule currently being parsed	
  *
  * RETURNS:	Nothing.
  */
-void
+void 
 UriLenCheckInit( char* argp, OptTreeNode* otnp, int protocol )
 {
 	/* Sanity check(s) */
@@ -139,7 +138,7 @@ UriLenCheckInit( char* argp, OptTreeNode* otnp, int protocol )
 			file_name, file_line );
 	}
 
-	otnp->ds_list[PLUGIN_URILEN_CHECK] =
+	otnp->ds_list[PLUGIN_URILEN_CHECK] = 
 		(UriLenCheckData*) SnortAlloc(sizeof(UriLenCheckData));
 
 	ParseUriLen( argp, otnp );
@@ -147,7 +146,7 @@ UriLenCheckInit( char* argp, OptTreeNode* otnp, int protocol )
 }
 
 /* Parses the urilen rule arguments and attaches the resulting
- * parameters to the rule data structure. Based on arguments,
+ * parameters to the rule data structure. Based on arguments, 
  * attaches the appropriate callback/processing function
  * to be used when the OTN is evaluated.
  *
@@ -165,18 +164,18 @@ ParseUriLen( char* argp, OptTreeNode* otnp )
     OptFpList *fpl;
 	UriLenCheckData* datap = NULL;
     void *datap_dup;
-	char* curp = NULL;
+	char* curp = NULL; 
  	char* cur_tokenp = NULL;
 	char* endp = NULL;
 	int val;
 
 	/* Get the Urilen parameter block */
-	datap = (UriLenCheckData*)
+	datap = (UriLenCheckData*) 
 			otnp->ds_list[PLUGIN_URILEN_CHECK];
 
 	curp = argp;
 
-	while(isspace((int)*curp))
+	while(isspace((int)*curp)) 
 		curp++;
 
 	/* Parse the string */
@@ -262,7 +261,7 @@ ParseUriLen( char* argp, OptTreeNode* otnp )
     fpl->context = otnp->ds_list[PLUGIN_URILEN_CHECK];
 }
 
-int
+int 
 CheckUriLen(void *option_data, Packet *p)
 {
     UriLenCheckData *urilenCheckData = (UriLenCheckData *)option_data;

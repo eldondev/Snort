@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2007-2011 Sourcefire, Inc.
+ * Copyright (C) 2007-2009 Sourcefire, Inc.
  *
  * Author: Russ Combs
  *
@@ -29,9 +29,6 @@
 /* the OPTION_TYPE_* and FLOW_*  values
  * are used as args to the hasFunc()
  * which replaces the prior has*Func()s.
- *
- * Try to add values to the end (just before OPTION_TYPE_MAX).  Also, look
- * at OptionConverterArray in sf_convert_dynamic.c to make sure types align.
  */
 typedef enum {
      OPTION_TYPE_PREPROCESSOR,
@@ -47,15 +44,10 @@ typedef enum {
      OPTION_TYPE_BYTE_EXTRACT,
      OPTION_TYPE_SET_CURSOR,
      OPTION_TYPE_LOOP,
-     OPTION_TYPE_FILE_DATA,
-     OPTION_TYPE_PKT_DATA,
-     OPTION_TYPE_BASE64_DATA,
-     OPTION_TYPE_BASE64_DECODE,
      OPTION_TYPE_MAX
 } DynamicOptionType;
 
-// beware: these are redefined from sf_snort_packet.h FLAG_*!
-#define FLOW_ESTABLISHED         0x0008
+#define FLOW_ESTABLISHED         0x0010
 #define FLOW_FR_SERVER           0x0040
 #define FLOW_TO_CLIENT           0x0040 /* Just for convenience */
 #define FLOW_TO_SERVER           0x0080
@@ -66,10 +58,8 @@ typedef enum {
 
 #define SNORT_PCRE_OVERRIDE_MATCH_LIMIT 0x8000000
 
-#ifndef SO_PUBLIC
 #if defined _WIN32 || defined __CYGWIN__
-#  if defined SF_SNORT_ENGINE_DLL || defined SF_SNORT_DETECTION_DLL || \
-      defined SF_SNORT_PREPROC_DLL
+#  if defined SF_SNORT_ENGINE_DLL || defined SF_SNORT_DETECTION_DLL || defined SF_SNORT_PREPROC_DLL
 #    ifdef __GNUC__
 #      define SO_PUBLIC __attribute__((dllexport))
 #    else
@@ -84,7 +74,7 @@ typedef enum {
 #  endif
 #  define DLL_LOCAL
 #else
-#  ifdef SF_VISIBILITY
+#  ifdef HAVE_VISIBILITY
 #    define SO_PUBLIC  __attribute__ ((visibility("default")))
 #    define SO_PRIVATE __attribute__ ((visibility("hidden")))
 #  else
@@ -92,20 +82,6 @@ typedef enum {
 #    define SO_PRIVATE
 #  endif
 #endif
-#endif
-
-/* Parameters are rule info pointer, int to indicate URI or NORM,
- * and list pointer */
-/* These need to match HTTP_SEARCH_xxx defined in sp_pattern_match.h
- * for proper fast pattern match pattern selection */
-#define CONTENT_HTTP_URI          0x01
-#define CONTENT_HTTP_HEADER       0x04
-#define CONTENT_HTTP_CLIENT_BODY  0x10
-#define CONTENT_HTTP_METHOD       0x20
-
-#define CONTENT_NORMAL            0x400
-#define CONTENT_HTTP (CONTENT_HTTP_URI|CONTENT_HTTP_HEADER|\
-                        CONTENT_HTTP_CLIENT_BODY|CONTENT_HTTP_METHOD)
 
 #endif /* _SF_DYNAMIC_DEFINE_H_ */
 

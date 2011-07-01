@@ -1,0 +1,62 @@
+Rule: 
+
+--
+Sid: 
+100000126
+
+-- 
+Summary: 
+This event is generated when an attempt is made to overflow a buffer in the 
+GoodTech Telenet server.
+
+-- 
+
+Impact: 
+The affected server will be crashed, and remote code execution with the 
+privileges of the user running the telnet server is possible.
+
+--
+Detailed Information:
+If the GoodTech telnet server recieves 10,083 bytes before a newline, a buffer 
+will be overflowed. If properly crafted data is sent, arbitrary code may be 
+executed with the privileges of the user running the server. Note that the rule 
+looks for 1,000 or more bytes before a newline, due to limitations which do not 
+allow a search for the full number of bytes required for the exploit.
+
+--
+Affected Systems:
+GoodTech Telnet Server 4.0
+GoodTech Telnet Server 5.0
+
+--
+
+Attack Scenarios: 
+A script must be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as public exploits exist.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Upgrade to version 5.0.7 of the affected software.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

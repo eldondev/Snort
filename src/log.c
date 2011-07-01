@@ -1,6 +1,6 @@
-/* $Id: log.c,v 1.153 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -41,15 +41,9 @@
 
 #include "log.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "util.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "signature.h"
-#include "util_net.h"
-#include "snort_bounds.h"
-#include "obfuscation.h"
-#include "detection_util.h"
-#include "detect.h"
 
 #include "snort.h"
 
@@ -59,7 +53,8 @@ char *data_dump_buffer;     /* printout buffer for PrintNetData */
 int data_dump_buffer_size = 0;/* size of printout buffer */
 int dump_size;              /* amount of data to print */
 
-extern int IsGzipData(Packet *p);
+extern uint16_t event_id;
+
 void AllocDumpBuf();
 
 
@@ -72,7 +67,7 @@ static unsigned char ezero[6];  /* crap for ARP */
 #endif
 
 /*
- * Function: PrintNetData(FILE *, u_char *,int, Packet *)
+ * Function: PrintNetData(FILE *, u_char *,int)
  *
  * Purpose: Do a side by side dump of a buffer, hex dump of buffer bytes on
  *          the left, decoded ASCII on the right.
@@ -83,7 +78,7 @@ static unsigned char ezero[6];  /* crap for ARP */
  *
  * Returns: void function
  */
-void PrintNetData(FILE * fp, const u_char * start, const int len, Packet *p)
+void PrintNetData(FILE * fp, const u_char * start, const int len)
 {
     char *end;          /* ptr to buffer end */
     int i;          /* counter */
@@ -95,11 +90,6 @@ void PrintNetData(FILE * fp, const u_char * start, const int len, Packet *p)
     char *d_ptr;        /* data pointer into the frame */
     char *c_ptr;        /* char pointer into the frame */
     char conv[] = "0123456789ABCDEF";   /* xlation lookup table */
-    int next_layer, ip_start, ip_ob_start, ip_ob_end, byte_pos;
-
-    next_layer = ip_start = byte_pos = 0;
-
-    ip_ob_start = ip_ob_end = -1;
 
     /* initialization */
     done = 0;
@@ -116,7 +106,7 @@ void PrintNetData(FILE * fp, const u_char * start, const int len, Packet *p)
         printf("Got NULL ptr in PrintNetData()\n");
         return;
     }
-
+   
     end = (char*) (start + (len - 1));    /* set the end of buffer ptr */
 
     if(len > IP_MAXPACKET)
@@ -176,36 +166,6 @@ void PrintNetData(FILE * fp, const u_char * start, const int len, Packet *p)
     i = 0;
     j = 0;
 
-    if(p && ScObfuscate() )
-    {
-        next_layer =  p->next_layer;
-        for ( i = 0; i < next_layer; i++ )
-        {
-            if ( p->layers[i].proto == PROTO_IP4
-#ifdef SUP_IP6
-                  || p->layers[i].proto == PROTO_IP6
-#endif
-              )
-            {
-                if(p->layers[i].length && p->layers[i].start)
-                    break;
-            }
-        }
-        ip_start = p->layers[i].start - start;
-
-        if(ip_start > 0 )
-        {
-            ip_ob_start = ip_start + 10;
-            if(p->layers[i].proto == PROTO_IP4)
-                ip_ob_end = ip_ob_start + 2 + 2*(sizeof(struct in_addr));
-            else
-                ip_ob_end = ip_ob_start + 2 + 2*(sizeof(struct in6_addr));
-        }
-
-
-        i=0;
-    }
-
     /* loop thru the whole buffer */
     while(!done)
     {
@@ -225,45 +185,28 @@ void PrintNetData(FILE * fp, const u_char * start, const int len, Packet *p)
         }
 
         /* process 16 bytes per frame */
-        for(i = 0; i < 16; i++, byte_pos++)
+        for(i = 0; i < 16; i++)
         {
-            if(ScObfuscate() && ((byte_pos >= ip_ob_start) && (byte_pos < ip_ob_end)))
-            {
-                *d_ptr = 'X';
-                d_ptr++;
-                *d_ptr = 'X';
-                d_ptr++;
+            /*
+             * look up the ASCII value of the first nybble of the current
+             * data buffer
+             */
+            *d_ptr = conv[((*data & 0xFF) >> 4)];
+            d_ptr++;
 
-                *d_ptr = 0x20;
-                d_ptr++;
+            /* look up the second nybble */
+            *d_ptr = conv[((*data & 0xFF) & 0x0F)];
+            d_ptr++;
 
-                *c_ptr = 'X';
+            /* put a space in between */
+            *d_ptr = 0x20;
+            d_ptr++;
 
-            }
+            /* print out the char equivalent */
+            if(*data > 0x1F && *data < 0x7F)
+                *c_ptr = (char) (*data & 0xFF);
             else
-            {
-
-                /*
-                 * look up the ASCII value of the first nybble of the current
-                 * data buffer
-                 */
-                *d_ptr = conv[((*data & 0xFF) >> 4)];
-                d_ptr++;
-
-                /* look up the second nybble */
-                *d_ptr = conv[((*data & 0xFF) & 0x0F)];
-                d_ptr++;
-
-                /* put a space in between */
-                *d_ptr = 0x20;
-                d_ptr++;
-
-                /* print out the char equivalent */
-                if(*data > 0x1F && *data < 0x7F)
-                    *c_ptr = (char) (*data & 0xFF);
-                else
-                    *c_ptr = 0x2E;
-            }
+                *c_ptr = 0x2E;
 
             c_ptr++;
 
@@ -397,46 +340,6 @@ void PrintCharData(FILE * fp, char *data, int data_len)
     //ClearDumpBuf();
 }
 
-static int PrintObfuscatedData(FILE* fp, Packet *p)
-{
-    uint8_t *payload = NULL;
-    uint16_t payload_len = 0;
-
-    if (obApi->getObfuscatedPayload(p, &payload,
-                (uint16_t *)&payload_len) != OB_RET_SUCCESS)
-    {
-        return -1;
-    }
-
-    /* dump the application layer data */
-    if (ScOutputAppData() && !ScVerboseByteDump())
-    {
-        if (ScOutputCharData())
-            PrintCharData(fp, (char *)payload, payload_len);
-        else
-            PrintNetData(fp, payload, payload_len, NULL);
-    }
-    else if (ScVerboseByteDump())
-    {
-        uint8_t buf[UINT16_MAX];
-        uint16_t dlen = p->data - p->pkt;
-
-        SafeMemcpy(buf, p->pkt, dlen, buf, buf + sizeof(buf));
-        SafeMemcpy(buf + dlen, payload, payload_len,
-                buf, buf + sizeof(buf));
-
-        PrintNetData(fp, buf, dlen + payload_len, NULL);
-    }
-
-    fprintf(fp, "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+"
-            "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+\n\n");
-
-    p->packet_flags |= PKT_LOGGED;
-
-    free(payload);
-
-    return 0;
-}
 
 
 /*
@@ -469,24 +372,14 @@ void PrintIPPkt(FILE * fp, int type, Packet * p)
     if(ScOutputDataLink())
     {
         Print2ndHeader(fp, p);
-
-#ifdef MPLS
-        if(p->mpls)
-        {
-            PrintMPLSHeader(fp, p);
-        }
-#endif
-
-#ifdef GRE
-        if (p->outer_iph)
-        {
-            PrintOuterIPHeader(fp, p);
-            if (p->greh)
-                PrintGREHeader(fp, p);
-        }
-#endif
     }
-
+#ifdef MPLS
+    if(p->mpls)
+    {
+        PrintMPLSHeader(fp, p);
+    }
+#endif
+    /* etc */
     PrintIPHeader(fp, p);
 
     /* if this isn't a fragment, print the other header info */
@@ -503,13 +396,13 @@ void PrintIPPkt(FILE * fp, int type, Packet * p)
                 else
                 {
 #ifdef SUP_IP6
-                    PrintNetData(fp, (u_char *)
-                            (u_char *)p->iph + (GET_IPH_HLEN(p) << 2),
-                            GET_IP_PAYLEN(p), NULL);
+                    PrintNetData(fp, (u_char *) 
+                                        (u_char *)p->iph + (GET_IPH_HLEN(p) << 2),
+                                        GET_IP_PAYLEN(p));
 #else
-                    PrintNetData(fp, (u_char *)
-                            ((u_char *)p->iph + (IP_HLEN(p->iph) << 2)),
-                            (p->actual_ip_len - (IP_HLEN(p->iph) << 2)), NULL);
+                    PrintNetData(fp, (u_char *) 
+                                        ((u_char *)p->iph + (IP_HLEN(p->iph) << 2)), 
+                                        (p->actual_ip_len - (IP_HLEN(p->iph) << 2)));
 #endif
                 }
 
@@ -523,13 +416,13 @@ void PrintIPPkt(FILE * fp, int type, Packet * p)
                 else
                 {
 #ifdef SUP_IP6
-                    PrintNetData(fp, (u_char *)
-                            (u_char *)p->iph + (GET_IPH_HLEN(p) << 2),
-                            GET_IP_PAYLEN(p), NULL);
+                    PrintNetData(fp, (u_char *) 
+                                        (u_char *)p->iph + (GET_IPH_HLEN(p) << 2),
+                                        GET_IP_PAYLEN(p));
 #else
-                    PrintNetData(fp, (u_char *)
-                            ((u_char *)p->iph + (IP_HLEN(p->iph) << 2)),
-                            (p->actual_ip_len - (IP_HLEN(p->iph) << 2)), NULL);
+                    PrintNetData(fp, (u_char *) 
+                                        ((u_char *)p->iph + (IP_HLEN(p->iph) << 2)), 
+                                        (p->actual_ip_len - (IP_HLEN(p->iph) << 2)));
 #endif
                 }
 
@@ -542,14 +435,20 @@ void PrintIPPkt(FILE * fp, int type, Packet * p)
                 }
                 else
                 {
+/*
+           printf("p->iph: %p\n", p->iph);
+           printf("p->icmph: %p\n", p->icmph);
+           printf("p->iph->ip_hlen: %d\n", (IP_HLEN(p->iph) << 2));
+           printf("p->iph->ip_len: %d\n", p->iph->ip_len);
+ */
 #ifdef SUP_IP6
-                    PrintNetData(fp, (u_char *)
-                            ((u_char *)p->iph + (GET_IPH_HLEN(p) << 2)),
-                            GET_IP_PAYLEN(p), NULL);
+                    PrintNetData(fp, (u_char *) 
+                        ((u_char *)p->iph + (GET_IPH_HLEN(p) << 2)),
+                        GET_IP_PAYLEN(p));
 #else
-                    PrintNetData(fp, (u_char *)
-                            ((u_char *) p->iph + (IP_HLEN(p->iph) << 2)),
-                            (ntohs(p->iph->ip_len) - (IP_HLEN(p->iph) << 2)), NULL);
+                    PrintNetData(fp, (u_char *) 
+                        ((u_char *) p->iph + (IP_HLEN(p->iph) << 2)), 
+                        (ntohs(p->iph->ip_len) - (IP_HLEN(p->iph) << 2)));
 #endif
                 }
 
@@ -559,38 +458,17 @@ void PrintIPPkt(FILE * fp, int type, Packet * p)
                 break;
         }
     }
-
-    if ((p->dsize > 0) && obApi->payloadObfuscationRequired(p)
-            && (PrintObfuscatedData(fp, p) == 0))
-    {
-        return;
-    }
-
     /* dump the application layer data */
     if (ScOutputAppData() && !ScVerboseByteDump())
     {
         if (ScOutputCharData())
-        {
             PrintCharData(fp, (char*) p->data, p->dsize);
-            if(!IsGzipData(p))
-            {
-                fprintf(fp, "%s\n", "Decompressed Data for this packet");
-                PrintCharData(fp, (char *)file_data_ptr.data, file_data_ptr.len);
-            }
-        }
         else
-        {
-            PrintNetData(fp, p->data, p->dsize, NULL);
-            if(!IsGzipData(p))
-            {
-                fprintf(fp, "%s\n", "Decompressed Data for this packet");
-                PrintNetData(fp, file_data_ptr.data, file_data_ptr.len, NULL);
-            }
-        }
+            PrintNetData(fp, p->data, p->dsize);
     }
     else if (ScVerboseByteDump())
     {
-        PrintNetData(fp, p->pkt, p->pkth->caplen, p);
+        PrintNetData(fp, p->pkt, p->pkth->caplen);
     }
 
     fprintf(fp, "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+"
@@ -625,19 +503,11 @@ FILE *OpenAlertFile(const char *filearg)
 
     if(filearg == NULL)
     {
-        if (snort_conf->alert_file == NULL)
-        {
-            if(!ScDaemonMode())
-                SnortSnprintf(filename, STD_BUF, "%s/alert%s", snort_conf->log_dir, suffix);
-            else
-                SnortSnprintf(filename, STD_BUF, "%s/%s", snort_conf->log_dir,
-                        DEFAULT_DAEMON_ALERT_FILE);
-        }
+        if(!ScDaemonMode())
+            SnortSnprintf(filename, STD_BUF, "%s/alert%s", snort_conf->log_dir, suffix);
         else
-        {
-            SnortSnprintf(filename, STD_BUF, "%s/%s%s",
-                    snort_conf->log_dir, snort_conf->alert_file, suffix);
-        }
+            SnortSnprintf(filename, STD_BUF, "%s/%s", snort_conf->log_dir, 
+                    DEFAULT_DAEMON_ALERT_FILE);
     }
     else
     {
@@ -690,7 +560,7 @@ int RollAlertFile(const char *filearg)
         if(!ScDaemonMode())
             SnortSnprintf(oldname, STD_BUF, "%s/alert%s", snort_conf->log_dir, suffix);
         else
-            SnortSnprintf(oldname, STD_BUF, "%s/%s", snort_conf->log_dir,
+            SnortSnprintf(oldname, STD_BUF, "%s/%s", snort_conf->log_dir, 
                     DEFAULT_DAEMON_ALERT_FILE);
     }
     else
@@ -815,7 +685,7 @@ void NoLog(Packet * p, char *msg, void *arg, Event *event)
 void Print2ndHeader(FILE * fp, Packet * p)
 {
 
-    switch(DAQ_GetBaseProtocol())
+    switch(datalink) 
     {
         case DLT_EN10MB:        /* Ethernet */
             if(p && p->eh)
@@ -827,12 +697,12 @@ void Print2ndHeader(FILE * fp, Packet * p)
             if(p && p->wifih)
                 PrintWifiHeader(fp, p);
             break;
-#endif
+#endif     
         case DLT_IEEE802:                /* Token Ring */
             if(p && p->trh)
                 PrintTrHeader(fp, p);
-            break;
-#ifdef DLT_LINUX_SLL
+            break;    
+#ifdef DLT_LINUX_SLL        
         case DLT_LINUX_SLL:
             if (p && p->sllh)
                 PrintSLLHeader(fp, p);  /* Linux cooked sockets */
@@ -843,7 +713,7 @@ void Print2ndHeader(FILE * fp, Packet * p)
             if (ScLogVerbose())
             {
                 ErrorMessage("Datalink %i type 2nd layer display is not "
-                             "supported\n", DAQ_GetBaseProtocol());
+                             "supported\n", datalink);   
             }
     }
 }
@@ -910,17 +780,17 @@ void PrintTrHeader(FILE * fp, Packet * p)
 void PrintEthHeader(FILE * fp, Packet * p)
 {
     /* src addr */
-    fprintf(fp, "%02X:%02X:%02X:%02X:%02X:%02X -> ", p->eh->ether_src[0],
+    fprintf(fp, "%X:%X:%X:%X:%X:%X -> ", p->eh->ether_src[0],
             p->eh->ether_src[1], p->eh->ether_src[2], p->eh->ether_src[3],
             p->eh->ether_src[4], p->eh->ether_src[5]);
 
     /* dest addr */
-    fprintf(fp, "%02X:%02X:%02X:%02X:%02X:%02X ", p->eh->ether_dst[0],
+    fprintf(fp, "%X:%X:%X:%X:%X:%X ", p->eh->ether_dst[0],
             p->eh->ether_dst[1], p->eh->ether_dst[2], p->eh->ether_dst[3],
             p->eh->ether_dst[4], p->eh->ether_dst[5]);
 
     /* protocol and pkt size */
-    fprintf(fp, "type:0x%X len:0x%X\n", ntohs(p->eh->ether_type), p->pkth->pktlen);
+    fprintf(fp, "type:0x%X len:0x%X\n", ntohs(p->eh->ether_type), p->pkth->len);
 }
 
 #ifdef MPLS
@@ -928,18 +798,7 @@ void PrintMPLSHeader(FILE* log, Packet* p)
 {
 
     fprintf(log,"label:0x%05X exp:0x%X bos:0x%X ttl:0x%X\n",
-            p->mplsHdr.label, p->mplsHdr.exp, p->mplsHdr.bos, p->mplsHdr.ttl);
-}
-#endif
-
-#ifdef GRE
-void PrintGREHeader(FILE *log, Packet *p)
-{
-    if (p->greh == NULL)
-        return;
-
-    fprintf(log, "GRE version:%u flags:0x%02X ether-type:0x%04X\n",
-            GRE_VERSION(p->greh), p->greh->flags, GRE_PROTO(p->greh));
+            p->mplsHdr.label, p->mplsHdr.exp, p->mplsHdr.bos, p->mplsHdr.ttl);    
 }
 #endif
 
@@ -982,7 +841,7 @@ void PrintSLLHeader(FILE * fp, Packet * p)
         }
 
     /* mac addr */
-    fprintf(fp, "l/l len: %i l/l type: 0x%X %02X:%02X:%02X:%02X:%02X:%02X\n",
+    fprintf(fp, "l/l len: %i l/l type: 0x%X %X:%X:%X:%X:%X:%X\n", 
             htons(p->sllh->sll_halen), ntohs(p->sllh->sll_hatype),
             p->sllh->sll_addr[0], p->sllh->sll_addr[1], p->sllh->sll_addr[2],
             p->sllh->sll_addr[3], p->sllh->sll_addr[4], p->sllh->sll_addr[5]);
@@ -990,7 +849,7 @@ void PrintSLLHeader(FILE * fp, Packet * p)
     /* protocol and pkt size */
     fprintf(fp, "pkt type:0x%X proto: 0x%X len:0x%X\n",
                  ntohs(p->sllh->sll_pkttype),
-                 ntohs(p->sllh->sll_protocol), p->pkth->pktlen);
+                 ntohs(p->sllh->sll_protocol), p->pkth->len);
 }
 
 
@@ -1009,12 +868,12 @@ void PrintArpHeader(FILE * fp, Packet * p)
     ts_print((struct timeval *) & p->pkth->ts, timestamp);
 
     /* determine what to use as MAC src and dst */
-    if (p->eh != NULL)
+    if (p->eh != NULL) 
     {
         mac_src = p->eh->ether_src;
         mac_dst = p->eh->ether_dst;
     } /* per table 4, 802.11 section 7.2.2 */
-    else if (p->wifih != NULL &&
+    else if (p->wifih != NULL && 
              (p->wifih->frame_control & WLAN_FLAG_FROMDS))
     {
         mac_src = p->wifih->addr3;
@@ -1032,8 +891,8 @@ void PrintArpHeader(FILE * fp, Packet * p)
         mac_dst = p->wifih->addr1;
     }
 
-    /*
-     * if these are null this function will break, exit until
+    /* 
+     * if these are null this function will break, exit until 
      * someone writes a function for it...
      */
     if(mac_src == NULL || mac_dst == NULL)
@@ -1083,7 +942,7 @@ void PrintArpHeader(FILE * fp, Packet * p)
             fprintf(fp, "ARP reply %s", inet_ntoa(ip_addr));
 
             /* print out the originating request if we're on a weirder
-             * wireless protocol */
+             * wireless protocol */            
             if(memcmp((char *) mac_src, (char *) p->ah->arp_sha, 6) != 0)
             {
                 fprintf(fp, " (%X:%X:%X:%X:%X:%X)", mac_src[0],
@@ -1150,7 +1009,42 @@ void PrintIPHeader(FILE * fp, Packet * p)
         return;
     }
 
-    PrintIpAddrs(fp, p);
+    if(p->frag_flag)
+    {
+        /* just print the straight IP header */
+        fputs(inet_ntoa(GET_SRC_ADDR(p)), fp);
+        fwrite(" -> ", 4, 1, fp);
+        fputs(inet_ntoa(GET_DST_ADDR(p)), fp);
+    }
+    else
+    {
+        if(GET_IPH_PROTO(p) != IPPROTO_TCP && GET_IPH_PROTO(p) != IPPROTO_UDP)
+        {
+            /* just print the straight IP header */
+            fputs(inet_ntoa(GET_SRC_ADDR(p)), fp);
+            fwrite(" -> ", 4, 1, fp);
+            fputs(inet_ntoa(GET_DST_ADDR(p)), fp);
+        }
+        else
+        {
+            if (!ScObfuscate())
+            {
+                /* print the header complete with port information */
+                fputs(inet_ntoa(GET_SRC_ADDR(p)), fp);
+                fprintf(fp, ":%d -> ", p->sp);
+                fputs(inet_ntoa(GET_DST_ADDR(p)), fp);
+                fprintf(fp, ":%d", p->dp);
+            }
+            else
+            {
+                /* print the header complete with port information */
+                if(IS_IP4(p))
+                    fprintf(fp, "xxx.xxx.xxx.xxx:%d -> xxx.xxx.xxx.xxx:%d", p->sp, p->dp);
+                else if(IS_IP6(p))
+                    fprintf(fp, "x:x:x:x::x:x:x:x:%d -> x:x:x:x:x:x:x:x:%d", p->sp, p->dp);
+            }
+        }
+    }
 
     if (!ScOutputDataLink())
     {
@@ -1166,7 +1060,7 @@ void PrintIPHeader(FILE * fp, Packet * p)
             GET_IPH_TTL(p),
             GET_IPH_TOS(p),
             IS_IP6(p) ? ntohl(GET_IPH_ID(p)) : ntohs((uint16_t)GET_IPH_ID(p)),
-            GET_IPH_HLEN(p) << 2,
+            GET_IPH_HLEN(p) << 2, 
             GET_IP_DGMLEN(p));
 
     /* print the reserved bit if it's set */
@@ -1197,60 +1091,7 @@ void PrintIPHeader(FILE * fp, Packet * p)
     }
 }
 
-#ifdef GRE
-void PrintOuterIPHeader(FILE *fp, Packet *p)
-{
-    int save_family = p->family;
-    IPH_API *save_api = p->iph_api;
-    const IPHdr *save_iph = p->iph;
-    uint8_t save_ip_option_count = p->ip_option_count;
-    IP4Hdr *save_ip4h = p->ip4h;
-    IP6Hdr *save_ip6h = p->ip6h;
-    uint8_t save_frag_flag = p->frag_flag;
-    uint16_t save_sp, save_dp;
 
-    p->family = p->outer_family;
-    p->iph_api = p->outer_iph_api;
-    p->iph = p->outer_iph;
-    p->ip_option_count = 0;
-    p->ip4h = &p->outer_ip4h;
-    p->ip6h = &p->outer_ip6h;
-    p->frag_flag = 0;
-
-    if (p->proto_bits & PROTO_BIT__TEREDO)
-    {
-        save_sp = p->sp;
-        save_dp = p->dp;
-
-        if (p->outer_udph)
-        {
-            p->sp = ntohs(p->outer_udph->uh_sport);
-            p->dp = ntohs(p->outer_udph->uh_dport);
-        }
-        else
-        {
-            p->sp = ntohs(p->udph->uh_sport);
-            p->dp = ntohs(p->udph->uh_dport);
-        }
-    }
-
-    PrintIPHeader(fp, p);
-
-    p->family = save_family;
-    p->iph_api = save_api;
-    p->iph = save_iph;
-    p->ip_option_count = save_ip_option_count;
-    p->ip4h = save_ip4h;
-    p->ip6h = save_ip6h;
-    p->frag_flag = save_frag_flag;
-
-    if (p->proto_bits & PROTO_BIT__TEREDO)
-    {
-        p->sp = save_sp;
-        p->dp = save_dp;
-    }
-}
-#endif
 
 /****************************************************************************
  *
@@ -1371,7 +1212,7 @@ void PrintICMPHeader(FILE * fp, Packet * p)
     switch(p->icmph->type)
     {
         case ICMP_ECHOREPLY:
-            fprintf(fp, "ID:%d  Seq:%d  ", ntohs(p->icmph->s_icmp_id),
+            fprintf(fp, "ID:%d  Seq:%d  ", ntohs(p->icmph->s_icmp_id), 
                     ntohs(p->icmph->s_icmp_seq));
             fwrite("ECHO REPLY", 10, 1, fp);
             break;
@@ -1419,12 +1260,12 @@ void PrintICMPHeader(FILE * fp, Packet * p)
                     break;
 
                 case ICMP_PKT_FILTERED_NET:
-                    fwrite("ADMINISTRATIVELY PROHIBITED NETWORK FILTERED", 44,
+                    fwrite("ADMINISTRATIVELY PROHIBITED NETWORK FILTERED", 44, 
                             1, fp);
                     break;
 
                 case ICMP_PKT_FILTERED_HOST:
-                    fwrite("ADMINISTRATIVELY PROHIBITED HOST FILTERED", 41,
+                    fwrite("ADMINISTRATIVELY PROHIBITED HOST FILTERED", 41, 
                             1, fp);
                     break;
 
@@ -1486,14 +1327,14 @@ void PrintICMPHeader(FILE * fp, Packet * p)
                     fwrite(" TOS HOST", 9, 1, fp);
                     break;
             }
-
+             
 #ifdef SUP_IP6
-/* written this way since inet_ntoa was typedef'ed to use sfip_ntoa
+/* written this way since inet_ntoa was typedef'ed to use sfip_ntoa 
  * which requires sfip_t instead of inaddr's.  This call to inet_ntoa
  * is a rare case that doesn't use sfip_t's. */
 
-// XXX-IPv6 NOT YET IMPLEMENTED - IPV6 addresses technically not supported - need to change ICMP header
-
+// XXX-IPv6 NOT YET IMPLEMENTED - IPV6 addresses technically not supported - need to change ICMP header 
+            
             sfip_raw_ntop(AF_INET, (void *)&p->icmph->s_icmp_gwaddr, buf, sizeof(buf));
             fprintf(fp, " NEW GW: %s", buf);
 #else
@@ -1501,19 +1342,19 @@ void PrintICMPHeader(FILE * fp, Packet * p)
 #endif
 
             PrintICMPEmbeddedIP(fp, p);
-
+                    
             break;
 
         case ICMP_ECHO:
-            fprintf(fp, "ID:%d   Seq:%d  ", ntohs(p->icmph->s_icmp_id),
+            fprintf(fp, "ID:%d   Seq:%d  ", ntohs(p->icmph->s_icmp_id), 
                     ntohs(p->icmph->s_icmp_seq));
             fwrite("ECHO", 4, 1, fp);
             break;
 
         case ICMP_ROUTER_ADVERTISE:
             fprintf(fp, "ROUTER ADVERTISMENT: "
-                    "Num addrs: %d Addr entry size: %d Lifetime: %u",
-                    p->icmph->s_icmp_num_addrs, p->icmph->s_icmp_wpa,
+                    "Num addrs: %d Addr entry size: %d Lifetime: %u", 
+                    p->icmph->s_icmp_num_addrs, p->icmph->s_icmp_wpa, 
                     ntohs(p->icmph->s_icmp_lifetime));
             break;
 
@@ -1561,37 +1402,37 @@ void PrintICMPHeader(FILE * fp, Packet * p)
             break;
 
         case ICMP_TIMESTAMP:
-            fprintf(fp, "ID: %u  Seq: %u  TIMESTAMP REQUEST",
+            fprintf(fp, "ID: %u  Seq: %u  TIMESTAMP REQUEST", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq));
             break;
 
         case ICMP_TIMESTAMPREPLY:
             fprintf(fp, "ID: %u  Seq: %u  TIMESTAMP REPLY:\n"
-                    "Orig: %u Rtime: %u  Ttime: %u",
+                    "Orig: %u Rtime: %u  Ttime: %u", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq),
-                    p->icmph->s_icmp_otime, p->icmph->s_icmp_rtime,
+                    p->icmph->s_icmp_otime, p->icmph->s_icmp_rtime, 
                     p->icmph->s_icmp_ttime);
             break;
 
         case ICMP_INFO_REQUEST:
-            fprintf(fp, "ID: %u  Seq: %u  INFO REQUEST",
+            fprintf(fp, "ID: %u  Seq: %u  INFO REQUEST", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq));
             break;
 
         case ICMP_INFO_REPLY:
-            fprintf(fp, "ID: %u  Seq: %u  INFO REPLY",
+            fprintf(fp, "ID: %u  Seq: %u  INFO REPLY", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq));
             break;
 
         case ICMP_ADDRESS:
-            fprintf(fp, "ID: %u  Seq: %u  ADDRESS REQUEST",
+            fprintf(fp, "ID: %u  Seq: %u  ADDRESS REQUEST", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq));
             break;
 
         case ICMP_ADDRESSREPLY:
-            fprintf(fp, "ID: %u  Seq: %u  ADDRESS REPLY: 0x%08X",
+            fprintf(fp, "ID: %u  Seq: %u  ADDRESS REPLY: 0x%08X", 
                     ntohs(p->icmph->s_icmp_id), ntohs(p->icmph->s_icmp_seq),
-                    (u_int) ntohl(p->icmph->s_icmp_mask));
+                    (u_int) ntohl(p->icmph->s_icmp_mask)); 
             break;
 
         default:
@@ -1738,7 +1579,7 @@ void PrintEmbeddedICMPHeader(FILE *fp, const ICMPHdr *icmph)
         case ICMP_INFO_REPLY:
         case ICMP_ADDRESS:
         case ICMP_ADDRESSREPLY:
-            fprintf(fp, "  Id: %u  SeqNo: %u",
+            fprintf(fp, "  Id: %u  SeqNo: %u", 
                     ntohs(icmph->s_icmp_id), ntohs(icmph->s_icmp_seq));
             break;
 
@@ -1780,7 +1621,7 @@ void PrintIpOptions(FILE * fp, Packet * p)
             fwrite("\nIP Options => ", 15, 1, fp);
             init_offset = ftell(fp);
         }
-
+            
         switch(p->ip_options[i].code)
         {
             case IPOPT_RR:
@@ -1822,7 +1663,7 @@ void PrintIpOptions(FILE * fp, Packet * p)
 
             case IPOPT_RTRALT:
                 fwrite("RTRALT ", 7, 1, fp);
-                break;
+                break;    
 
             default:
                 fprintf(fp, "Opt %d: ", p->ip_options[i].code);
@@ -1835,7 +1676,7 @@ void PrintIpOptions(FILE * fp, Packet * p)
                             fprintf(fp, "%02X", p->ip_options[i].data[j]);
                         else
                             fprintf(fp, "%02X", 0);
-
+                        
                         if((j % 2) == 0)
                             fprintf(fp, " ");
                     }
@@ -1872,7 +1713,7 @@ void PrintTcpOptions(FILE * fp, Packet * p)
             fwrite("\nTCP Options => ", 16, 1, fp);
             init_offset = ftell(fp);
         }
-
+            
         switch(p->tcp_options[i].code)
         {
             case TCPOPT_MAXSEG:
@@ -1971,7 +1812,7 @@ void PrintTcpOptions(FILE * fp, Packet * p)
                             fprintf(fp, "%02X", p->tcp_options[i].data[j]);
                         else
                             fprintf(fp, "%02X", 0);
-
+                        
                         if ((j + 1) % 2 == 0)
                             fprintf(fp, " ");
                     }
@@ -1999,26 +1840,30 @@ void PrintTcpOptions(FILE * fp, Packet * p)
  *            do_newline => tack a \n to the end of the line or not (bool)
  *
  * Returns: void function
- */
+ */ 
 void PrintPriorityData(FILE *fp, int do_newline)
 {
-    if (otn_tmp == NULL)
+
+    if(!otn_tmp)
         return;
 
-    if ((otn_tmp->sigInfo.classType != NULL)
-            && (otn_tmp->sigInfo.classType->name != NULL))
+    if(otn_tmp->sigInfo.classType)
     {
-        fprintf(fp, "[Classification: %s] ",
-                otn_tmp->sigInfo.classType->name);
+        fprintf(fp, "[Classification: %s] [Priority: %d] ", 
+                otn_tmp->sigInfo.classType->name, 
+                otn_tmp->sigInfo.priority);
     }
-
-    fprintf(fp, "[Priority: %d] ", otn_tmp->sigInfo.priority);
-
-    if (do_newline)
+    else
+    {
+        fprintf(fp, "[Priority: %d] ", 
+                otn_tmp->sigInfo.priority);
+    }
+    if(do_newline)
         fprintf(fp, "\n");
+
 }
 
-
+        
 /*
  * Function: PrintXrefs(FILE *)
  *
@@ -2028,7 +1873,7 @@ void PrintPriorityData(FILE *fp, int do_newline)
  *            do_newline => tack a \n to the end of the line or not (bool)
  *
  * Returns: void function
- */
+ */ 
 void PrintXrefs(FILE *fp, int do_newline)
 {
     ReferenceNode *refNode = NULL;
@@ -2062,7 +1907,7 @@ void SetEvent
 #else
 void SnortSetEvent
 #endif
-       (Event *event, uint32_t generator, uint32_t id, uint32_t rev,
+       (Event *event, uint32_t generator, uint32_t id, uint32_t rev, 
         uint32_t classification, uint32_t priority, uint32_t event_ref)
 {
     event->sig_generator = generator;
@@ -2097,7 +1942,7 @@ void SnortSetEvent
 void PrintEapolPkt(FILE * fp, Packet * p)
 {
   char timestamp[TIMEBUF_SIZE];
-
+  
 
     bzero((char *) timestamp, TIMEBUF_SIZE);
     ts_print((struct timeval *) & p->pkth->ts, timestamp);
@@ -2124,14 +1969,14 @@ void PrintEapolPkt(FILE * fp, Packet * p)
         if (ScOutputCharData())
             PrintCharData(fp, (char*) p->data, p->dsize);
         else
-            PrintNetData(fp, p->data, p->dsize, NULL);
+            PrintNetData(fp, p->data, p->dsize);
     }
     else if (ScVerboseByteDump())
     {
-        PrintNetData(fp, p->pkt, p->pkth->caplen, p);
+        PrintNetData(fp, p->pkt, p->pkth->caplen);
     }
-
-    fprintf(fp, "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+\n\n");
+    
+    fprintf(fp, "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+\n\n");    
 }
 
 /****************************************************************************
@@ -2174,7 +2019,7 @@ void PrintWifiHeader(FILE * fp, Packet * p)
     sa = p->wifih->addr2;
     bssid = p->wifih->addr3;
   }
-
+  
   /* DO this switch to provide additional info on the type */
   switch(p->wifih->frame_control & 0x00ff)
   {
@@ -2212,7 +2057,7 @@ void PrintWifiHeader(FILE * fp, Packet * p)
   case WLAN_TYPE_MGMT_DEAUTH:
     fprintf(fp, "Deauthent. ");
     break;
-
+    
     /* Control frames */
   case WLAN_TYPE_CONT_PS:
   case WLAN_TYPE_CONT_RTS:
@@ -2222,8 +2067,8 @@ void PrintWifiHeader(FILE * fp, Packet * p)
   case WLAN_TYPE_CONT_CFACK:
     fprintf(fp, "Control ");
     break;
-  }
-
+  }  
+  
   if (sa != NULL) {
     fprintf(fp, "%X:%X:%X:%X:%X:%X -> ", sa[0],
         sa[1], sa[2], sa[3], sa[4], sa[5]);
@@ -2231,8 +2076,8 @@ void PrintWifiHeader(FILE * fp, Packet * p)
   else if (ta != NULL) {
     fprintf(fp, "ta: %X:%X:%X:%X:%X:%X da: ", ta[0],
         ta[1], ta[2], ta[3], ta[4], ta[5]);
-  }
-
+  } 
+  
   fprintf(fp, "%X:%X:%X:%X:%X:%X\n", da[0],
       da[1], da[2], da[3], da[4], da[5]);
 
@@ -2241,7 +2086,7 @@ void PrintWifiHeader(FILE * fp, Packet * p)
       fprintf(fp, "bssid: %X:%X:%X:%X:%X:%X", bssid[0],
               bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
   }
-
+  
   if (ra != NULL) {
     fprintf(fp, " ra: %X:%X:%X:%X:%X:%X", ra[0],
         ra[1], ra[2], ra[3], ra[4], ra[5]);
@@ -2288,11 +2133,11 @@ void PrintWifiPkt(FILE * fp, Packet * p)
         if (ScOutputCharData())
             PrintCharData(fp, (char*) p->data, p->dsize);
         else
-            PrintNetData(fp, p->data, p->dsize, NULL);
+            PrintNetData(fp, p->data, p->dsize);
     }
     else if (ScVerboseByteDump())
     {
-        PrintNetData(fp, p->pkt, p->pkth->caplen, p);
+        PrintNetData(fp, p->pkt, p->pkth->caplen);
     }
 
     fprintf(fp, "=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+"
@@ -2417,7 +2262,7 @@ void PrintEAPHeader(FILE * fp, Packet * p)
 void PrintEapolKey(FILE * fp, Packet * p)
 {
     uint16_t length;
-
+    
     if(p->eapolk == NULL)
     {
         fprintf(fp, "Eapol Key truncated\n");
@@ -2433,49 +2278,8 @@ void PrintEapolKey(FILE * fp, Packet * p)
     fprintf(fp, " len: %d", length);
     fprintf(fp, " index: %d ", p->eapolk->index & 0x7F);
     fprintf(fp, p->eapolk->index & 0x80 ? " unicast\n" : " broadcast\n");
+    
+
 }
 #endif  // NO_NON_ETHER_DECODER
-
-void PrintIpAddrs(FILE *fp, Packet *p)
-{
-    if (!IPH_IS_VALID(p))
-        return;
-
-    if (p->frag_flag
-            || ((GET_IPH_PROTO(p) != IPPROTO_TCP)
-                && (GET_IPH_PROTO(p) != IPPROTO_UDP)))
-    {
-        char *ip_fmt = "%s -> %s";
-
-        if (ScObfuscate())
-        {
-            fprintf(fp, ip_fmt,
-                    ObfuscateIpToText(GET_SRC_ADDR(p)),
-                    ObfuscateIpToText(GET_DST_ADDR(p)));
-        }
-        else
-        {
-            fprintf(fp, ip_fmt,
-                    inet_ntoax(GET_SRC_ADDR(p)),
-                    inet_ntoax(GET_DST_ADDR(p)));
-        }
-    }
-    else
-    {
-        char *ip_fmt = "%s:%d -> %s:%d";
-
-        if (ScObfuscate())
-        {
-            fprintf(fp, ip_fmt,
-                    ObfuscateIpToText(GET_SRC_ADDR(p)), p->sp,
-                    ObfuscateIpToText(GET_DST_ADDR(p)), p->dp);
-        }
-        else
-        {
-            fprintf(fp, ip_fmt,
-                    inet_ntoax(GET_SRC_ADDR(p)), p->sp,
-                    inet_ntoax(GET_DST_ADDR(p)), p->dp);
-        }
-    }
-}
 

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -60,17 +60,12 @@ typedef struct _EventNode
 
 EventQueueConfig * EventQueueConfigNew(void);
 void EventQueueConfigFree(EventQueueConfig *);
-
-void SnortEventqNew(EventQueueConfig *, SF_EVENTQ*[]);
-void SnortEventqFree(SF_EVENTQ *[]);
-
+SF_EVENTQ * SnortEventqNew(EventQueueConfig *);
+void SnortEventqFree(SF_EVENTQ *);
 void SnortEventqReset(void);
-int  SnortEventqLog(SF_EVENTQ *[], Packet *);
+int  SnortEventqLog(SF_EVENTQ *, Packet *);
 int  SnortEventqAdd(unsigned int gid,unsigned int sid,unsigned int rev, 
                     unsigned int classification,unsigned int pri,char *msg,
                     void *rule_info);
-
-void SnortEventqPush(void);
-void SnortEventqPop(void);
 
 #endif

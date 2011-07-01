@@ -6,31 +6,38 @@ Sid: 326
 -- 
 
 Summary: 
-This event is generated when a remote command execution exploit against a finger daemon is attempted.
+This event is generated when a remote command execution exploit against
+a finger daemon is attempted.
 
 -- 
-
 Impact: 
-Serious. The attacker may be presented with the opportunity to run a command of his choice on the target UNIX system
+Serious. The attacker may be presented with the opportunity to run a
+command of his choice on the target UNIX system
 
 --
 Detailed Information:
-This event is generated when a specific attack against a vulnerable version of finger daemon is detected. 
+This event is generated when a specific attack against a vulnerable
+version of finger daemon is detected. 
 
-The Finger daemon is used to provide information about users on a UNIX system. It used to be installed and enabled by default on most UNIX/Linux systems. The attack may allow an attacker to execute a command remotely on a target system with the privileges of the user running the "finger" daemon. The user is usually defined in the /etc/inetd.conf file and is commonly designated as "nobody".
+The Finger daemon is used to provide information about users on a UNIX
+system. It used to be installed and enabled by default on most
+UNIX/Linux systems. The attack may allow an attacker to execute a
+command remotely on a target system with the privileges of the user
+running the "finger" daemon. The user is usually defined in the
+/etc/inetd.conf file and is commonly designated as "nobody".
 
 --
-
 Attack Scenarios:  
-An attacker may try the attack and then executes a command to download a backdoor to the target system. He then connects to the system and may attempt to escalate his privileges by exploiting a local SUID application to gain "root" privileges.
+An attacker may try the attack and then executes a command to download a
+backdoor to the target system. He then connects to the system and may
+attempt to escalate his privileges by exploiting a local SUID
+application to gain "root" privileges.
 
 -- 
-
 Ease of Attack: 
 Simple, no exploit software is required, just a specially formatted finger query
 
 -- 
-
 False Positives: 
 None Known
 
@@ -39,9 +46,9 @@ False Negatives:
 None Known
 
 -- 
-
 Corrective Action: 
-Disable the finger daemon or limit the addresses that can access the service via firewall or TCP wrappers.
+Disable the finger daemon or limit the addresses that can access the
+service via firewall or TCP wrappers.
 
 --
 Contributors: 

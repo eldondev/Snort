@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_syslog.h,v 1.12 2011/02/09 23:23:27 jjordan Exp $ */
+/* $Id$ */
 
 /* This file gets included in plugbase.h when it is integrated into the rest 
  * of the program.  Sometime in The Future, I'll whip up a bad ass Perl script

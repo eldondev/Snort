@@ -1,6 +1,6 @@
-/* $Id: getopt.h,v 1.7 2011/02/09 23:23:36 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify

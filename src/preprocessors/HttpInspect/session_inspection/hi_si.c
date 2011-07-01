@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_si.c
 **
@@ -27,8 +27,8 @@
 **  @brief      This file contains functions to select server configurations
 **              and begin the HttpInspect process.
 **
-**  The Session Inspection Module interfaces with the Stream Inspection
-**  Module and the User Interface Module to select the appropriate
+**  The Session Inspection Module interfaces with the Stream Inspection 
+**  Module and the User Interface Module to select the appropriate 
 **  HttpInspect configuration and in the case of stateful inspection the
 **  Session Inspection Module retrieves the user-data from the Stream
 **  Module.  For stateless inspection, the Session Inspection Module uses
@@ -46,10 +46,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "hi_return_codes.h"
 #include "hi_ui_config.h"
@@ -94,13 +90,13 @@ static int IsServer(HTTPINSPECT_CONF *ServerConf, unsigned short port)
 **    InitServerConf::
 */
 /**
-**  When a session is initialized, we must select the appropriate server
-**  configuration and select the type of inspection based on the source and
+**  When a session is initialized, we must select the appropriate server 
+**  configuration and select the type of inspection based on the source and 
 **  destination ports.
 **
 **  IMPORTANT NOTE:
-**    We should check to make sure that there are some unique configurations,
-**    otherwise we can just default to the global default and work some magic
+**    We should check to make sure that there are some unique configurations, 
+**    otherwise we can just default to the global default and work some magic 
 **    that way.
 **
 **  @param GlobalConf     pointer to the global configuration
@@ -108,14 +104,14 @@ static int IsServer(HTTPINSPECT_CONF *ServerConf, unsigned short port)
 **                        set it.
 **  @param SiInput        pointer to the packet info (sip,dip,sport,dport)
 **  @param piInspectMode  pointer so we can set the inspection mode
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS  function successful
 */
-static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
-                          HTTPINSPECT_CONF **ServerConf,
-                          HTTPINSPECT_CONF **ClientConf,
+static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf, 
+                          HTTPINSPECT_CONF **ServerConf, 
+                          HTTPINSPECT_CONF **ClientConf, 
                           HI_SI_INPUT *SiInput, int *piInspectMode, Packet *p)
 {
     HTTPINSPECT_CONF *ServerConfSip;
@@ -154,7 +150,7 @@ static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     **  is at least one unique server configuration.  If there isn't then we
     **  assume the global server configuration.
     */
-    ServerConfDip = hi_ui_server_lookup_find(GlobalConf->server_lookup,
+    ServerConfDip = hi_ui_server_lookup_find(GlobalConf->server_lookup, 
 #ifdef SUP_IP6
             &dip,
 #else
@@ -187,8 +183,8 @@ static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     **  is a sort of problem.  We don't know which side is the client and which
     **  side is the server so we have to assume one.
     **
-    **  In stateful processing, we only do this stage on the startup of a
-    **  session, so we can still assume that the initial packet is the client
+    **  In stateful processing, we only do this stage on the startup of a 
+    **  session, so we can still assume that the initial packet is the client 
     **  talking.
     */
     iServerSip = IsServer(ServerConfSip, SiInput->sport);
@@ -224,7 +220,7 @@ static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     {
         case HI_SI_NO_MODE:
             /*
-            **  We check for the case where both SIP and DIP
+            **  We check for the case where both SIP and DIP 
             **  appear to be servers.  In this case, we assume client
             **  and process that way.
             */
@@ -280,10 +276,10 @@ static int InitServerConf(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
             *ClientConf = NULL;
             break;
     }
-
+            
     return HI_SUCCESS;
 }
-
+    
 static int StatefulSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
         HI_SESSION **Session, HI_SI_INPUT *SiInput, int *piInspectType,
         Packet *p)
@@ -303,18 +299,17 @@ static int StatefulSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
 **  This function resets all the variables that need to be initialized for
 **  a new Session.  I've tried to keep this to a minimum, so we don't have
 **  to worry about initializing big structures.
-**
+**  
 **  @param Session  pointer to the session to reset
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS
 */
-static inline int ResetSession(HI_SESSION *Session)
+static INLINE int ResetSession(HI_SESSION *Session)
 {
-
+    
     Session->client.event_list.stack_count      = 0;
-    Session->server.event_list.stack_count      = 0;
     Session->anom_server.event_list.stack_count = 0;
 
     Session->client.request.uri                 = NULL;
@@ -338,28 +333,6 @@ static inline int ResetSession(HI_SESSION *Session)
 
     Session->client.request.pipeline_req        = NULL;
 
-    Session->client.request.uri_encode_type     = 0;
-    Session->client.request.header_encode_type  = 0;
-    Session->client.request.cookie_encode_type  = 0;
-
-    Session->server.response.status_code         = NULL;
-    Session->server.response.status_msg          = NULL;
-    Session->server.response.header_raw          = NULL;
-    Session->server.response.header_norm         = NULL;
-    Session->server.response.cookie.cookie       = NULL;
-    Session->server.response.cookie.cookie_end   = NULL;
-    Session->server.response.cookie_norm         = NULL;
-    Session->server.response.cookie_norm_size    = 0;
-    Session->server.response.body                = NULL;
-    Session->server.response.body_size           = 0;
-    Session->server.response.status_code_size    = 0;
-    Session->server.response.status_msg_size     = 0;
-    Session->server.response.header_raw_size     = 0;
-    Session->server.response.header_norm_size    = 0;
-    Session->server.response.cookie_norm_size    = 0;
-    Session->server.response.header_encode_type  = 0;
-    Session->server.response.cookie_encode_type  = 0;
-
     return HI_SUCCESS;
 }
 
@@ -376,8 +349,8 @@ static inline int ResetSession(HI_SESSION *Session)
 **  is no knowledge retained from one packet to another.  If you want to track
 **  an HTTP session for real, use stateful mode.
 **
-**  In this function, we set the Session pointer (which includes the correct
-**  server configuration).  The actual processing to find which IP is the
+**  In this function, we set the Session pointer (which includes the correct 
+**  server configuration).  The actual processing to find which IP is the 
 **  server and which is the client, is done in the InitServerConf() function.
 **
 **  @param GlobalConf    pointer to the global configuration
@@ -405,7 +378,7 @@ static int StatelessSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     {
         return iRet;
     }
-
+    
     StaticSession.server_conf = ServerConf;
     StaticSession.client_conf = ClientConf;
     StaticSession.global_conf = GlobalConf;
@@ -414,7 +387,7 @@ static int StatelessSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
 
     return HI_SUCCESS;
 }
-
+    
 
 /*
 **  NAME
@@ -422,7 +395,7 @@ static int StatelessSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
 */
 /**
 **  The Session Inspection module selects the appropriate server configuration
-**  for the session, and the type of inspection to be performed (client or
+**  for the session, and the type of inspection to be performed (client or 
 **  server.)
 **
 **  When the Session Inspection module is in stateful mode, it checks to see if
@@ -434,7 +407,7 @@ static int StatelessSessionInspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
 **  overhead.
 **
 **  The inspection mode can be either client, server, or neither.  In the case
-**  of neither, the packet is inspected for rogue HTTP servers and HTTP
+**  of neither, the packet is inspected for rogue HTTP servers and HTTP 
 **  tunneling.
 **
 **  @param GlobalConf    pointer to the global configuration
@@ -455,10 +428,10 @@ int hi_si_session_inspection(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     int iRet;
 
     /*
-    **  We get the server configuration and the session structure differently
-    **  depending on what type of inspection we are doing.  In the case of
+    **  We get the server configuration and the session structure differently 
+    **  depending on what type of inspection we are doing.  In the case of 
     **  stateful processing, we may get the session structure from the Stream
-    **  Reassembly module (which includes the server configuration) or the
+    **  Reassembly module (which includes the server configuration) or the 
     **  structure will be allocated and added to the stream pointer for the
     **  rest of the session.
     **

@@ -1,6 +1,6 @@
-/* $Id: debug.h,v 1.41 2011/02/09 23:22:46 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -74,7 +74,7 @@
 #define DEBUG_ASN1            0x01000000  /* 16777216 */
 #define DEBUG_FTPTELNET       0x02000000  /* 33554432 */
 #define DEBUG_SMTP            0x04000000  /* 67108864 */
-//#define DEBUG_DCERPC          0x08000000  /* 134217728 */
+#define DEBUG_DCERPC          0x08000000  /* 134217728 */
 #define DEBUG_DNS             0x10000000  /* 268435456 */
 #define DEBUG_ATTRIBUTE       0x20000000  /* 536870912 */
 #define DEBUG_PORTLISTS       0x40000000  /* 1073741824 */

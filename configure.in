@@ -1,12 +1,11 @@
-# $Id: configure.in,v 1.215 2011/06/08 03:18:38 jjordan Exp $
+# $Id$ 
 AC_INIT
 AC_CONFIG_SRCDIR([src/snort.c])
 AC_PREREQ(2.50)
-#LT_PREREQ([2.2.6])
 AM_CONFIG_HEADER(config.h)
 # When changing the snort version, please also update the VERSION
 # definition in "src/win32/WIN32-Includes/config.h"
-AM_INIT_AUTOMAKE(snort,2.9.1_beta)
+AM_INIT_AUTOMAKE(snort,2.8.5.2)
 
 NO_OPTIMIZE="no"
 ADD_WERROR="no"
@@ -26,23 +25,19 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AC_PROG_RANLIB
 AC_C_BIGENDIAN
-AC_C_INLINE
 
 #AC_CANONICAL_HOST
 linux="no"
 sunos4="no"
-so_with_static_lib="yes"
 
 case "$host" in
   *-openbsd2.6|*-openbsd2.5|*-openbsd2.4|*-openbsd2.3*)
     AC_DEFINE([OPENBSD],[1],[Define if OpenBSD])
     AC_DEFINE([BROKEN_SIOCGIFMTU],[1],[Define if BROKEN_SIOCGIFMTU])
-    so_with_static_lib="no"
 
     ;;
   *-openbsd*)
     AC_DEFINE([OPENBSD],[1],[Define if OpenBSD < 2.3])
-    so_with_static_lib="no"
 
     ;;
   *-sgi-irix5*)
@@ -67,8 +62,7 @@ case "$host" in
     ;;
   *-solaris*)
     AC_DEFINE([SOLARIS],[1],[Define if Solaris])
-    CONFIGFLAGS="${CONFIGFLAGS} -DBSD_COMP -D_REENTRANT"
-    rt_nanosleep="yes"
+    CPPFLAGS="${CPPFLAGS} -DBSD_COMP -D_REENTRANT"
     ;;
   *-sunos*)
     AC_DEFINE([SUNOS],[1],[Define if SunOS])
@@ -77,6 +71,8 @@ case "$host" in
   *-linux*)
     linux="yes"
     AC_DEFINE([LINUX],[1],[Define if Linux])
+    # libpcap doesn't even LOOK at the timeout you give it under Linux
+    AC_DEFINE([PCAP_TIMEOUT_IGNORED],[1],[Define if pcap timeout is ignored])
     AC_SUBST(extra_incl)
     extra_incl="-I/usr/include/pcap"
     ;;
@@ -86,8 +82,10 @@ case "$host" in
     AC_SUBST(extra_incl)
     extra_incl="-I/usr/local/include"
     ;;
+
   *-freebsd*)
     AC_DEFINE([FREEBSD],[1],[Define if FreeBSD])
+
     ;;
   *-bsdi*)
     AC_DEFINE([BSDI],[1],[Define if BSDi])
@@ -97,42 +95,20 @@ case "$host" in
     ;;
   *-osf4*)
     AC_DEFINE([OSF1],[1],[Define if OSF-4])
-    CONFIGFLAGS="${CONFIGFLAGS} -DOSF1"
     ;;
   *-osf5.1*)
     AC_DEFINE([OSF1],[1],[Define if OSF-5.1])
-    CONFIGFLAGS="${CONFIGFLAGS} -DOSF1"
     ;;
   *-tru64*)
     AC_DEFINE([OSF1],[1],[Define if Tru64])
-    CONFIGFLAGS="${CONFIGFLAGS} -DOSF1"
     ;;
-# it is actually <platform>-apple-darwin1.2 or <platform>-apple-rhapsody5.x but lets stick with this for the moment
+# it is actually <platform>-apple-darwin1.2 or <platform>-apple-rhapsody5.x but lets stick with this for the moment    
   *-apple*)
     AC_DEFINE([MACOS],[1],[Define if MacOS])
     AC_DEFINE([BROKEN_SIOCGIFMTU],[1],[Define if broken SIOCGIFMTU])
     LDFLAGS="${LDFLAGS} -L/sw/lib"
     extra_incl="-I/sw/include"
 esac
-
-# ICC stuff
-ICC=no
-if eval "echo $CC | grep icc > /dev/null" ; then
-    if eval "$CC -help | grep libcxa > /dev/null" ; then
-        CFLAGS="$CFLAGS -static-libcxa"
-        LDFLAGS="$LDFLAGS -static-libcxa"
-        XCCFLAGS="-XCClinker -static-libcxa"
-    else
-        CFLAGS="$CFLAGS -static-intel"
-        LDFLAGS="$LDFLAGS -static-intel"
-        XCCFLAGS="-XCClinker -static-intel"
-    fi
-    #CFLAGS=`echo $CFLAGS | sed 's/-O2/-O3/'`
-    CFLAGS="$CFLAGS -O3 -ip -w1"
-    ICC=yes
-    GCC=
-fi
-AC_SUBST(XCCFLAGS)
 
 # This is really meant for Solaris Sparc v9 where it has 32bit and 64bit
 # capability but builds 32bit by default
@@ -160,15 +136,8 @@ AC_CHECK_PROGS(LEX,flex,none)
 
 dnl checking headers
 AC_CHECK_HEADERS([strings.h string.h stdlib.h unistd.h sys/sockio.h paths.h inttypes.h wchar.h math.h])
-if test "x$ac_cv_header_wchar_h" = "xyes"; then
-    CONFIGFLAGS="${CONFIGFLAGS} -DSF_WCHAR"
-fi
 AC_CHECK_LIB([m],[floor])
 AC_CHECK_LIB([m],[ceil])
-
-if test "x$rt_nanosleep" = "xyes"; then
-AC_CHECK_LIB([rt],[nanosleep])
-fi
 
 dnl make sure we've got all our libraries
 if test -z "$no_libnsl"; then
@@ -210,7 +179,7 @@ AC_CACHE_VAL(sn_cv_decl_needed_$1,
 #include <syslog.h>
 ]], [[char *(*pfn); pfn = (char *(*)) $1;]])],[eval "sn_cv_decl_needed_$1=no"],[eval "sn_cv_decl_needed_$1=yes"]) ])
 
-if eval "test \"`echo '$sn_cv_decl_needed_'$1`\" != no"; then
+if eval "test \"`echo '$sn_cv_decl_needed_'$1`\" != no"; then 
  AC_MSG_RESULT(yes)
  ifelse([$2], , :, [$2])
 else
@@ -238,19 +207,13 @@ done
 # you will see also #undef for each SN_CHECK_DECLS macros invocation
 # because autoheader doesn't execute shell script commands.
 # it is possible to make loops using m4 but the code would look even
-# more confusing..
+# more confusing.. 
 SN_CHECK_DECLS(printf fprintf syslog puts fputs fputc fopen  \
            fclose fwrite fflush getopt bzero bcopy memset strtol  \
            strcasecmp strncasecmp strerror perror socket sendto   \
            vsnprintf snprintf strtoul)
 
-AC_CHECK_FUNCS([strlcpy strlcat strerror vswprintf wprintf])
-
-AC_CHECK_FUNC([snprintf],[have_snprintf="yes"],[have_snprintf="no"])
-AM_CONDITIONAL(BUILD_SNPRINTF, test "x$have_snprintf" != "xyes")
-if test "x$have_snprintf" = "xyes"; then
-    AC_DEFINE([HAVE_SNPRINTF], [], [snprintf function is available])
-fi
+AC_CHECK_FUNCS([snprintf strlcpy strlcat strerror vswprintf wprintf])
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
@@ -264,8 +227,6 @@ AC_CHECK_SIZEOF([unsigned long long int])
 # Check for int types
 AC_CHECK_TYPES([u_int8_t,u_int16_t,u_int32_t,u_int64_t,uint8_t,uint16_t,uint32_t,uint64_t])
 AC_CHECK_TYPES([int8_t,int16_t,int32_t,int64_t])
-
-AC_CHECK_TYPES([boolean])
 
 # In case INADDR_NONE is not defined (like on Solaris)
 have_inaddr_none="no"
@@ -329,7 +290,7 @@ if test "x$with_libpcap_includes" != "xno"; then
 fi
 
 if test "x$with_libpcap_libraries" != "xno"; then
-   LDFLAGS="${LDFLAGS} -L${with_libpcap_libraries}"
+   LDFLAGS="${LDFLAGS}  -L${with_libpcap_libraries}"
 fi
 
 # --with-libpfring-* options
@@ -359,11 +320,11 @@ if test "x$LPCAP" = "xno"; then
   AC_CHECK_HEADERS(pfring.h,, PFRING_H="no")
 
 # It is important to have the AC_CHECK_LIB for the pfring library BEFORE
-# the one for pfring-enabled pcap. When the Makefile is created, all the
-# libraries used during linking are added to the LIBS variable in the
-# Makefile in the opposite order that their AC_CHECK_LIB macros appear
-# in configure.in. Durring linking, the pfring library (-lpfring) MUST come
-# _after_ the libpcap library (-lpcap) or linking will fail.
+# the one for pfring-enabled pcap. When the Makefile is created, all the 
+# libraries used during linking are added to the LIBS variable in the 
+# Makefile in the opposite orded that their AC_CHECK_LIB macros appear 
+# in configure.in. Durring linking, the pfring library (-lpfring) MUST come 
+# _after_ the libpcap library (-lpcap) or linking will fail. 
   PFRING_L=""
   AC_CHECK_LIB(pfring, pfring_open,, PFRING_L="no")
 
@@ -384,36 +345,66 @@ if test "x$LPCAP" = "xno"; then
   fi
 fi
 
-AC_MSG_CHECKING([for pcap_lex_destroy])
-AC_RUN_IFELSE(
-[AC_LANG_PROGRAM(
-[[
-#include <pcap.h>
-]],
-[[
-   pcap_lex_destroy();
-]])],
-[have_pcap_lex_destroy="yes"],
-[have_pcap_lex_destroy="no"])
-AC_MSG_RESULT($have_pcap_lex_destroy)
-if test "x$have_pcap_lex_destroy" = "xyes"; then
-    AC_DEFINE([HAVE_PCAP_LEX_DESTROY],[1],[Can cleanup lex buffer stack created by pcap bpf filter])
-fi
+# This is to determine which pcap library version is being used.  The reason being
+# that versions < 0.9 do not accumulate packet statistics whereas >= 0.9 do accumulate.
+# This is Linux only.  The check is done after pcre because the code below uses pcre.
+# It seems Phil Wood's pcap does not accumulate - 0.9x
+pcap_version_check="yes"
+if test "x$linux" = "xyes"; then
+    if test "x$pcap_version_check" = "xyes"; then
+        AC_MSG_CHECKING([for libpcap version >= 0.9])
+        AC_RUN_IFELSE(
+        [AC_LANG_PROGRAM(
+        [[
+        #include <pcap.h>
+        #include <string.h>
+        extern char pcap_version[];
+        ]],
+        [[
+           if (strcmp(pcap_version, "0.9x") == 0)
+               return 1;
 
-AC_MSG_CHECKING([for pcap_lib_version])
-AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM(
-        [[#include <pcap.h>]],
-        [[pcap_lib_version();]]
-    )],
-    [have_pcap_lib_version="yes"],
-    [have_pcap_lib_version="no"]
-)
-AC_MSG_RESULT($have_pcap_lib_version)
+           if (strcmp(pcap_version, "0.9.0") < 0)
+               return 1;
+        ]])],
+        [libpcap_version_09="yes"],
+        [libpcap_version_09="no"])
+        AC_MSG_RESULT($libpcap_version_09)
+        if test "x$libpcap_version_09" = "xyes"; then
+            AC_DEFINE([LIBPCAP_ACCUMULATES],[1],[For libpcap versions that accumulate stats])
+        fi
+    else
+        libpcap_version_09="no"
+        AC_DEFINE([LIBPCAP_ACCUMULATES],[1],[For libpcap versions that accumulate stats])
+    fi
 
-if test "x$have_pcap_lib_version" = "xyes"; then
-    AC_DEFINE([HAVE_PCAP_LIB_VERSION],[1],
-        [Can output the library version.])
+    # there is a bug in the Linux code in 0.9.0 - 0.9.4 where the pcap
+    # stats are doubled.
+    if test "x$libpcap_version_09" = "xyes"; then
+        AC_MSG_CHECKING(for libpcap version 0.9.0 - 0.9.4)
+        AC_RUN_IFELSE(
+        [AC_LANG_PROGRAM(
+        [[
+        #include <pcap.h>
+        #include <string.h>
+        extern char pcap_version[];
+        ]],
+        [[
+           if (strcmp(pcap_version, "0.9.5") < 0)
+               return 1;
+        ]])],
+        [libpcap_version_09_bug="no"],
+        [libpcap_version_09_bug="yes"])
+        AC_MSG_RESULT($libpcap_version_09_bug)
+    else
+        libpcap_version_09_bug="no"
+    fi
+
+    if test "x$libpcap_version_09_bug" = "xyes"; then
+        AC_DEFINE([LINUX_LIBPCAP_DOUBLES_STATS],[1],[For Linux libpcap versions 0.9.0 to 0.9.4])
+    fi
+else
+    AC_DEFINE([LIBPCAP_ACCUMULATES],[1],[For libpcap versions that accumulate stats])
 fi
 
 AC_DEFUN([FAIL_MESSAGE],[
@@ -440,7 +431,6 @@ AC_ARG_WITH(libpcre_libraries,
 
 if test "x$with_libpcre_includes" != "xno"; then
     CPPFLAGS="${CPPFLAGS} -I${with_libpcre_includes}"
-    ICONFIGFLAGS="${ICONFIGFLAGS} -I${with_libpcre_includes}"
 else
     CPPFLAGS="${CPPFLAGS} `pcre-config --cflags`"
 fi
@@ -467,7 +457,7 @@ PCRE_L=""
 pcre_version_six=""
 AC_CHECK_LIB(pcre, pcre_compile, ,PCRE_L="no")
 if test "x$PCRE_L" = "xno"; then
-    echo
+    echo 
     echo "   ERROR!  Libpcre library not found."
     echo "   Get it from http://www.pcre.org"
     echo
@@ -487,7 +477,7 @@ fi
 
 if test "x$pcre_version_six" != "xyes"; then
     AC_MSG_RESULT(no)
-    echo
+    echo 
     echo "    ERROR!  Libpcre library version >= 6.0 not found."
     echo "    Get it from http://www.pcre.org"
     echo
@@ -496,129 +486,6 @@ else
     AC_MSG_RESULT(yes)
 fi
 
-AC_ARG_ENABLE(dynamicplugin,
-[  --disable-dynamicplugin   Enable Ability to dynamically load preprocessors, detection engine, and rules lib (on by default, use --disable to not use dynamic libraries)],
-       enable_dynamicplugin="$enableval", enable_dynamicplugin="yes")
-AM_CONDITIONAL(HAVE_DYNAMIC_PLUGINS, test "x$enable_dynamicplugin" = "xyes")
-
-if test "x$enable_dynamicplugin" = "xyes"; then
-    CPPFLAGS="$CPPFLAGS -DDYNAMIC_PLUGIN"
-fi
-
-AC_ARG_ENABLE(so_with_static_lib,
-[  --enable-so-with-static-lib  Enable linking of dynamically loaded preprocessors with a static preprocessor library],
-       enable_so_with_static_lib="$enableval", enable_so_with_static_lib=$so_with_static_lib)
-AM_CONDITIONAL(SO_WITH_STATIC_LIB, test "x$enable_so_with_static_lib" = "xyes")
-
-# check for dnet first since some DAQs need it
-AC_ARG_WITH(dnet_includes,
-    [  --with-dnet-includes=DIR       libdnet include directory],
-    [with_dnet_includes="$withval"],[with_dnet_includes="no"])
-
-AC_ARG_WITH(dnet_libraries,
-    [  --with-dnet-libraries=DIR      libdnet library directory],
-    [with_dnet_libraries="$withval"],[with_dnet_libraries="no"])
-
-if test "x$with_dnet_includes" != "xno"; then
-    CPPFLAGS="${CPPFLAGS} -I${with_dnet_includes}"
-else
-    CPPFLAGS="${CPPFLAGS} `dnet-config --cflags 2>/dev/null`"
-fi
-
-if test "x$with_dnet_libraries" != "xno"; then
-    LDFLAGS="${LDFLAGS} -L${with_dnet_libraries}"
-else
-    LDFLAGS="${LDFLAGS} `dnet-config --libs 2>/dev/null`"
-fi
-
-AC_CHECK_HEADERS(dnet.h,,DNET_H="no")
-AC_CHECK_HEADERS(dumbnet.h,,DUMBNET_H="no")
-
-if test "x$DNET_H" = "xno" -a "x$DUMBNET_H" = "xno"; then
-    echo
-    echo "   ERROR!  dnet header not found, go get it from"
-    echo "   http://code.google.com/p/libdnet/ or use the --with-dnet-*"
-    echo "   options, if you have it installed in an unusual place"
-    exit
-fi
-
-AC_CHECK_LIB(dnet, eth_set,,[DNET="no"])
-AC_CHECK_LIB(dumbnet, eth_set,,[DUMBNET="no"])
-
-if test "x$DNET" = "xno" -a "x$DUMBNET" = "xno"; then
-    echo
-    echo "   ERROR!  dnet library not found, go get it from"
-    echo "   http://code.google.com/p/libdnet/ or use the --with-dnet-*"
-    echo "   options, if you have it installed in an unusual place"
-    exit
-fi
-
-AC_ARG_WITH(daq_includes,
-	[  --with-daq-includes=DIR        DAQ include directory],
-	[with_daq_includes="$withval"],[with_daq_includes="no"])
-
-AC_ARG_WITH(daq_libraries,
-	[  --with-daq-libraries=DIR       DAQ library directory],
-	[with_daq_libraries="$withval"],[with_daq_libraries="no"])
-
-if test "x$with_daq_includes" != "xno"; then
-   CPPFLAGS="${CPPFLAGS} -I${with_daq_includes}"
-   ICONFIGFLAGS="${ICONFIGFLAGS} -I${with_daq_includes}"
-fi
-
-if test "x$with_daq_libraries" != "xno"; then
-   LDFLAGS="${LDFLAGS} -L${with_daq_libraries}"
-fi
-
-AC_ARG_ENABLE(static_daq,
-[  --disable-static-daq            Link static DAQ modules.],
-       enable_static_daq="$enableval", enable_static_daq="yes")
-
-if test "x$enable_static_daq" = "xyes" \
-     -o "x$enable_dynamicplugin" = "xyes" ; \
-then
-    AC_CHECK_LIB(dl, dlsym, DLLIB="yes", DLLIB="no")
-
-    if test "$DLLIB" != "no"; then
-        LIBS="${LIBS} -ldl"
-    else
-        AC_CHECK_LIB(c, dlsym, DLLIB="yes", DLLIB="no")
-        if test "$DLLIB" = "no"; then
-           echo
-           echo "   ERROR!  programmatic interface to dynamic link loader"
-           echo "   not found.  Cannot build Snort."
-           echo
-           exit 1
-        fi
-    fi
-fi
-
-if test "x$enable_static_daq" = "xyes"; then
-    LDAQ=""
-    LIBS="${LIBS} `daq-modules-config --static --libs`"
-    AC_CHECK_LIB([daq_static], [daq_load_modules],
-        [LIBS="-ldaq_static ${LIBS}"], [LDAQ="no"], [ ])
-
-    if test "x$LDAQ" = "xno"; then
-        echo
-        echo "   ERROR!  daq_static library not found, go get it from"
-        echo "   http://www.snort.org/."
-        #AC_MSG_ERROR("Fatal!")  # FIXTHIS switch over to this macro
-        exit 1                   # instead of raw exits!
-    fi
-else
-    LDAQ=""
-    AC_CHECK_LIB([daq], [daq_load_modules],
-        [LIBS="${LIBS} -ldaq"], [LDAQ="no"], [ ])
-
-    if test "x$LDAQ" = "xno"; then
-        echo
-        echo "   ERROR!  daq library not found, go get it from"
-        echo "   http://www.snort.org/."
-        #AC_MSG_ERROR("Fatal!")
-        exit 1
-    fi
-fi
 
 # any sparc platform has to have this one defined.
 AC_MSG_CHECKING(for sparc)
@@ -676,90 +543,66 @@ AC_DEFUN([CC_VISIBILITY],
             [gl_cv_cc_visibility="no"])
     ])
     AC_MSG_RESULT([$gl_cv_cc_visibility])
-    CFLAGS="$gl_save_CFLAGS"
     if test "x$gl_cv_cc_visibility" = "xyes"; then
-        CCONFIGFLAGS="${CCONFIGFLAGS} -DSF_VISIBILITY -fvisibility=hidden"
+        CFLAGS="$gl_save_CFLAGS -fvisibility=hidden"
         AC_DEFINE([HAVE_VISIBILITY],[1],
             [Define if the compiler supports visibility declarations.])
+    else
+        CFLAGS="$gl_save_CFLAGS"
     fi
 ])
 CC_VISIBILITY()
 
-AC_ARG_ENABLE(build-dynamic-examples,
-[  --enable-build-dynamic-examples   Enable building of example dynamically loaded preprocessor and rule (off by default)],
-       build_dynamic_examples="$enableval", build_dynamic_examples="no")
-AM_CONDITIONAL(BUILD_DYNAMIC_EXAMPLES, test "x$build_dynamic_examples" = "xyes")
-if test "x$build_dynamic_examples" = "xyes"; then
-    if test "x$enable_dynamicplugin" = "xno"; then
-       echo "   ERROR!  attempting to build dynamic examples without"
-       echo "   enabling dynamic plugins."
-       echo
-       exit 1
+AC_ARG_ENABLE(dynamicplugin,
+[  --enable-dynamicplugin   Enable Ability to dynamically load preprocessors, detection engine, and rules lib (on by default, use --disable to not use dynamic libraries)],
+       enable_dynamicplugin="$enableval", enable_dynamicplugin="yes")
+AM_CONDITIONAL(HAVE_DYNAMIC_PLUGINS, test "x$enable_dynamicplugin" = "xyes")
+if test "x$enable_dynamicplugin" = "xyes"; then
+    CPPFLAGS="$CPPFLAGS -DDYNAMIC_PLUGIN"
+    AC_CHECK_LIB(dl, dlsym,, DLLIB="no")
+    if test "$DLLIB" != "no"; then
+        LIBS="$LIBS -ldl"
+    else
+        AC_CHECK_LIB(c, dlsym,, DLCLIB="no")
+        if test "$DLCLIB" = "no"; then
+           echo
+           echo "   ERROR!  programmatic interface to dynamic link loader"
+           echo "   not found.  Cannot use dynamic plugin libraries."
+           echo
+           exit 1
+        fi
     fi
-fi
-
-AC_ARG_ENABLE(dlclose,
-[  --disable-dlclose         Only use if you are developing dynamic preprocessors or shared object rules.  Disable (--disable-dlclose) for testing valgrind leaks in dynamic libraries so a usable backtrace is reported.  Enabled by default.],
-       enable_dlclose="$enableval", enable_dlclose="yes")
-if test "x$enable_dlclose" = "xno"; then
-    AC_DEFINE([DISABLE_DLCLOSE_FOR_VALGRIND_TESTING],[1],[Don't close opened shared objects for valgrind leak testing of dynamic libraries])
 fi
 
 AC_ARG_ENABLE(ipv6,
-[  --disable-ipv6            Disable IPv6 support],
-       enable_ipv6="$enableval", enable_ipv6="yes")
+[  --enable-ipv6            Enable IPv6 support],
+       enable_ipv6="$enableval", enable_ipv6="no")
 if test "x$enable_ipv6" = "xyes"; then
-    CONFIGFLAGS="$CONFIGFLAGS -DSUP_IP6"
+    CPPFLAGS="$CPPFLAGS -DSUP_IP6"
 fi
 AM_CONDITIONAL(HAVE_SUP_IP6, test "x$enable_ipv6" = "xyes")
 
-AC_ARG_ENABLE(zlib,
-[  --disable-zlib            Enable Http Response Decompression],
-       enable_zlib="$enableval", enable_zlib="yes")
-AM_CONDITIONAL(HAVE_ZLIB, test "x$enable_zlib" = "xyes")
-if test "x$enable_zlib" = "xyes"; then
-    Z_LIB=""
-    AC_CHECK_HEADERS(zlib.h,, Z_LIB="no")
-    if test "x$Z_LIB" = "xno"; then
-        echo
-        echo "   ERROR!  zlib header not found, go get it from"
-        echo "   http://www.zlib.net"
-        exit
-    fi
-
-    Z_LIB=""
-    AC_CHECK_LIB(z, inflate,, Z_LIB="no")
-    if test "x$Z_LIB" = "xno"; then
-        echo
-        echo "   ERROR!  zlib library not found, go get it from"
-        echo "   http://www.zlib.net"
-        exit
-    fi
-    CPPFLAGS="$CPPFLAGS -DZLIB"
-    LIBS="$LIBS -lz"
-fi
-
 AC_ARG_ENABLE(gre,
-[  --disable-gre             Enable GRE and IP in IP encapsulation support],
-       enable_gre="$enableval", enable_gre="yes")
+[  --enable-gre             Enable GRE and IP in IP encapsulation support],
+       enable_gre="$enableval", enable_gre="no")
 if test "x$enable_gre" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DGRE"
 fi
 
 AC_ARG_ENABLE(mpls,
-[  --disable-mpls             Enable MPLS support],
-       enable_mpls="$enableval", enable_mpls="yes")
+[  --enable-mpls             Enable MPLS support],
+       enable_mpls="$enableval", enable_mpls="no")
 if test "x$enable_mpls" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DMPLS"
 fi
 
 AC_ARG_ENABLE(targetbased,
-[  --disable-targetbased     Enable Target-Based Support in Stream, Frag, and Rules (adds pthread support implicitly)],
-       enable_targetbased="$enableval", enable_targetbased="yes")
+[  --enable-targetbased     Enable Target-Based Support in Stream, Frag, and Rules (adds pthread support implicitly)],
+       enable_targetbased="$enableval", enable_targetbased="no")
 
 AM_CONDITIONAL(HAVE_TARGET_BASED, test "x$enable_targetbased" = "xyes")
 if test "x$enable_targetbased" = "xyes"; then
-    CONFIGFLAGS="$CONFIGFLAGS -DTARGET_BASED"
+    CPPFLAGS="$CPPFLAGS -DTARGET_BASED"
     LIBS="$LIBS -lpthread"
     if test "$LEX" = "none"; then
       echo
@@ -780,32 +623,108 @@ if test "x$enable_targetbased" = "xyes"; then
 fi
 
 AC_ARG_ENABLE(decoder-preprocessor-rules,
-[  --disable-decoder-preprocessor-rules  Enable rule actions for decoder and preprocessor events],
-       enable_decoder_preprocessor_rules="$enableval", enable_decoder_preprocessor_rules="yes")
+[  --enable-decoder-preprocessor-rules  Enable rule actions for decoder and preprocessor events],
+       enable_decoder_preprocessor_rules="$enableval", enable_decoder_preprocessor_rules="no")
 if test "x$enable_decoder_preprocessor_rules" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DPREPROCESSOR_AND_DECODER_RULE_EVENTS"
 fi
 
 AC_ARG_ENABLE(ppm,
-[  --disable-ppm             Enable packet/rule performance monitor],
-       enable_ppm="$enableval", enable_ppm="yes")
+[  --enable-ppm             Enable packet/rule performance monitor],
+       enable_ppm="$enableval", enable_ppm="no")
 if test "x$enable_ppm" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DPPM_MGR"
 fi
 
+AC_ARG_ENABLE(timestats,
+[  --enable-timestats       Enable TimeStats functionality],
+       enable_timestats="$enableval", enable_timestats="no")
+if test "x$enable_timestats" = "xyes"; then
+    CPPFLAGS="$CPPFLAGS -DTIMESTATS"
+fi
+
 AC_ARG_ENABLE(perfprofiling,
-[  --disable-perfprofiling   Enable preprocessor and rule performance profiling],
-       enable_perfprofiling="$enableval", enable_perfprofiling="yes")
+[  --enable-perfprofiling   Enable preprocessor and rule performance profiling],
+       enable_perfprofiling="$enableval", enable_perfprofiling="no")
 if test "x$enable_perfprofiling" = "xyes"; then
-    CONFIGFLAGS="$CONFIGFLAGS -DPERF_PROFILING"
+    CPPFLAGS="$CPPFLAGS -DPERF_PROFILING"
 fi
 
 AC_ARG_ENABLE(linux-smp-stats,
 [  --enable-linux-smp-stats    Enable statistics reporting through proc],
        enable_linux_smp_stats="$enableval", enable_linux_smp_stats="no")
-AM_CONDITIONAL(BUILD_PROCPIDSTATS, test "x$enable_linux_smp_stats" = "xyes")
 if test "x$enable_linux_smp_stats" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DLINUX_SMP"
+fi
+
+AC_ARG_ENABLE(inline,
+[  --enable-inline          Use the libipq interface for inline snort],
+       enable_inline="$enableval", enable_inline="no")
+
+AC_ARG_ENABLE(ipfw,
+[  --enable-ipfw            Enable ipfw Divert mode for use with inline],
+       enable_ipfw="$enableval", enable_ipfw="no")
+
+if test "$enable_inline" != "no"; then
+   if test "$enable_inline" = "yes"; then
+        CPPFLAGS="$CPPFLAGS -DGIDS"
+        if test "$enable_ipfw" = "yes"; then
+            CPPFLAGS="$CPPFLAGS -DIPFW"
+        else
+           AC_ARG_WITH(libipq_includes,
+                      [  --with-libipq-includes=DIR     libipq include directory],
+                      [with_libipq_includes="$withval"],[with_libipq_includes="no"])
+           AC_ARG_WITH(libipq_libraries,
+                      [  --with-libipq-libraries=DIR    libipq library directory],
+                      [with_libipq_libraries="$withval"],[with_libipq_libraries="no"])
+           if test "$with_libipq_includes" != "no"; then
+                CPPFLAGS="${CPPFLAGS} -I${with_libipq_includes}"
+           fi
+
+           AC_CHECK_HEADER(libipq.h,,[AC_MSG_ERROR([libipq.h not found ...])])
+           if test "$with_libipq_libraries" != "no"; then
+                LDFLAGS="${LDFLAGS}  -L${with_libipq_libraries}"
+           fi
+
+           LIPQ=""
+           AC_CHECK_LIB(ipq, ipq_set_mode,, LIPQ="no")
+
+           if test "$LIPQ" = "no"; then
+               echo
+               echo "   ERROR!  Libipq library/headers not found, go get it from"
+               echo "   www.netfilter.org or use the --with-libipq-* options, "
+               echo "   if you have it installed in unusual place"
+               echo
+               exit 1
+           fi
+        fi
+
+        LIBNET_INC_DIR=""
+        if test -n "$with_libnet_includes" -a "$with_libnet_includes" != "no"; then
+            libnet_dir="${with_libnet_includes}"
+         else
+            libnet_dir="/usr/include /usr/local/include /sw/include"
+        fi
+        AC_MSG_CHECKING("for libnet.h version 1.0.x")
+        for i in $libnet_dir; do
+            if test -r "$i/libnet.h"; then
+                LIBNET_INC_DIR="$i"
+            fi
+        done
+
+        if test "$LIBNET_INC_DIR" != ""; then
+            if eval "grep LIBNET_VERSION $LIBNET_INC_DIR/libnet.h | grep -v 1.0 >/dev/null"; then
+                FAIL_MESSAGE("libnet 1.0.x (libnet.h)", $LIBNET_INC_DIR)
+            fi
+            CFLAGS="${CFLAGS} `libnet-config --defines` `libnet-config --cflags`"
+            LIBS="${LIBS} `libnet-config --libs`"
+            CPPFLAGS="${CPPFLAGS} -I${LIBNET_INC_DIR}"
+            AC_MSG_RESULT($i)
+        else
+            AC_MSG_RESULT(no)
+            AC_MSG_ERROR("libnet 1.0.x could not be found.  please download and install the library from http://www.packetfactory.net/libnet/")
+        fi
+    fi
 fi
 
 AC_ARG_ENABLE(inline-init-failopen,
@@ -819,8 +738,6 @@ fi
 AC_ARG_ENABLE(prelude,
 [  --enable-prelude         Enable Prelude Hybrid IDS support],
        enable_prelude="$enableval", enable_prelude="no")
-
-AM_CONDITIONAL(BUILD_PRELUDE, test "x$enable_prelude" = "xyes")
 if test "x$enable_prelude" = "xyes"; then
     AM_PATH_LIBPRELUDE(0.9.6, use_prelude="yes", use_prelude="no")
     if test "$use_prelude" = "yes"; then
@@ -831,40 +748,29 @@ if test "x$enable_prelude" = "xyes"; then
     fi
 fi
 
-AC_ARG_ENABLE(pthread,
+AC_ARG_ENABLE(pthread, 
 [  --enable-pthread         Enable pthread support],
        enable_pthread="$enableval", enable_pthread="no")
-
 if test "x$enable_pthread" = "xyes"; then
     LIBS="$LIBS -lpthread"
-fi
-
-AC_ARG_ENABLE(debug-msgs,
-[  --enable-debug-msgs      Enable debug printing options (bugreports and developers only)],
-       enable_debug_msgs="$enableval", enable_debug_msgs="no")
-if test "x$enable_debug_msgs" = "xyes"; then
-    CPPFLAGS="$CPPFLAGS -DDEBUG_MSGS"
 fi
 
 AC_ARG_ENABLE(debug,
 [  --enable-debug           Enable debugging options (bugreports and developers only)],
        enable_debug="$enableval", enable_debug="no")
-
 if test "x$enable_debug" = "xyes"; then
     NO_OPTIMIZE="yes"
+    CPPFLAGS="$CPPFLAGS -DDEBUG"
 
     # in case user override doesn't include -g
     if echo $CFLAGS | grep -qve -g ; then
         CFLAGS="$CFLAGS -g"
     fi
-    
-    CPPFLAGS="$CPPFLAGS -DDEBUG"
 fi
 
 AC_ARG_ENABLE(profile,
 [  --enable-profile         Enable profiling options (developers only)],
        enable_profile="$enableval", enable_profile="no")
-
 if test "x$enable_profile" = "xyes"; then
     if test -n "$GCC"; then
         CPPFLAGS="$CPPFLAGS -DPROFILE"
@@ -875,57 +781,77 @@ if test "x$enable_profile" = "xyes"; then
 fi
 
 AC_ARG_ENABLE(ppm-test,
-[  --disable-ppm-test        Enable packet/rule performance monitor],
+[  --enable-ppm-test        Enable packet/rule performance monitor],
        enable_ppm_test="$enableval", enable_ppm_test="no")
-
 if test "x$enable_ppm_test" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DPPM_TEST"
 fi
 
 AC_ARG_ENABLE(sourcefire,
-[  --enable-sourcefire      Enable Sourcefire specific build options, encompasing --enable-perfprofiling,--enable-decoder-preprocessor-rules, --enable-ppm],
+[  --enable-sourcefire      Enable Sourcefire specific build options],
        enable_sourcefire="$enableval", enable_sourcefire="no")
-
 if test "x$enable_sourcefire" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DSOURCEFIRE -DPERF_PROFILING -DPREPROCESSOR_AND_DECODER_RULE_EVENTS -DPPM_MGR"
-    CONFIGFLAGS="$CONFIGFLAGS -DPERF_PROFILING"
 fi
 
 AC_ARG_ENABLE(corefiles,
 [  --disable-corefiles      Prevent Snort from generating core files],
        enable_corefiles="$enableval", enable_corefiles="yes")
-
 if test "x$enable_corefiles" = "xno"; then
     CPPFLAGS="$CPPFLAGS -DNOCOREFILE"
 fi
 
-AC_ARG_ENABLE(active-response,
-[  --disable-active-response Enable reject injection],
-       enable_active_response="$enableval", enable_active_response="yes")
-
-AC_ARG_ENABLE(normalizer,
-[  --disable-normalizer      Enable packet/stream normalizations],
-       enable_normalizer="$enableval", enable_normalizer="yes")
-
 AC_ARG_ENABLE(reload,
-[  --disable-reload          Enable reloading a configuration without restarting],
-       enable_reload="$enableval", enable_reload="yes")
+[  --enable-reload          Enable reloading a configuration without restarting],
+       enable_reload="$enableval", enable_reload="no")
 
 AC_ARG_ENABLE(reload-error-restart,
-[  --disable-reload-error-restart   Enable restarting on reload error],
+[  --enable-reload-error-restart   Enable restarting on reload error],
        enable_reload_error_restart="$enableval", enable_reload_error_restart="yes")
 
 if test "x$enable_reload" = "xyes"; then
     if test "x$enable_reload_error_restart" = "xyes"; then
-        CONFIGFLAGS="$CONFIGFLAGS -DSNORT_RELOAD"
+        CPPFLAGS="$CPPFLAGS -DSNORT_RELOAD"
     else
-        CONFIGFLAGS="$CONFIGFLAGS -DSNORT_RELOAD -DRELOAD_ERROR_FATAL"
+        CPPFLAGS="$CPPFLAGS -DSNORT_RELOAD -DRELOAD_ERROR_FATAL"
     fi
 
     LIBS="$LIBS -lpthread"
 fi
 
-AC_ARG_WITH(mysql,
+AC_ARG_WITH(libnet_includes,
+        [  --with-libnet-includes=DIR     libnet include directory],
+        [with_libnet_includes="$withval"],[with_libnet_includes="no"])
+
+AC_ARG_WITH(libnet_libraries,
+        [  --with-libnet-libraries=DIR    libnet library directory],
+        [with_libnet_libraries="$withval"],[with_libnet_libraries="no"])
+
+if test "x$with_libnet_includes" != "xno"; then
+   CPPFLAGS="${CPPFLAGS} -I${with_libnet_includes}"
+fi  
+
+if test "x$with_libnet_libraries" != "xno"; then
+   LDFLAGS="${LDFLAGS} -L${with_libnet_libraries}"
+fi
+
+AC_ARG_WITH(dnet_includes,
+        [  --with-dnet-includes=DIR       libdnet include directory],
+        [with_dnet_includes="$withval"],[with_dnet_includes="no"])
+
+AC_ARG_WITH(dnet_libraries,
+        [  --with-dnet-libraries=DIR      libdnet library directory],
+        [with_dnet_libraries="$withval"],[with_dnet_libraries="no"])
+
+if test "x$with_dnet_includes" != "xno"; then
+   CPPFLAGS="${CPPFLAGS} -I${with_dnet_includes}"
+fi
+
+if test "x$with_dnet_libraries" != "xno"; then
+   LDFLAGS="${LDFLAGS} -L${with_dnet_libraries}"
+fi
+
+AC_ARG_WITH(mysql, 
     [  --with-mysql=DIR               Support for MySQL],
     [ with_mysql="$withval"],
     [ with_mysql="no" ])
@@ -1009,7 +935,7 @@ if test "x$with_mysql" != "xno"; then
             MYSQL_LIB_DIR="$i/mysql"
             break 2
           fi
-        done
+        done 
       fi
       if test -z "$MYSQL_LIB_DIR"; then
         str="$i/mysql/lib/libmysqlclient.*"
@@ -1121,7 +1047,7 @@ if test "x$with_mysql" != "xno"; then
   fi
 fi
 
-AC_ARG_WITH(odbc,
+AC_ARG_WITH(odbc, 
     [  --with-odbc=DIR                Support for ODBC],
     [ with_odbc="$withval" ],
     [ with_odbc="no" ])
@@ -1163,7 +1089,7 @@ if test "x$with_odbc" != "xno"; then
 
     str="$ODBC_DIR/lib/libodbc.*"
     for j in `echo $str`; do
-      if test -r "$j"; then
+      if test -r "$j"; then 
         ODBC_LIB_DIR="$ODBC_DIR/lib"
         ODBC_LIB="odbc"
       fi
@@ -1172,7 +1098,7 @@ if test "x$with_odbc" != "xno"; then
 dnl    if test -z "$ODBC_LIB_DIR"; then
 dnl      str="$ODBC_DIR/lib/libiodbc.*"
 dnl      for j in `echo $str`; do
-dnl        if test -r $j; then
+dnl        if test -r $j; then 
 dnl          ODBC_LIB_DIR="$ODBC_DIR/lib"
 dnl          ODBC_LIB="iodbc"
 dnl        fi
@@ -1194,7 +1120,7 @@ dnl    fi
   fi
 fi
 
-AC_ARG_WITH(postgresql,
+AC_ARG_WITH(postgresql, 
     [  --with-postgresql=DIR          Support for PostgreSQL],
     [ with_postgresql="$withval" ],
     [ with_postgresql="no" ])
@@ -1301,7 +1227,7 @@ if test "x$with_postgresql" != "xno"; then
   fi
 fi
 
-AC_ARG_WITH(oracle,
+AC_ARG_WITH(oracle, 
     [  --with-oracle=DIR              Support for Oracle],
     [ with_oracle="$withval" ],
     [ with_oracle="no" ])
@@ -1356,22 +1282,6 @@ if test "x$with_oracle" != "xno"; then
   fi
 fi
 
-AC_ARG_ENABLE(paf,
-[  --disable-paf             disable protocol aware flushing],
-       enable_paf="$enableval", enable_paf="yes")
-
-if test "x$enable_paf" = "xyes"; then
-    CPPFLAGS="${CPPFLAGS} -DENABLE_PAF"
-fi
-
-AC_ARG_ENABLE(react,
-[  --disable-react           Intercept and terminate offending HTTP accesses],
-       enable_react="$enableval", enable_react="yes")
-
-AC_ARG_ENABLE(flexresp3,
-[  --disable-flexresp3       Flexible Responses (v3) on hostile connection attempts],
-       enable_flexresp3="$enableval", enable_flexresp3="yes")
-
 AC_ARG_ENABLE(aruba,
 [  --enable-aruba           Enable Aruba output plugin],
        enable_aruba="$enableval", enable_aruba="no")
@@ -1379,112 +1289,146 @@ if test "x$enable_aruba" = "xyes"; then
     CPPFLAGS="$CPPFLAGS -DARUBA"
 fi
 
-# test for invalid configurations here after all AC_ARG_ENABLEs
-if test "x$enable_flexresp3" = "xyes"; then
-    # flexresp3 options are a union of flexresp (deleted) and flexresp2
-    # options so we assume flexresp3 if multiple are enabled.
-    if test "x$enable_flexresp2" = "xyes"; then
-        echo "WARNING: multiple flexresp versions enabled; using flexresp3"
-        enable_flexresp2="no"
-    fi
-fi
-
-AM_CONDITIONAL(BUILD_REACT, test "x$enable_react" = "xyes")
+AC_ARG_ENABLE(react,
+[  --enable-react           Intercept and terminate offending HTTP accesses],
+       enable_react="$enableval", enable_react="no")
 if test "x$enable_react" = "xyes"; then
     CPPFLAGS="${CPPFLAGS} -DENABLE_REACT"
 fi
 
-AM_CONDITIONAL(BUILD_RESPOND3, test "x$enable_flexresp3" = "xyes")
-if test "x$enable_flexresp3" = "xyes"; then
-    CPPFLAGS="${CPPFLAGS} -DENABLE_RESPOND -DENABLE_RESPONSE3"
+AC_ARG_ENABLE(flexresp,
+[  --enable-flexresp        Flexible Responses (v1) on hostile connection attempts],
+       enable_flexresp="$enableval", enable_flexresp="no")
+if test "x$enable_flexresp" = "xyes"; then
+    CPPFLAGS="${CPPFLAGS} -DENABLE_RESPOND -DENABLE_RESPONSE"
 fi
 
-if test "x$enable_normalizer" = "xyes" \
-     -o "x$enable_sourcefire" = "xyes" ; \
-then
-    CONFIGFLAGS="${CONFIGFLAGS} -DNORMALIZER"
+AC_ARG_ENABLE(flexresp2,
+[  --enable-flexresp2       Flexible Responses (v2) on hostile connection attempts],
+       enable_flexresp2="$enableval", enable_flexresp2="no")
+if test "x$enable_flexresp2" = "xyes"; then
+    CPPFLAGS="${CPPFLAGS} -DENABLE_RESPOND -DENABLE_RESPONSE2 `dnet-config --cflags`"
+    # this will probably add a redundant path and lib (eg, -ldnet is added
+    # to LIBS by AC_CHECK_LIB() below) but w/o this AC_CHECK_LIB() will 
+    # fail if dnet isn't in a standard place.  of course, if dnet isn't
+    # installed at all, dnet-config will fail, but we won't know that
+    # until we get around to calling AC_CHECK_LIB().  same story with
+    # libnet and pcre.
+    LDFLAGS="${LDFLAGS} `dnet-config --libs`"
 fi
 
-if test "x$enable_active_response" = "xyes" \
-     -o "x$enable_flexresp3" = "xyes" \
-     -o "x$enable_react" = "xyes" \
-     -o "x$enable_sourcefire" = "xyes" ; \
-then
-    CONFIGFLAGS="${CONFIGFLAGS} -DACTIVE_RESPONSE"
+# test for invalid configurations here after all AC_ARG_ENABLEs
+
+if test "x$enable_flexresp" = "xyes" -a "x$enable_flexresp2" = "xyes"; then
+    echo
+    echo "   ERROR!  --enable-flexresp cannot be used with --enable-flexresp2"
+    exit
 fi
 
-AC_ARG_ENABLE(intel_soft_cpm,
-[  --enable-intel-soft-cpm  Enable Intel Soft CPM support],
-       enable_intel_soft_cpm="$enableval", enable_intel_soft_cpm="no")
+if test "x$enable_flexresp" = "xyes" -o "x$enable_react" = "xyes"; then
+    if test `libnet-config --cflags | wc -c` = "1"; then
+        CPPFLAGS="${CPPFLAGS} -I/usr/local/include -I/sw/include"
+        LIBNET_CONFIG_BROKEN_CFLAGS="yes"
+    else
+        CPPFLAGS="${CPPFLAGS} `libnet-config --cflags`"
+    fi
+    CPPFLAGS="${CPPFLAGS} `libnet-config --defines`"
+    LDFLAGS="${LDFLAGS} `libnet-config --libs`"
 
-AC_ARG_WITH(intel_soft_cpm_includes,
-	[  --with-intel-soft-cpm-includes=DIR      Intel Soft CPM include directory],
-	[with_intel_soft_cpm_includes="$withval"],[with_intel_soft_cpm_includes="no"])
+    if test `libnet-config --libs | wc -c` = "1"; then
+        AC_MSG_WARN(libnet-config --libs is broken on your system.  If you)
+        AC_MSG_WARN(are using a precompiled package please notify the) 
+        AC_MSG_WARN(maintainer.)
+        LDFLAGS="${LDFLAGS} -L/usr/local/lib -L/sw/lib"
+        LIBS="${LIBS} -lnet"
+    fi
 
-AC_ARG_WITH(intel_soft_cpm_libraries,
-	[  --with-intel-soft-cpm-libraries=DIR     Intel Soft CPM library directory],
-	[with_intel_soft_cpm_libraries="$withval"],[with_intel_soft_cpm_libraries="no"])
-
-if test "x$with_intel_soft_cpm_includes" != "xno"; then
-    enable_intel_soft_cpm="yes"
-    CPPFLAGS="${CPPFLAGS} -I${with_intel_soft_cpm_includes}"
-fi
-
-if test "x$with_intel_soft_cpm_libraries" != "xno"; then
-    enable_intel_soft_cpm="yes"
-    LDFLAGS="${LDFLAGS} -L${with_intel_soft_cpm_libraries}"
-    LIBS="${LIBS} -lpm"
-fi
-
-AM_CONDITIONAL(HAVE_INTEL_SOFT_CPM, test "x$enable_intel_soft_cpm" = "xyes")
-if test "x$enable_intel_soft_cpm" = "xyes"; then
-    CPPFLAGS="${CPPFLAGS} -DINTEL_SOFT_CPM"
-fi
-
-AC_ARG_ENABLE(rzb-saac,
-[  --enable-rzb-saac        Enable Razorback SaaC support],
-       enable_rzb_saac="$enableval", enable_rzb_saac="no")
-
-AC_ARG_WITH(librzb_api,
-	[  --with-librzb-api=DIR    librazorback_api directory],
-	[with_librzb_api="$withval"],[with_librzb_api="no"])
-
-if test "x$with_librzb_api" = "xno"; then
-    export PKG_CONFIG_PATH=$prefix/lib/pkgconfig:$PKG_CONFIG_PATH
-else
-    export PKG_CONFIG_PATH=$with_librzb_api/lib/pkgconfig:$PKG_CONFIG_PATH
-fi
-
-if test "x$enable_rzb_saac" = "xyes"; then
-    PKG_CHECK_MODULES([RAZORBACK], [razorback >= 0.1.3], [], [LRZB=no])
-    if test "x$LRZB" = "xno"; then
+    LNET=""
+    AC_CHECK_HEADERS(libnet.h,, LNET="no")
+    if test "x$LNET" = "xno"; then
         echo
-        echo "   ERROR!  razorback_api library not found, go get it from"
-        echo "   http://sourceforge.net/projects/razorbacktm/"
+        echo "   ERROR!  Libnet header not found, go get it from"
+        echo "   http://www.packetfactory.net/projects/libnet/"
+        echo "   or use the --with-libnet-* options, if you have it installed"
+        echo "   in unusual place"
+        exit 1
+    fi
+
+    AC_MSG_CHECKING(for libnet version 1.0.2a)
+    if test "x${LIBNET_CONFIG_BROKEN_CFLAGS}" = "xyes"; then
+        if test -n "$with_libnet_includes" -a "x$with_libnet_includes" != "xno"; then
+            libnet_dir="${with_libnet_includes}"
+        else
+            libnet_dir="/usr/include /usr/local/include /sw/include"
+        fi
+    else
+        libnet_dir=`libnet-config --cflags | cut -dI -f2`
+    fi
+
+    LIBNET_INC_DIR=""
+    for i in $libnet_dir; do
+        if test -r "$i/libnet.h"; then
+            LIBNET_INC_DIR="$i"
+        fi
+    done
+
+    if test "x$LIBNET_INC_DIR" != "x"; then
+        if eval "grep LIBNET_VERSION $LIBNET_INC_DIR/libnet.h | grep -v 1.0.2a >/dev/null"; then
+            AC_MSG_RESULT(no)
+            echo
+            echo "   ERROR!  Snort with --enable-flexresp will *only* work with"
+            echo "   libnet version 1.0.2a, go get it from"
+            echo "   http://www.packetfactory.net/projects/libnet/"
+            FAIL_MESSAGE("libnet 1.0.2a (libnet.h)", $LIBNET_INC_DIR)
+        fi
+        AC_MSG_RESULT(yes)
+    else
+        AC_MSG_RESULT(no)
+        FAIL_MESSAGE("libnet 1.0.2a (libnet.h)", $libnet_dir)
+    fi
+
+    LNET=""
+    AC_CHECK_LIB(net, libnet_build_ip,, LNET="no")
+    if test "x$LNET" = "xno"; then
+        echo
+        echo "   ERROR!  Libnet library not found, go get it from"
+        echo "   http://www.packetfactory.net/projects/libnet/"
+        echo "   or use the --with-libnet-* options, if you have it installed"
+        echo "   in unusual place"
+        exit 1
+    fi
+fi
+
+if test "x$enable_flexresp2" = "xyes" ; then
+    DNET=""
+    AC_CHECK_HEADERS(dnet.h,, DNET="no")
+    if test "x$DNET" = "xno"; then
+        echo
+        echo "   ERROR!  Libdnet header not found, go get it from"
+        echo "   http://libdnet.sourceforge.net or use the --with-dnet-*"
+        echo "   options, if you have it installed in an unusual place"
+        exit
+    fi
+
+    DNET=""
+    AC_CHECK_LIB(dnet, eth_set,, DNET="no")
+    if test "x$DNET" = "xno"; then
+        echo
+        echo "   ERROR!  Libdnet library not found, go get it from"
+        echo "   http://libdnet.sourceforge.net or use the --with-dnet-*"
+        echo "   options, if you have it installed in an unusual place"
         exit
     fi
 fi
 
-AM_CONDITIONAL([WANT_SF_SAAC], [test x$enable_rzb_saac = xyes])
-
-AC_ARG_ENABLE(large-pcap,
-[  --enable-large-pcap      Enable support for pcaps larger than 2 GB],
-      enable_large_pcap="$enableval", enable_large_pcap="no")
-
-if test "x$enable_large_pcap" = "xyes"; then
-    CPPFLAGS="${CPPFLAGS} -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
-fi
-
 # let's make some fixes..
 
-CFLAGS="${CFLAGS} ${CCONFIGFLAGS}"
 CFLAGS=`echo $CFLAGS | sed -e 's/-I\/usr\/include //g'`
-CPPFLAGS="${CPPFLAGS} ${CONFIGFLAGS}"
 CPPFLAGS=`echo $CPPFLAGS | sed -e 's/-I\/usr\/include //g'`
 
 if test "x$GCC" = "xyes" ; then
     echo `$CC -v 2>&1` | grep "version 4" > /dev/null
-    if test $? = 0 ; then
+    if test $? = 0 ; then 
         CFLAGS="$CFLAGS -fno-strict-aliasing"
     fi
 fi
@@ -1512,47 +1456,6 @@ if test "x$linux" = "xyes"; then
     fi
 fi
 
-if test "$LEX" != "none"; then
-    AC_MSG_CHECKING(for yylex_destroy support)
-
-    version=`$LEX --version | awk '{print $3}'`
-    if test -z $version; then
-        version=`$LEX --version | awk '{print $2}'`
-    fi
-
-    have_yylex_destroy="no"
-    if test $version; then
-        major=`echo $version | awk -F. '{ print $1 }'`
-        minor=`echo $version | awk -F. '{ print $2 }'`
-        subminor=`echo $version | awk -F. '{ print $3 }'`
-
-        if test $major -a $minor -a $subminor; then
-            if test $major -gt 2; then
-                have_yylex_destroy="yes"
-            else
-                if test $major -eq 2; then
-                    if test $minor -gt 5; then
-                        have_yylex_destroy="yes"
-                    else
-                        if test $minor -eq 5; then
-                            if test $subminor -ge 9; then
-                                have_yylex_destroy="yes"
-                            fi
-                        fi
-                    fi
-                fi
-            fi
-        fi
-    fi
-
-    if test "x$have_yylex_destroy" = "xyes"; then
-        AC_MSG_RESULT(yes)
-        AC_DEFINE([HAVE_YYLEX_DESTROY],[1],[Define whether yylex_destroy is supported in flex version])
-    else
-        AC_MSG_RESULT(no)
-    fi
-fi
-
 # Set to no optimization regardless of what user or autostuff set
 if test "x$NO_OPTIMIZE" = "xyes"; then
     CFLAGS=`echo $CFLAGS | sed -e "s/-O./-O0/"`
@@ -1577,9 +1480,6 @@ echo $CPPFLAGS > cppflags.out
 INCLUDES='-I$(top_srcdir) -I$(top_srcdir)/src -I$(top_srcdir)/src/sfutil $(extra_incl) -I$(top_srcdir)/src/output-plugins -I$(top_srcdir)/src/detection-plugins -I$(top_srcdir)/src/dynamic-plugins -I$(top_srcdir)/src/preprocessors -I$(top_srcdir)/src/preprocessors/portscan -I$(top_srcdir)/src/preprocessors/HttpInspect/include -I$(top_srcdir)/src/preprocessors/Stream5 -I$(top_srcdir)/src/target-based'
 
 AC_SUBST(INCLUDES)
-AC_SUBST(CONFIGFLAGS)
-AC_SUBST(CCONFIGFLAGS)
-AC_SUBST(ICONFIGFLAGS)
 
 AC_PROG_INSTALL
 AC_CONFIG_FILES([ \
@@ -1597,18 +1497,13 @@ src/dynamic-plugins/sf_engine/examples/Makefile   \
 src/dynamic-plugins/sf_preproc_example/Makefile   \
 src/dynamic-preprocessors/Makefile   \
 src/dynamic-preprocessors/libs/Makefile   \
-src/dynamic-preprocessors/libs/snort_preproc.pc  \
 src/dynamic-preprocessors/ftptelnet/Makefile   \
 src/dynamic-preprocessors/smtp/Makefile   \
 src/dynamic-preprocessors/ssh/Makefile   \
-src/dynamic-preprocessors/sip/Makefile   \
+src/dynamic-preprocessors/dcerpc/Makefile   \
 src/dynamic-preprocessors/dcerpc2/Makefile   \
-src/dynamic-preprocessors/pop/Makefile   \
-src/dynamic-preprocessors/imap/Makefile   \
-src/dynamic-preprocessors/sdf/Makefile   \
 src/dynamic-preprocessors/dns/Makefile   \
 src/dynamic-preprocessors/ssl/Makefile   \
-src/dynamic-preprocessors/rzb_saac/Makefile   \
 src/output-plugins/Makefile    \
 src/preprocessors/Makefile     \
 src/preprocessors/HttpInspect/Makefile    \
@@ -1633,9 +1528,6 @@ preproc_rules/Makefile \
 m4/Makefile \
 etc/Makefile \
 templates/Makefile \
-tools/Makefile \
-tools/u2boat/Makefile \
-tools/u2spewfoo/Makefile \
 src/win32/Makefile])
 AC_OUTPUT
 

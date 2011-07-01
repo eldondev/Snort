@@ -1,4 +1,4 @@
-/* $Id: strtok_r.c,v 1.1 2003/12/03 15:22:23 chris_reid Exp $ */
+/* $Id$ */
 /*
  * Copyright (c) 1995, 1996, 1997 Kungliga Tekniska Högskolan
  * (Royal Institute of Technology, Stockholm, Sweden).

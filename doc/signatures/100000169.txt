@@ -1,0 +1,57 @@
+Rule: 
+
+--
+Sid: 
+100000169
+
+-- 
+Summary: 
+The application fingerprinting tool Amap has been detected in HTTP traffic.
+
+--
+Impact:
+An attacker may be attempting to gather information about services on a 
+monitored network, in order to discover vulnerabilities in those services.
+
+--
+Detailed Information:
+Amap is an application fingerprinting tool released by a group of security 
+experts called THC, "The Hacker's Choice"; it is designed to identify services 
+reliably irrespective of the port they are run on. Amap functions by sending 
+"triggers" to open ports on a remote system which are designed to elicit a 
+response from a particular service. This rule is designed to detect the SSL 
+trigger sent by the program.
+
+--
+Affected Systems:
+Any system running an SSL-enabled web server.
+
+--
+Attack Scenarios:
+Attackers will use the Amap application fingerprinting tool.
+
+--
+Ease of Attack:
+Simple, as the program is publicly available and is well-documented.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Check system logs and Snort alert logs for suspicious activity.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+
+--

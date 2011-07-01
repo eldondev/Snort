@@ -10,6 +10,10 @@ inspect port 443, only the SSL handshake of each connection will be
 inspected.  Once the traffic is determined to be encrypted, no further
 inspection of the data on the connection is made.
 
+SSLv2 traffic is not currently supported and will be treated as though they 
+were unrecognized by the decoder.
+
+
 SSL Detection and Decoding
 ==========================
 
@@ -42,40 +46,27 @@ The ssl_state keyword takes the following identifiers as arguments:
     server_hello
     client_keyx
     server_keyx
-    unknown
 
 The ssl_version keyword takes the following identifiers as arguments:
 
-    sslv2
     sslv3
     tls1.0
     tls1.1
     tls1.2
 
 More than one identifier can be specified, to either rule keyword, via a comma
-separated list.  Lists of identifiers are OR'ed together, such that if any
-of them match, the rule option will match.
+separated list.  Lists of identifiers are OR'ed together. 
 
-The option will match if the connection is currently in any one of the OR'ed
-states.  To ensure the connection has reached each of a set of states, multiple
-rules using the ssl_state rule option should be used.
+The rule option does not support negation.  If you wish to specify a negated
+argument, simply specify all of the other options:
 
-The rule options support negation.  Some examples:
+    Invalid:
+    
+        ssl_state:!client_hello
 
-    # Not client hello
-    ssl_state:!client_hello;
+    Valid equivalent:
 
-    # server hello OR not client hello
-    ssl_state:server_hello,!client_hello;
-
-    # server hello AND not server key exchange
-    ssl_state:server_hello; ssl_state:!server_keyx;
-
-    # not sslv2
-    ssl_version:!sslv2;
-
-    # sslv3 and not sslv2
-    ssl_version:sslv3; ssl_version:!sslv2;
+        ssl_state:server_hello,server_keyx,client_keyx
 
 
 Usage

@@ -1,6 +1,21 @@
-# (C) Copyright 2001-2004, Martin Roesch, Brian Caswell, et al.
-#    All rights reserved.
-# $Id: web-frontpage.rules,v 1.35 2005/02/10 01:11:04 bmc Exp $
+# Copyright 2001-2005 Sourcefire, Inc. All Rights Reserved
+#
+# This file may contain proprietary rules that were created, tested and
+# certified by Sourcefire, Inc. (the "VRT Certified Rules") as well as
+# rules that were created by Sourcefire and other third parties and
+# distributed under the GNU General Public License (the "GPL Rules").  The
+# VRT Certified Rules contained in this file are the property of
+# Sourcefire, Inc. Copyright 2005 Sourcefire, Inc. All Rights Reserved.
+# The GPL Rules created by Sourcefire, Inc. are the property of
+# Sourcefire, Inc. Copyright 2002-2005 Sourcefire, Inc. All Rights
+# Reserved.  All other GPL Rules are owned and copyrighted by their
+# respective owners (please see www.snort.org/contributors for a list of
+# owners and their respective copyrights).  In order to determine what
+# rules are VRT Certified Rules or GPL Rules, please refer to the VRT
+# Certified Rules License Agreement.
+#
+#
+# $Id: web-frontpage.rules,v 1.32.2.2.2.2 2005/06/29 15:35:05 mwatchinski Exp $
 #--------------------
 # WEB-FRONTPAGE RULES
 #--------------------
@@ -8,7 +23,7 @@
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE rad fp30reg.dll access"; flow:to_server,established; uricontent:"/fp30reg.dll"; nocase; reference:arachnids,555; reference:bugtraq,2906; reference:cve,2001-0341; reference:url,www.microsoft.com/technet/security/bulletin/MS01-035.mspx; classtype:web-application-activity; sid:1248; rev:13;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE frontpage rad fp4areg.dll access"; flow:to_server,established; uricontent:"/fp4areg.dll"; nocase; reference:bugtraq,2906; reference:cve,2001-0341; classtype:web-application-activity; sid:1249; rev:10;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE _vti_rpc access"; flow:to_server,established; uricontent:"/_vti_rpc"; nocase; reference:bugtraq,2144; reference:cve,2001-0096; reference:nessus,10585; classtype:web-application-activity; sid:937; rev:10;)
-alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE posting"; flow:to_server,established; content:"POST"; uricontent:"/author.dll"; nocase; reference:bugtraq,2144; reference:cve,2001-0096; reference:nessus,10585; classtype:web-application-activity; sid:939; rev:10;)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE posting"; flow:to_server,established; content:"POST"; uricontent:"/author.dll"; nocase; reference:bugtraq,2144; reference:cve,2001-0096; reference:nessus,10585; reference:url,www.microsoft.com/technet/security/bulletin/MS00-100.mspx; classtype:web-application-activity; sid:939; rev:11;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE shtml.dll access"; flow:to_server,established; uricontent:"/_vti_bin/shtml.dll"; nocase; reference:arachnids,292; reference:bugtraq,1174; reference:bugtraq,1594; reference:bugtraq,1595; reference:cve,2000-0413; reference:cve,2000-0746; reference:nessus,11395; reference:url,www.microsoft.com/technet/security/bulletin/ms00-060.mspx; classtype:web-application-activity; sid:940; rev:15;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE contents.htm access"; flow:to_server,established; uricontent:"/admcgi/contents.htm"; nocase; classtype:web-application-activity; sid:941; rev:6;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-FRONTPAGE orders.htm access"; flow:to_server,established; uricontent:"/_private/orders.htm"; nocase; classtype:web-application-activity; sid:942; rev:6;)

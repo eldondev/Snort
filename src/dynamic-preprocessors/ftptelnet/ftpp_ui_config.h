@@ -1,12 +1,12 @@
 /*
  * ftpp_ui_config.h
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -44,7 +44,6 @@
 #include "hi_util_kmap.h"
 #include "ipv6_port.h"
 #include "sfrt.h"
-#include "snort_bounds.h"
 
 /*
  * Defines
@@ -117,7 +116,7 @@ typedef enum s_FTP_PARAM_TYPE
  *
  * If you need to check validity for a server that uses the TZ format,
  * use the following:
- *
+ * 
  * cmd_validity MDTM < [ date nnnnnnnnnnnnnn[{+|-}n[n]] ] string >
  *
  * Format uses the following:
@@ -217,7 +216,7 @@ typedef struct s_FTP_SERVER_PROTO_CONF
     PROTO_CONF proto_ports;
 
     char *serverAddr;
-
+    
     unsigned int def_max_param_len;
     unsigned int max_cmd_len;
 
@@ -230,10 +229,10 @@ typedef struct s_FTP_SERVER_PROTO_CONF
     int data_chan;
 
     /**Counts references to this allocated data structure. Each additional
-     * reference should increment referenceCount. Each attempted free should
-     * decrement it. When reference count reaches 0, then this
-     * data structure should be freed.
-     */
+     * reference should increment referenceCount. Each attempted free should 
+     * decrement it. When reference count reaches 0, then this 
+     * data structure should be freed. 
+     */ 
     int referenceCount;
 
 }  FTP_SERVER_PROTO_CONF;
@@ -267,10 +266,10 @@ typedef struct s_FTP_CLIENT_PROTO_CONF
     BOUNCE_LOOKUP    *bounce_lookup;
 
     /**Counts references to this allocated data structure. Each additional
-     * reference should increment referenceCount. Each attempted free should
-     * decrement it. When reference count reaches 0, then this
-     * data structure should be freed.
-     */
+     * reference should increment referenceCount. Each attempted free should 
+     * decrement it. When reference count reaches 0, then this 
+     * data structure should be freed. 
+     */ 
     int referenceCount;
 
 }  FTP_CLIENT_PROTO_CONF;
@@ -290,7 +289,7 @@ typedef struct s_TELNET_PROTO_CONF
     int ayt_threshold;
 
     char detect_anomalies;
-
+    
 }  TELNET_PROTO_CONF;
 
 /*
@@ -313,7 +312,7 @@ typedef struct s_FTPTELNET_GLOBAL_CONF
 
     uint32_t ref_count;
 
-}  FTPTELNET_GLOBAL_CONF;
+}  FTPTELNET_GLOBAL_CONF;    
 
 
 /*

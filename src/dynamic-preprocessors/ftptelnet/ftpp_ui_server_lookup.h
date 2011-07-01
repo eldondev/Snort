@@ -1,7 +1,7 @@
 /*
  * ftpp_ui_server_lookup.h
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
  * 

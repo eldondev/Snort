@@ -1,0 +1,66 @@
+Rule: 
+
+--
+Sid: 
+100000172
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in the Lynx text-based web browser.
+
+-- 
+Impact: 
+Code execution on the victim machine with the privileges of the user running 
+Lynx.
+
+--
+Detailed Information:
+A vulnerability exists in the way that Lynx handles links when browsing NNTP 
+resources. The function that handles the display of information from article 
+headers when listing available files on the server, inserts extra characters to 
+handle certain character sets. This function does not properly check how much 
+extra data is inserted and it is possible to overflow a static buffer and 
+execute code in the context of the browser process.
+
+--
+Affected Systems:
+Lynx versions 2.8.6 and prior
+
+--
+Attack Scenarios: 
+An attacker would need to supply a malicious link on an nntp server to the user 
+using Lynx.
+
+-- 
+Ease of Attack: 
+Simple.
+
+-- 
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+Corrective Action: 
+Apply the appropriate patch.
+
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+Original advisory posting:
+http://lists.grok.org.uk/pipermail/full-disclosure/2005-October/038019.html
+
+--

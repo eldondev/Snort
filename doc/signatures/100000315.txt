@@ -1,0 +1,71 @@
+Rule:  
+
+--
+Sid:
+100000315
+
+--
+Summary:
+This event is generated when an HTTP client issues a PUT request to upload
+a document into the web content area.
+
+--
+Impact:
+The PUT method is a legitimate HTTP command that allows an authorized user
+to upload a document into the web content tree. It is most often associated 
+with the WebDAV content management protocol.  
+
+Although there are some legitimate uses for the PUT method, it is also a
+frequent source of web site defacement, as attackers can easily abuse 
+misconfigured web servers that allow unrestricted PUT functionality from 
+arbitrary users.
+
+--
+Detailed Information:
+The rule searches for HTTP requests using the PUT method, and tracks 
+these sessions.  The rule is intended to be used with SID 100000316 to 
+track successful PUT requests, which may represent successful defacement
+attacks, instead of all PUT requests.
+
+Administrators who wish to track all PUT requests (successful or not) should 
+remove the "flowbits:noalert;" section of this rule.
+
+--
+Affected Systems:
+Any web server
+
+--
+Attack Scenarios:
+An attacker can issue a PUT reuqest via a script, many different pieces of 
+software, or through a manual connection to any web server port.
+
+--
+Ease of Attack:
+Simple.  Numerous tools exist for creating PUT requests, including some geared
+specifically towards web site defacement.  
+
+--
+False Positives:
+Organizations that use WebDAV to manage their web content may experience
+false positives, as the PUT method is a normal part of the WebDAV protocol.
+Additionally, any other legitimate web applications which use the PUT method
+will generate false positives.
+
+--
+False Negatives:
+None
+
+--
+Corrective Action:
+In cases of web site defacement, delete the newly-created file(s) and/or 
+restore them from a reliable backup. In all cases, be sure to tune web server
+configuration to allow PUT requests only where necessary for a legitimate web
+application to function.
+
+--
+Contributors:
+David J. Bianco, <david@vorant.com>
+
+-- 
+Additional References:
+http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.6

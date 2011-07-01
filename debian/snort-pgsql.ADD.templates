@@ -1,0 +1,17 @@
+
+Template: snort-pgsql/needs_db_config
+Type: note
+_Description: Configured database mandatory for Snort
+ Snort needs a configured database before it can successfully start up.
+ In order to create the structure you need to run the following commands
+ AFTER the package is installed:
+ .
+  cd /usr/share/doc/snort-pgsql/
+  zcat create_postgresql.gz | psql -U <user> -h <host> -W <databasename>
+ .
+ Fill in the correct values for the user, host, and database names.
+ PostgreSQL will prompt you for the password.
+ .
+ After you have created the database structure, you will need to start Snort
+ manually.
+

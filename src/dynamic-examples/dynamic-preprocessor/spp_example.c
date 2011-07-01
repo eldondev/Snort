@@ -1,6 +1,8 @@
-/****************************************************************************
+/*
+ * spp_example.c
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire,Inc
+ * Steven A. Sturges <ssturges@sourcefire.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,14 +19,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- ****************************************************************************/
-/*
- * spp_example.c
- *
- * Author:
- *
- * Steven A. Sturges <ssturges@sourcefire.com>
- *
  * Description:
  *
  * This file is part of an example of a dynamically loadable preprocessor.
@@ -38,15 +32,11 @@
 #include <ctype.h>
 #include <string.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "preprocids.h"
 #include "sf_snort_packet.h"
 #include "sf_dynamic_preproc_lib.h"
 #include "sf_dynamic_preprocessor.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
 
@@ -68,6 +58,8 @@ ExampleConfig *ex_eval_config = NULL;
 tSfPolicyUserContextId ex_swap_config = NULL;
 #endif
 
+extern DynamicPreprocessorData _dpd;
+
 static void ExampleInit(char *);
 static void ExampleProcess(void *, void *);
 static ExampleConfig * ExampleParse(char *);
@@ -87,7 +79,7 @@ void ExampleSetup(void)
             ExampleReloadSwap, ExampleReloadSwapFree);
 #endif
 
-    DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Preprocessor: Example is setup\n"););
+    DEBUG_WRAP(_dpd.debugMsg(DEBUG_PLUGIN, "Preprocessor: Example is setup\n"););
 }
 
 static void ExampleInit(char *args)
@@ -111,21 +103,21 @@ static void ExampleInit(char *args)
     /* Register the preprocessor function, Transport layer, ID 10000 */
     _dpd.addPreproc(ExampleProcess, PRIORITY_TRANSPORT, 10000, PROTO_BIT__TCP | PROTO_BIT__UDP);
 
-    DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Preprocessor: Example is initialized\n"););
+    DEBUG_WRAP(_dpd.debugMsg(DEBUG_PLUGIN, "Preprocessor: Example is initialized\n"););
 }
 
 static ExampleConfig * ExampleParse(char *args)
 {
     char *arg;
     char *argEnd;
-    long port;
+    unsigned long port;
     ExampleConfig *config = (ExampleConfig *)calloc(1, sizeof(ExampleConfig));
 
     if (config == NULL)
         _dpd.fatalMsg("Could not allocate configuration struct.\n");
 
     arg = strtok(args, " \t\n\r");
-    if(arg && !strcasecmp("port", arg))
+    if(!strcasecmp("port", arg))
     {
         arg = strtok(NULL, "\t\n\r");
         if (!arg)
@@ -133,19 +125,18 @@ static ExampleConfig * ExampleParse(char *args)
             _dpd.fatalMsg("ExamplePreproc: Missing port\n");
         }
 
-        port = strtol(arg, &argEnd, 10);
+        port = strtoul(arg, &argEnd, 10);
         if (port < 0 || port > 65535)
         {
             _dpd.fatalMsg("ExamplePreproc: Invalid port %d\n", port);
         }
-        config->portToCheck = (u_int16_t)port;
+        config->portToCheck = port;
 
         _dpd.logMsg("    Port: %d\n", config->portToCheck);
     }
     else
     {
-        _dpd.fatalMsg("ExamplePreproc: Invalid option %s\n",
-            arg?arg:"(missing port)");
+        _dpd.fatalMsg("ExamplePreproc: Invalid option %s\n", arg);
     }
 
     return config;
@@ -206,7 +197,7 @@ static void ExampleReload(char *args)
     /* Register the preprocessor function, Transport layer, ID 10000 */
     _dpd.addPreproc(ExampleProcess, PRIORITY_TRANSPORT, 10000, PROTO_BIT__TCP | PROTO_BIT__UDP);
 
-    DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Preprocessor: Example is initialized\n"););
+    DEBUG_WRAP(_dpd.debugMsg(DEBUG_PLUGIN, "Preprocessor: Example is initialized\n"););
 }
 
 static int ExampleReloadSwapPolicyFree(tSfPolicyUserContextId config, tSfPolicyId policyId, void *data)

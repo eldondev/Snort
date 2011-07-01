@@ -15,15 +15,20 @@ Potentially harmful execution of binaries through perl open()
 
 --
 Detailed Information: 
-An open source calendar perl script by Matt Kruse, Allows commands to be executed without input verification using the perl open() function. ie /cgi-bin/calendar.pl place the string "|ping 127.0.0.1|" in the configuration file field, this executes the command "ping 127.0.0.1" 
+An open source calendar perl script by Matt Kruse, Allows commands to be
+executed without input verification using the perl open() function. ie
+/cgi-bin/calendar.pl place the string "|ping 127.0.0.1|" in the
+configuration file field, this executes the command "ping 127.0.0.1" 
 
 --
 Affected Systems:
-Any web server running the application.
+	Matt Kruse Calendar Script version 2.2.
 
 --
 Attack Scenarios: 
-An unauthenticated user can execute arbitrary programs on the server by accessing calendar.pl and inputting commands such as "|mail /etc/passwd|" into the configuration file field.
+An unauthenticated user can execute arbitrary programs on the server by
+accessing calendar.pl and inputting commands such as "|mail
+/etc/passwd|" into the configuration file field.
 
 --
 Ease of Attack: 
@@ -57,9 +62,6 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 
 -- 
 Additional References:
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0432
 
 Bugtraq:
 http://online.securityfocus.com/bid/1215

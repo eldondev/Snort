@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000125
+
+-- 
+Summary: 
+This event is generated when an attempt is made to overflow a buffer in the 
+SafeNet Sentinel License Manager.
+
+-- 
+
+Impact: 
+The affected server will be crashed, and remote code execution with system 
+privileges is possible.
+
+--
+Detailed Information:
+If the SafeNet Sentinel License Manager recieves a packet containing over 1,000 
+bytes, a buffer will be overflowed. If properly crafted data is sent, arbitrary 
+code may be executed with system privileges.
+
+--
+Affected Systems:
+SafeNet Sentinel License Manager 7.2.0.2
+
+--
+
+Attack Scenarios: 
+A script must be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as an attack is included as part of the Metasploit vulnerability 
+testing framework.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Upgrade to version 8.0 of the affected software.
+
+--
+Contributors: 
+Judy Novak <judy.novak@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

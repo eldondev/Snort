@@ -2,21 +2,21 @@ Rule:
 
 --
 Sid:
-
 1325
 
 --
 Summary:
+This event is generated when an attempt is made to exploit a known
+vulnerability in implementations of Secure Shell (ssh) version 1.
 
-This event is generated when an attempt is made to exploit a known vulnerability in implementations of Secure Shell (ssh) version 1.
+NOTE: This rule is NOT enabled by default. The rule looks for the
+overflow pattern and as such can generate false positive events.
 
 --
 Impact:
 A buffer overflow will allow an attack to execute any arbitrary commands
 with the privileges of the root user, leading to full compromise of the 
 system and perhaps other systems as well.
-
-
 
 --
 Detailed Information:
@@ -38,7 +38,6 @@ contained an exploitable integer overflow within detection code.
 
 A successful attack will allow corruption of the ssh daemon, allowing
 code to be run with its privileges.
-
 
 --
 Affected Systems:
@@ -99,9 +98,6 @@ Snort documentation contributed by Nawapong Nakjang (tony@ksc.net, tonie@thai.co
 
 --
 Additional References:
-
-Bugtraq:
-http://www.securityfocus.com/bid/2347/
 
 CERT:
 http://www.kb.cert.org/vuls/id/945216

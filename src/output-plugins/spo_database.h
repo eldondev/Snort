@@ -20,7 +20,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_database.h,v 1.18 2009/05/06 22:29:13 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SPO_DATABASE_H__
 #define __SPO_DATABASE_H__

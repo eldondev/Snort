@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2006-2011 Sourcefire, Inc.
+** Copyright (C) 2006-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -55,8 +55,11 @@
 
 #include "snort.h"
 
-#include "snort_debug.h"
+#include "debug.h"
 #include "sfPolicy.h"
+
+extern SnortConfig *snort_conf;
+extern SnortConfig *snort_conf_for_parsing;
 
 typedef struct
 {
@@ -94,7 +97,6 @@ extern char sfat_grammar_error_printed;
 extern char sfat_insufficient_space_logged;
 extern char sfat_fatal_error;
 int ParseTargetMap(char *filename);
-void DestroyBufferStack(void);
 
 extern char *sfat_saved_file;
 
@@ -104,6 +106,8 @@ extern volatile int attribute_reload_thread_running;
 extern volatile int attribute_reload_thread_stop;
 extern int reload_attribute_table_flags;
 extern const struct timespec thread_sleep;
+
+extern SFBASE sfBase;
 
 /*****TODO: cleanup to use config directive *******/
 #define ATTRIBUTE_MAP_MAX_ROWS 1024
@@ -160,7 +164,7 @@ char *SFAT_LookupAttributeNameById(int id)
 
     if (!pConfig->next.mapTable)
         return NULL;
-
+    
     entry = sfxhash_find(pConfig->next.mapTable, &id);
 
     if (entry)
@@ -250,7 +254,7 @@ void FreeHostEntry(HostAttributeEntry *host)
 
 void PrintAttributeData(char *prefix, AttributeData *data)
 {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     DebugMessage(DEBUG_ATTRIBUTE, "AttributeData for %s\n", prefix);
     if (data->type == ATTRIBUTE_NAME)
     {
@@ -338,7 +342,7 @@ int SFAT_SetHostIp4(char *ip)
     tmp_host = sfrt_lookup(&ipAddr, pConfig->next.lookupTable);
 
     /*** If found, free current_host and set current_host to the one found */
-    if (tmp_host &&
+    if (tmp_host && 
         (tmp_host->ipAddr == ipAddr) &&
         (tmp_host->bits == bits))
     {
@@ -423,10 +427,9 @@ int SFAT_AddApplicationData(void)
 #ifdef SUP_IP6
             sfip_t host_addr;
             sfip_set_ip(&host_addr, &current_host->ipAddr);
-            host_addr.ip32[0] = ntohl(host_addr.ip32[0]);
 #else
             struct in_addr host_addr;
-            host_addr.s_addr = ntohl(current_host->ipAddr);
+            host_addr.s_addr = current_host->ipAddr;
 #endif
             FatalError("%s(%d): Missing required field in Service attribute table for host %s\n",
                 file_name, file_line,
@@ -449,10 +452,9 @@ int SFAT_AddApplicationData(void)
 #ifdef SUP_IP6
             sfip_t host_addr;
             sfip_set_ip(&host_addr, &current_host->ipAddr);
-            host_addr.ip32[0] = ntohl(host_addr.ip32[0]);
 #else
             struct in_addr host_addr;
-            host_addr.s_addr = ntohl(current_host->ipAddr);
+            host_addr.s_addr = current_host->ipAddr;
 #endif
             FatalError("%s(%d): Missing required field in Client attribute table for host %s\n",
                 file_name, file_line,
@@ -480,7 +482,7 @@ int SFAT_SetApplicationAttribute(AttributeData *data, int attribute)
             if (data->type == ATTRIBUTE_NAME)
             {
                 char *endPtr = NULL;
-                unsigned long value = SnortStrtoul(data->value.s_value, &endPtr, 10);
+                unsigned long value = strtoul(data->value.s_value, &endPtr, 10);
                 if ((endPtr == &data->value.s_value[0]) ||
                     (errno == ERANGE))
                 {
@@ -518,33 +520,21 @@ int SFAT_SetApplicationAttribute(AttributeData *data, int attribute)
     return SFAT_OK;
 }
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
 void PrintHostAttributeEntry(HostAttributeEntry *host)
 {
     ApplicationEntry *app;
     int i = 0;
-#ifndef SUP_IP6
-    struct in_addr host_addr;
-#else
-    sfip_t host_addr;
-#endif
 
     if (!host)
         return;
 
-#ifndef SUP_IP6
-    host_addr.s_addr = ntohl(host->ipAddr);
-#else
-    sfip_set_ip(&host_addr, &host->ipAddr);
-    host_addr.ip32[0] = ntohl(host_addr.ip32[0]);
-#endif
-
     DebugMessage(DEBUG_ATTRIBUTE, "Host IP: %s/%d\n",
 #ifdef SUP_IP6
-            inet_ntoa(&host_addr),
+            inet_ntoa(&host->ipAddr),
             host->ipAddr.bits
 #else
-            inet_ntoa(host_addr),
+            inet_ntoax(ntohl(host->ipAddr)),
             host->bits
 #endif
             );
@@ -729,7 +719,7 @@ HostAttributeEntry *SFAT_LookupHostEntryByIp4Addr(uint32_t ipAddr)
 HostAttributeEntry *SFAT_LookupHostEntryBySrc(Packet *p)
 {
 #ifdef SUP_IP6
-    if (!p || !p->iph_api)
+    if (!p || !p->iph)
         return NULL;
 
     return SFAT_LookupHostEntryByIP(GET_SRC_IP(p));
@@ -748,7 +738,7 @@ HostAttributeEntry *SFAT_LookupHostEntryBySrc(Packet *p)
 HostAttributeEntry *SFAT_LookupHostEntryByDst(Packet *p)
 {
 #ifdef SUP_IP6
-    if (!p || !p->iph_api)
+    if (!p || !p->iph)
         return NULL;
 
     return SFAT_LookupHostEntryByIP(GET_DST_IP(p));
@@ -889,8 +879,6 @@ void SFAT_Cleanup(void)
         }
         updatePolicyCallbackList = NULL;
     }
-
-    DestroyBufferStack();
 }
 
 #define set_attribute_table_flag(flag) \
@@ -952,7 +940,7 @@ void *SFAT_ReloadAttributeTableThread(void *arg)
      */
     while (!attribute_reload_thread_stop)
     {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         DebugMessage(DEBUG_ATTRIBUTE,
             "AttrReloadThread: Checking for new attr table...\n");
 #endif
@@ -963,7 +951,7 @@ void *SFAT_ReloadAttributeTableThread(void *arg)
         {
             if (check_attribute_table_flag(ATTRIBUTE_TABLE_AVAILABLE_FLAG))
             {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                 DebugMessage(DEBUG_ATTRIBUTE,
                     "AttrReloadThread: Freeing old attr table...\n");
 #endif
@@ -971,7 +959,7 @@ void *SFAT_ReloadAttributeTableThread(void *arg)
                  * prev.mapTable and prev.lookupTable */
                 sfxhash_delete(pConfig->prev.mapTable);
                 pConfig->prev.mapTable = NULL;
-
+    
                 sfrt_cleanup(pConfig->prev.lookupTable, SFAT_CleanupCallback);
                 sfrt_free(pConfig->prev.lookupTable);
                 pConfig->prev.lookupTable = NULL;
@@ -987,7 +975,7 @@ void *SFAT_ReloadAttributeTableThread(void *arg)
         {
             /* Is there an new table ready? */
             set_attribute_table_flag(ATTRIBUTE_TABLE_RELOADING_FLAG);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             DebugMessage(DEBUG_ATTRIBUTE,
                 "AttrReloadThread: loading new attr table.\n");
 #endif
@@ -1062,14 +1050,14 @@ void *SFAT_ReloadAttributeTableThread(void *arg)
         else
         {
             /* Sleep for 60 seconds */
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             DebugMessage(DEBUG_ATTRIBUTE,
                 "AttrReloadThread: Checked for new attr table... sleeping.\n");
 #endif
             sleep(60);
         }
     }
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     DebugMessage(DEBUG_ATTRIBUTE,
         "AttrReloadThread: exiting... Handled %d reloads\n", reloads);
 #endif
@@ -1092,7 +1080,7 @@ void AttributeTableReloadCheck(void)
                  * flag... */
     }
     /* Swap the attribute table pointers. */
-    else if ((pConfig != NULL) &&
+    else if ((pConfig != NULL) && 
             check_attribute_table_flag(ATTRIBUTE_TABLE_AVAILABLE_FLAG))
     {
         LogMessage("Swapping Attribute Tables.\n");
@@ -1227,8 +1215,8 @@ void SFAT_StartReloadThread(void)
     while (!attribute_reload_thread_running)
         nanosleep(&thread_sleep, NULL);
 
-    LogMessage("Attribute Table Reload Thread Started, thread %p (%u)\n",
-               (void*)attribute_reload_thread_id, attribute_reload_thread_pid);
+    LogMessage("Attribute Table Reload Thread Started, thread %u (%u)\n",
+               attribute_reload_thread_id, attribute_reload_thread_pid);
 #endif
 }
 

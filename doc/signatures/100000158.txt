@@ -1,0 +1,64 @@
+Rule: 
+
+--
+Sid: 
+100000158
+
+-- 
+Summary: 
+This event is generated when an abnormally larger number of SIP INVITE messages 
+is received in a short time frame.
+
+--
+Impact:
+This can be an indication of a denial of service attack in progress, or simply 
+a poorly configured or implemented user agent.
+
+--
+Detailed Information:
+This rule is used to detect overly large numbers of SIP INVITE messages coming 
+into hosts on an internal network, which may indicate a denial of service 
+attack in progress. Since this traffic could also be the the result of a poorly 
+configured user agent, or simply a very busy SIP proxy, careful analysis of 
+both the hosts receiving and sending this traffic is required before 
+determining that an attack has actually taken place.
+
+--
+Affected Systems:
+Any which implement the SIP protocol.
+
+--
+Attack Scenarios:
+An attacker could use a script to flood a system with INVITE messages, causing 
+a denial of service.
+
+--
+Ease of Attack:
+Simple, as SIP is a public, well-documented protocol.
+
+--
+False Positives:
+Known SIP proxies may receive a high volume of legitimate INVITE requests, and 
+NAT devices may appear to be sending a larger number of INVITE requests than a 
+regular host. It is recommended that users whitelist known SIP proxies and NAT 
+devices.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Use a firewall or other access-restriction device to block unwanted messages at 
+your network's border.
+
+--
+Contributors:
+Jiri Markl <jiri.markl@nextsoft.cz>
+Sourcefire Research Team
+
+--
+Additional References
+Other:
+
+--

@@ -1,0 +1,59 @@
+Rule: 
+
+--
+Sid: 
+100000164
+
+-- 
+Summary: 
+This event is generated when an ICMP packet crafted to exploit a denial of 
+service vulnerability in the Linux kernel is detected.
+
+--
+Impact:
+A denial of service will be caused against vulnerable hosts. If an attacker 
+sends a continuous stream of such packets, the host can be prevented from 
+functioning properly for a prolonged period of time.
+
+--
+Detailed Information:
+Linux kernel versions below 2.6.13 contain a flaw which will result in a null 
+pointer dereference when processing ICMP packets that contain invalid SCTP 
+data. In order to be vulnerable, a host must have SCTP enabled.
+
+--
+Affected Systems:
+Any Linux system with a kernel version < 2.6.13 with SCTP enabled.
+
+--
+Attack Scenarios:
+An attacker could use a script to send malformed packets to a vulnerable host.
+
+--
+Ease of Attack:
+Simple, as a publicly available exploit script exists.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Upgrade Linux systems' kernel to version 2.6.13 or higher. Alternately, disable 
+SCTP or use a firewall to block ICMP traffic at your network's border.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+Other:
+http://oss.sgi.com/projects/netdev/archive/2005-07/msg00142.html
+
+--

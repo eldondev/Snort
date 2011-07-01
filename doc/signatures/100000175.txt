@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000175
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a buffer overflow 
+vulnerability present in the Ethereal protocol analyzer's SLIMP3 decoder. 
+
+-- 
+
+Impact: 
+By sending a properly crafted UDP packet, attackers may execute arbitrary code 
+of 
+their choosing with the privileges of the user running the affected software.
+
+--
+Detailed Information:
+This rule detects attempts to overflow a vulnerable buffer in the Ethereal
+protocol analyzer's SLIMP3 decoder. It is specifically designed to search for
+the payload present in a publicly circulating exploit.
+
+--
+Affected Systems:
+Ethereal 0.10.12 and below
+
+--
+
+Attack Scenarios: 
+An  automated script may be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as an exploit is publicly available.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+Other payloads which will overflow this buffer may be missed.
+
+-- 
+
+Corrective Action: 
+Upgrade to Ethereal 0.10.13 or higher.
+
+--
+Contributors: 
+rmkml <rmkml@free.fr>
+
+-- 
+Additional References:
+http://www.frsirt.com/english/advisories/2005/2148
+
+--

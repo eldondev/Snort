@@ -1,7 +1,7 @@
-/* $Id: stream_api.c,v 1.8 2011/02/09 23:23:30 jjordan Exp $ */
+/* $Id$ */
 
 /*
- * ** Copyright (C) 2005-2011 Sourcefire, Inc.
+ * ** Copyright (C) 2005-2009 Sourcefire, Inc.
  * ** AUTHOR: Steven Sturges
  * **
  * ** This program is free software; you can redistribute it and/or modify

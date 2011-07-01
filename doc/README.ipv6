@@ -14,33 +14,46 @@ with IPv6 support:
     Portscan
     BO
     RPC Decode
-    Frag3
-    FTP Telnet
-    DNS
-    SMTP
-
-IPv6 support is also included for the following.
-    Respond
-    Respond2
-    Dynamic plugins (Shared Object rules)
 
 IPv6 support is not included for the following, but will be 
 added in a future release:
 
+    Frag3
     Database
     Aruba
     Prelude
+    Respond
+    Respond2
+    Dynamic plugins (Shared Object rules)
+    FTP Telnet
+    DNS
+    SMTP
+    Stream4
+    Flow 
 
         Note: For stream reassembly and flow, use Stream5.
 
-All rule options are supported with IPv6
+All rule options are supported with the exception of the following:
+
+    react
+    resp
     
 
 IPv6 limitations
 ================
 
+IPv6 fragmentation reassembly is not presently supported. Fragmented packets
+will be treated as individual, unfragmented packets.
+
+Various IP mapping techniques are ignored in Snort.  If a user has a rule that
+matches any IPv4 address a.b.c.d, but the target packet is tunneling IPv4 
+within IPv6 using some IP-mapping that corresponds to the address a.b.c.d, the
+rule will not match.  
+
 No rule options have yet been added to support inspection of specific IP 
 extension headers.  These will be added in a later release.
+
+No special support is given to ICMP6; it is handled the same as ICMP.  
 
 
 IPv6 configuration

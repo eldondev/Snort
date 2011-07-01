@@ -1,8 +1,8 @@
-% $Id: faq.tex,v 1.13 2011/06/08 00:33:00 jjordan Exp $
+% $Id$
 
 %latex2html -info 0 -local_icons -show_section_numbers -link 2 -split +1 faq.tex
 \documentclass{article}
-\usepackage{html}
+\usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{fancyhdr}
 \usepackage{makeidx}
@@ -86,7 +86,7 @@ Dennis Hollingworth &  Paul Howell      &      Stef Mit         &   Ofir Arkin\\
 
 
 If you do not see your name on this list and you have contributed to the faq,
-please email \htmladdnormallink{bugs@snort.org}{mailto:bugs@snort.org}.
+please email \htmladdnormallink{bmc@snort.org}{mailto:bmc@snort.org}.
 
 
 Dragos Ruiu: This version of this guide has been brought to you by the kind
@@ -98,11 +98,11 @@ book. (route++)
 
 \newpage
 
-\begin{latexonly}
+%\begin{latexonly}
 \tableofcontents
 
 \newpage
-\end{latexonly}
+%\end{latexonly}
 
 \section{Background}
 
@@ -118,8 +118,8 @@ Nope. fyodor@insecure.org is the author of nmap, and he uses the same pseudonym 
 
 \subsection{Where do I get more help on Snort?}
 
-Check the website, \htmladdnormallink{http://www.snort.org/}{http://www.snort.org/}.  Other good resources are available in the source distribution, including the \htmladdnormallink{Snort Users Manual}{http://www.snort.org/docs} and the USAGE file. There is also a excellent mailing list, snort-users. You can find
-info on how to signup at \htmladdnormallink{http://www.snort.org/community/mailing-lists/}{http://www.snort.org/community/mailing-lists}. You can also join 
+Check the website, \htmladdnormallink{http://www.snort.org/}{http://www.snort.org/}.  Other good resources are available in the source distribution, including the \htmladdnormallink{Snort Users Manual}{http://www.snort.org/doc/SnortUsersManual.pdf} and the USAGE file. There is also a excellent mailing list, snort-users. You can find
+info on how to signup at \htmladdnormallink{http://www.snort.org/lists.html}{http://www.snort.org/lists.html}. You can also join 
 \#snort on irc.freenode.net.
 
 \subsection{Where can I get more reading and courses about IDS?\label{courses}}
@@ -296,10 +296,9 @@ instead.
 Repeat after me:
 
 \begin{verbatim}
-    Go to http://www.snort.org/snort-downloads
-    Click the link for the <release> tar.gz
-    tar zxvf snort-<release>.tar.gz
-    cd <release>
+    wget http://www.snort.org/downloads/snort-stable.tgz
+    tar zxvf snort-stable.tgz
+    cd snort-stable
     ./configure
     make
     su
@@ -313,10 +312,9 @@ Repeat after me:
 
 ...and if you want to use our binary package uninstaller :-):
 \begin{verbatim}
-    cd <release>; make uninstall
+    cd snort-stable; make uninstall
 \end{verbatim}
-
-And if you must, you can find some binaries at \htmladdnormallink{http://www.snort.org/snort-downloads}{http://www.snort.org/snort-downloads}. 
+And if you must, you can find some binaries at \htmladdnormallink{http://www.snort.org/dl/binaries/}{http://www.snort.org/dl/binaries/}. 
 You can also find Snort in most BSD ports' trees.
 
 \subsection{How do I run Snort?}
@@ -940,7 +938,7 @@ line.
 {\bf For $=>$ 2.0:}
 
 Please see the documents on v2.0 at:
-\htmladdnormallink{http://www.snort.org/docs/development-papers/}{http://www.snort.org/docs/development-papers/}.
+\htmladdnormallink{http://www.snort.org/docs/\#devel}{http://www.snort.org/docs/\#devel}.
 
 {\bf For $<=$ 1.9.X:}
 
@@ -2116,9 +2114,9 @@ IP address range. (HOME\_NET=192.168.0.0/16)
 
 \subsection{Is it possible with snort to add a ipfilter/ipfw rule to a firewall? }
 
-Yes.  Select the appropriate DAQ module for your system.  IPQ, NFQ, and IPFW
-DAQs are available, among others.  See README.daq for details.  Other
-possibilities are listed below.
+Yes, with additional software from the contrib section at
+\htmladdnormallink{http://www.snort.org}{http://www.snort.org}.  This can be dangerous and is not recommended
+unless you know what you're doing.
 
 \begin{itemize}
 \item SnortSam

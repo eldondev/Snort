@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -17,18 +17,18 @@
 ** along with this program; if not, write to the Free Software
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-/* $Id: spo_log_null.c,v 1.19 2011/06/08 00:33:16 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_log_null
- *
+ * 
  * Purpose:
  *
- * This module is a NULL placeholder for people that want to turn off
+ * This module is a NULL placeholder for people that want to turn off 
  * logging for whatever reason.  Please note that logging is separate from
  * alerting, they are completely separate output facilities within Snort.
  *
  * Arguments:
- *
+ *   
  * None.
  *
  * Effect:
@@ -41,29 +41,24 @@
 
 #include <sys/types.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "spo_log_null.h"
 #include "decode.h"
 #include "event.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 #include "snort.h"
 
 /* list of function prototypes for this output plugin */
-static void LogNullInit(char *);
-static void LogNull(Packet *, char *, void *, Event *);
-static void LogNullCleanExitFunc(int, void *);
-static void LogNullRestartFunc(int, void *);
+void LogNullInit(char *);
+void LogNull(Packet *, char *, void *, Event *);
+void LogNullCleanExitFunc(int, void *);
+void LogNullRestartFunc(int, void *);
 
 void LogNullSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("log_null", OUTPUT_TYPE_FLAG__LOG, LogNullInit);
 
@@ -71,7 +66,7 @@ void LogNullSetup(void)
 }
 
 
-static void LogNullInit(char *args)
+void LogNullInit(char *args)
 {
     DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Output: LogNull Initialized\n"););
 
@@ -83,18 +78,18 @@ static void LogNullInit(char *args)
 
 
 
-static void LogNull(Packet *p, char *msg, void *arg, Event *event)
+void LogNull(Packet *p, char *msg, void *arg, Event *event)
 {
     return;
 }
 
 
-static void LogNullCleanExitFunc(int signal, void *arg)
+void LogNullCleanExitFunc(int signal, void *arg)
 {
     return;
 }
 
-static void LogNullRestartFunc(int signal, void *arg)
+void LogNullRestartFunc(int signal, void *arg)
 {
     return;
 }

@@ -19,9 +19,9 @@ source.
 
 --
 Detailed Information:
-internal resource to an unknown external source. This may be an 
-indication of an attempt to initialize an encrypted session for 
-nefarious purposes.
+This event indicates that a PPTP session from an internal resource to an
+unknown external source has been attempted. This may be an indication of
+an attempt to initialize an encrypted session for nefarious purposes.
 
 An internal user may try to use an encrypted tunnel to evade possible 
 detection when transferring files from an internal resource to an 

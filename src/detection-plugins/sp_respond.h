@@ -1,6 +1,6 @@
-/* $Id: sp_respond.h,v 1.21 2011/02/09 23:23:05 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 1999,2000,2001 Christian Lademann <cal@zls.de>
 **
@@ -20,14 +20,19 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-#ifndef __SP_RESPOND_H__
-#define __SP_RESPOND_H__
+/*  I N C L U D E S
+**********************************************************/
+
+/*  D E F I N E S
+************************************************************/
+#ifndef __RESPOND_H__
+#define __RESPOND_H__
 
 #ifdef ENABLE_RESPOND
 void SetupRespond(void);
+void RespondFree(void* d);
 uint32_t RespondHash(void* d);
 int RespondCompare(void *l, void *r);
-#endif
+#endif /* ENABLE_RESPOND */
 
-#endif
-
+#endif /* __RESPOND_H__ */

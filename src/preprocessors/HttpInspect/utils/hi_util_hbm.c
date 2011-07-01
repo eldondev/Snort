@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,21 +18,17 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_hbm.c
-**
+**  
 **  @author     Marc Norton <mnorton@sourcefire.com>
-**
+**  
 **  @brief      Implementation of a Horspool method of Boyer-Moore
-**
+**  
 */
 
 #include <stdlib.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "hi_util_hbm.h"
 #include "util.h"
@@ -40,7 +36,7 @@
 /*
 *
 *  Boyer-Moore-Horspool for small pattern groups
-*
+*    
 */
 #ifndef WIN32  /* To avoid naming conflict, Win32 will use the hbm_prepx() in mwm.c */
 int hbm_prepx(HBM_STRUCT *p, unsigned char * pat, int m)
@@ -98,29 +94,29 @@ unsigned char * hbm_match(HBM_STRUCT * px, unsigned char *text, int n)
   pat    = px->P;
   bcShift= px->bcShift;
 
-  t  = text + m1;
-  et = text + n;
+  t  = text + m1;  
+  et = text + n; 
 
   /* Handle 1 Byte patterns - it's a faster loop */
   /*
   if( !m1 )
   {
-    for( ;t<et; t++ )
+    for( ;t<et; t++ ) 
       if( *t == *pat ) return t;
     return 0;
   }
   */
-
+ 
   /* Handle MultiByte Patterns */
   while( t < et )
   {
     /* Scan Loop - Bad Character Shift */
-    do
+    do 
     {
       t += bcShift[*t];
       if( t >= et )return 0;;
 
-      t += (k=bcShift[*t]);
+      t += (k=bcShift[*t]);      
       if( t >= et )return 0;
 
     } while( k );
@@ -144,9 +140,9 @@ unsigned char * hbm_match(HBM_STRUCT * px, unsigned char *text, int n)
     return q;
 
 NoMatch:
-
+    
     /* Shift by 1, this replaces the good suffix shift */
-    t++;
+    t++; 
   }
 
   return 0;

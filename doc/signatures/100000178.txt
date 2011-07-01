@@ -1,0 +1,60 @@
+Rule: 
+
+--
+Sid: 
+100000178
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in the Hasbani Web server.
+
+-- 
+Impact: 
+Denial of Service (DoS).
+
+--
+Detailed Information:
+A vulnerability exists in the Hasbani web server that may allow an attacker to 
+initiate a DoS condition on the server. Poor programming in the web server may 
+result in the server entering an endless loop when processing malformed GET 
+requests. This can lead to an exhaustion of system resources and a DoS 
+condition.
+
+--
+Affected Systems:
+Hasbani web server 2.0
+
+--
+Attack Scenarios: 
+An attacker can supply a malformed GET request to the web server to cause the 
+DoS. Alternately, exploit code exists for this vulnerability.
+
+-- 
+Ease of Attack: 
+Simple. Exploits exists.
+
+-- 
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+Corrective Action: 
+Use Apache.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+
+--

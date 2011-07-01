@@ -1,0 +1,77 @@
+Rule: 
+
+--
+Sid: 
+100000122
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a buffer overflow in 
+the Macromedia mod_jrun module.
+
+-- 
+
+Impact: 
+The affected server will be crashed, and remote code execution with the 
+privileges of the server is possible.
+
+--
+Detailed Information:
+Specially crafted data which is sent to the vulnerable server that contains a 
+colon followed by 1,000 or more bytes will trigger this buffer overflow. The 
+affected server will crash, and remote code execution with the privileges of 
+the affected server is possible.
+NOTE: This rule may severely impact performance. It is recommended that you 
+disable this rule if you are not running vulnerable software.
+
+--
+Affected Systems:
+Macromedia ColdFusion MX 6.0
+Macromedia ColdFusion MX 6.1
+Macromedia ColdFusion MX J2EE 6.1
+Macromedia JRun 3.0
+Macromedia JRun 3.1
+Macromedia JRun 4.0
+Hitachi Cosminexus Enterprise Enterprise Edition 01-02
+Hitachi Cosminexus Enterprise Enterprise Edition 01-01
+Hitachi Cosminexus Enterprise Standard Edition 01-02
+Hitachi Cosminexus Enterprise Standard Edition 01-01
+Hitachi Cosminexus Server Web Edition 01-02
+Hitachi Cosminexus Server Web Edition 01-01
+
+--
+
+Attack Scenarios: 
+A script must be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as an attack is included as part of the Metasploit vulnerability 
+testing framework.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Patches are available from Macromedia. As a workaround, the vendor suggests 
+disabling the "verbose" debug mode on web server connectors, as it will stop 
+attackers from exploiting this vulnerability.
+
+--
+Contributors: 
+Judy Novak <judy.novak@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

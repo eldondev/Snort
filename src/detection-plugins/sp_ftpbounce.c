@@ -1,6 +1,6 @@
-/* $Id: sp_ftpbounce.c,v 1.21 2011/06/08 00:33:09 jjordan Exp $ */
+/* $Id$ */
 /*
- ** Copyright (C) 2005-2011 Sourcefire, Inc.
+ ** Copyright (C) 2005-2009 Sourcefire, Inc.
  ** Author: Steven Sturges
  **
  ** This program is free software; you can redistribute it and/or modify
@@ -19,8 +19,8 @@
  ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* sp_ftpbounce
- *
+/* sp_ftpbounce 
+ * 
  * Purpose:
  *      Checks the address listed (a,b,c,d format) in the packet
  *      against the source address.
@@ -32,7 +32,7 @@
  *        None
  *      Optional:
  *        None
- *
+ *   
  *   sample rules:
  *   alert tcp any any -> any 21 (content: "PORT"; \
  *       ftpbounce;
@@ -60,14 +60,12 @@
 #endif
 #include <errno.h>
 
-#include "sf_types.h"
-#include "snort_bounds.h"
+#include "bounds.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "plugin_enum.h"
 #include "mstring.h"
@@ -81,7 +79,9 @@ extern PreprocStats ruleOTNEvalPerfStats;
 
 #include "sfhashfcn.h"
 #include "detection_options.h"
-#include "detection_util.h"
+
+extern const uint8_t *doe_ptr;
+extern uint8_t DecodeBuffer[DECODE_BLEN];
 
 void FTPBounceInit(char *, OptTreeNode *, int);
 void FTPBounceParse(char *, OptTreeNode *);
@@ -109,7 +109,7 @@ int FTPBounceCompare(void *l, void *r)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: SetupFTPBounce()
  *
  * Purpose: Load 'er up
@@ -122,7 +122,7 @@ int FTPBounceCompare(void *l, void *r)
 void SetupFTPBounce(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("ftpbounce", FTPBounceInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("ftpbounce", FTPBounceInit, NULL, OPT_TYPE_DETECTION);
 
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("ftpbounce", &ftpBouncePerfStats, 3, &ruleOTNEvalPerfStats);
@@ -133,10 +133,10 @@ void SetupFTPBounce(void)
 
 
 /****************************************************************************
- *
+ * 
  * Function: FTPBounceInit(char *, OptTreeNode *)
  *
- * Purpose: Generic rule configuration function.  Handles parsing the rule
+ * Purpose: Generic rule configuration function.  Handles parsing the rule 
  *          information and attaching the associated detection function to
  *          the OTN.
  *
@@ -152,7 +152,7 @@ void FTPBounceInit(char *data, OptTreeNode *otn, int protocol)
     OptFpList *fpl;
     void *ds_ptr_dup;
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     FTPBounceParse(data, otn);
 
@@ -173,7 +173,7 @@ void FTPBounceInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: FTPBounceParse(char *, void *, OptTreeNode *)
  *
  * Purpose: This is the function that is used to process the option keyword's
@@ -196,7 +196,7 @@ void FTPBounceParse(char *data, OptTreeNode *otn)
 
 
 /****************************************************************************
- *
+ * 
  * Function: FTPBounce(char *, OptTreeNode *, OptFpList *)
  *
  * Purpose: Use this function to perform the particular detection routine
@@ -207,7 +207,7 @@ void FTPBounceParse(char *data, OptTreeNode *otn)
  *            fp_list => pointer to the function pointer list
  *
  * Returns: If the detection test fails, this function *must* return a zero!
- *          On success, it calls the next function in the detection list
+ *          On success, it calls the next function in the detection list 
  *
  ****************************************************************************/
 int FTPBounce(void *option_data, Packet *p)
@@ -217,39 +217,31 @@ int FTPBounce(void *option_data, Packet *p)
     const uint8_t *this_param = doe_ptr;
 
     int dsize;
+    int use_alt_buffer = p->packet_flags & PKT_ALT_DECODE;
     const uint8_t *base_ptr, *end_ptr, *start_ptr;
     PROFILE_VARS;
 
     if (!doe_ptr)
     {
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
                     "[*] ftpbounce no doe_ptr set..\n"););
         return 0;
     }
 
     PREPROC_PROFILE_START(ftpBouncePerfStats);
 
-    if (Is_DetectFlag(FLAG_ALT_DETECT))
+    if(use_alt_buffer)
     {
-        dsize = DetectBuffer.len;
-        start_ptr = DetectBuffer.data;
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-            "Using Alternative Detect buffer!\n"););
-    }
-    else if(Is_DetectFlag(FLAG_ALT_DECODE))
-    {
-        dsize = DecodeBuffer.len;
-        start_ptr = DecodeBuffer.data;
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-                "Using Alternative Decode buffer!\n"););
+        dsize = p->alt_dsize;
+        start_ptr = DecodeBuffer;        
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
+                    "Using Alternative Decode buffer!\n"););
+
     }
     else
     {
         start_ptr = p->data;
-        if(IsLimitedDetect(p))
-            dsize = p->alt_dsize;
-        else
-            dsize = p->dsize;
+        dsize = p->dsize;
     }
 
     DEBUG_WRAP(
@@ -263,7 +255,7 @@ int FTPBounce(void *option_data, Packet *p)
 
     if(doe_ptr)
     {
-        /* @todo: possibly degrade to use the other buffer, seems non-intuitive*/
+        /* @todo: possibly degrade to use the other buffer, seems non-intuitive*/        
         if(!inBounds(start_ptr, end_ptr, doe_ptr))
         {
             DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
@@ -274,7 +266,7 @@ int FTPBounce(void *option_data, Packet *p)
     }
 
     while (isspace((int)*this_param) && (this_param < end_ptr)) this_param++;
-
+    
     do
     {
         int value = 0;
@@ -317,18 +309,20 @@ int FTPBounce(void *option_data, Packet *p)
         return DETECTION_OPTION_NO_MATCH;
     }
 
-#ifdef SUP_IP6
-    if ( ip != ntohl(GET_SRC_IP(p)->ip32[0]) )
-#else
-    if ( ip != ntohl(GET_SRC_IP(p)) )
-#endif
+    if (ip != ntohl(p->iph->ip_src.s_addr))
     {
         PREPROC_PROFILE_END(ftpBouncePerfStats);
         return DETECTION_OPTION_MATCH;
     }
-
-    DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-        "PORT command not being used in bounce\n"););
+    else
+    {
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+            "PORT command not being used in bounce\n"););
+        PREPROC_PROFILE_END(ftpBouncePerfStats);
+        return DETECTION_OPTION_NO_MATCH;
+    }
+    
+    /* Never reached */
     PREPROC_PROFILE_END(ftpBouncePerfStats);
     return DETECTION_OPTION_NO_MATCH;
 }

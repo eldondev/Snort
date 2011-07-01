@@ -1,4 +1,4 @@
-## $Id: Makefile.am,v 1.53 2011/06/08 17:57:17 jjordan Exp $
+## $Id$
 AUTOMAKE_OPTIONS=foreign no-dependencies
 
 EXTRA_DIST = \
@@ -17,49 +17,45 @@ INSTALL \
 NEWS \
 PROBLEMS \
 README \
-README.active \
 README.alert_order \
 README.ARUBA \
 README.asn1 \
-README.counts \
 README.csv \
-README.daq \
 README.database \
+README.dcerpc \
 README.dcerpc2 \
 README.decode \
 README.decoder_preproc_rules \
 README.dns \
 README.event_queue \
 README.filters \
+README.FLEXRESP \
+README.FLEXRESP2 \
 README.flowbits \
 README.frag3 \
 README.ftptelnet \
 README.gre \
 README.http_inspect \
-README.imap \
+README.INLINE \
 README.ipip \
 README.ipv6 \
 README.multipleconfigs \
-README.normalize \
 README.pcap_readmode \
 README.PerfProfiling \
 README.PLUGINS \
-README.pop \
 README.ppm \
 README.reload \
-README.rzb_saac \
-README.sensitive_data \
 README.sfportscan \
 README.SMTP \
 README.ssh \
 README.ssl \
-README.sip \
 README.stream5 \
 README.tag \
 README.thresholding \
 README.UNSOCK \
 README.variables \
 README.WIN32 \
+README.wireless \
 TODO \
 USAGE \
 WISHLIST

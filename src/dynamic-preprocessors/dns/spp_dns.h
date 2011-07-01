@@ -1,7 +1,7 @@
 /* $Id */
 
 /*
-** Copyright (C) 2006-2011 Sourcefire, Inc.
+** Copyright (C) 2006-2009 Sourcefire, Inc.
 **
 **
 ** This program is free software; you can redistribute it and/or modify

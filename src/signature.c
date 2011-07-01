@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Author(s):   Andrew R. Baker <andrewb@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -20,14 +20,9 @@
 
 #include <string.h>
 #include <ctype.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "signature.h"
 #include "util.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "mstring.h"
 #include "sfutil/sfghash.h"
 #include "snort.h"
@@ -41,6 +36,8 @@
 
 /* for eval and free functions */
 #include "detection-plugins/sp_pattern_match.h"
+
+extern SnortConfig *snort_conf_for_parsing;
 
 static OptTreeNode *soidOTN = NULL;
 
@@ -58,18 +55,18 @@ ReferenceNode * AddReference(SnortConfig *sc, ReferenceNode **head, char *system
 
     /* create the new node */
     node = (ReferenceNode *)SnortAlloc(sizeof(ReferenceNode));
-
+    
     /* lookup the reference system */
     node->system = ReferenceSystemLookup(sc->references, system);
     if (node->system == NULL)
         node->system = ReferenceSystemAdd(&sc->references, system, NULL);
 
     node->id = SnortStrdup(id);
-
+    
     /* Add the node to the front of the list */
     node->next = *head;
     *head = node;
-
+    
     return node;
 }
 
@@ -83,7 +80,7 @@ void FPrintReference(FILE *fp, ReferenceNode *ref_node)
     {
         if(ref_node->system->url)
         {
-            fprintf(fp, "[Xref => %s%s]", ref_node->system->url,
+            fprintf(fp, "[Xref => %s%s]", ref_node->system->url, 
                     ref_node->id);
         }
         else
@@ -103,7 +100,7 @@ void FPrintReference(FILE *fp, ReferenceNode *ref_node)
 /********************** Reference System Implementation ***********************/
 
 ReferenceSystemNode * ReferenceSystemAdd(ReferenceSystemNode **head, char *name, char *url)
-{
+{   
     ReferenceSystemNode *node;
 
     if (name == NULL)
@@ -266,14 +263,14 @@ void SoRuleOtnLookupFree(SFGHASH *so_rule_otn_map)
     sfghash_delete(so_rule_otn_map);
 }
 
-void OtnRemove(SFGHASH *otn_map, SFGHASH *so_rule_otn_map, OptTreeNode *otn)
+void OtnRemove(SFGHASH *otn_map, SFGHASH *so_rule_otn_map, OptTreeNode *otn) 
 {
     OtnKey key;
-
-    if (otn == NULL)
+    
+    if (otn == NULL) 
         return;
 
-    key.gid = otn->sigInfo.generator;
+    key.gid = otn->sigInfo.generator; 
     key.sid = otn->sigInfo.id;
 
     if (so_rule_otn_map != NULL)
@@ -299,9 +296,9 @@ void OtnDeleteData(void *data)
          * rule option type (as of now) that this is required for since
          * patterns are not added to the hash table (via
          * add_detection_option()) until FinalizeContentUniqueness() is
-         * called -- after the duplicate OTN checks.
+         * called -- after the duplicate OTN checks. 
          *
-         * All other rule option types are added to the hash table
+         * All other rule option types are added to the hash table 
          * at parse time, thus the data associated with that rule
          * option is cleaned from the hash table when the table itself
          * is cleaned up.
@@ -331,27 +328,21 @@ void OtnFree(void *data)
     if (otn == NULL)
         return;
 
-    /* If the opt_func list was copied from another OTN, don't free it here */
-    if (!otn->sigInfo.dup_opt_func)
+    opt_func = otn->opt_func;
+    while (opt_func != NULL)
     {
-        opt_func = otn->opt_func;
-        while (opt_func != NULL)
-        {
-            OptFpList *tmp = opt_func;
-            opt_func = opt_func->next;
-            free(tmp);
-        }
+        OptFpList *tmp = opt_func;
+
+        opt_func = opt_func->next;
+        free(tmp);
     }
 
     rsp_func = otn->rsp_func;
     while (rsp_func)
     {
         RspFpList *tmp = rsp_func;
-        rsp_func = rsp_func->next;
 
-        // we don't free params here because they should have been
-        // passed to add_detection_option() which will ensure the
-        // unique ones are freed once.
+        rsp_func = rsp_func->next;
         free(tmp);
     }
 
@@ -360,7 +351,8 @@ void OtnFree(void *data)
         if (!otn->generated)
             free(otn->sigInfo.message);
     }
-#ifdef TARGET_BASED
+#ifdef TARGET_BASED 
+#ifdef PORTLISTS
     for (svc_idx = 0; svc_idx < otn->sigInfo.num_services; svc_idx++)
     {
         if (otn->sigInfo.services[svc_idx].service)
@@ -368,6 +360,7 @@ void OtnFree(void *data)
     }
     if (otn->sigInfo.services)
         free(otn->sigInfo.services);
+#endif
 #endif
 
     ref_node = otn->sigInfo.refs;
@@ -402,9 +395,6 @@ void OtnFree(void *data)
 
     if (otn->detection_filter)
         free(otn->detection_filter);
-
-    if (otn->preproc_fp_list != NULL)
-        FreePmdList(otn->preproc_fp_list);
 
     free(otn);
 }
@@ -483,6 +473,6 @@ void OtnLookupFree(SFGHASH *otn_map)
     sfghash_delete(otn_map);
 }
 
-
+        
 /***************** End of Class/Priority Implementation ***********************/
 

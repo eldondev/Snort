@@ -58,10 +58,4 @@ Snort documentation contributed by  Mike Rivett ebiz@rivett.org
 -- 
 Additional References:
 
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-1999-0153
-
-Bugtraq:
-http://www.securityfocus.com/bid/2010
-
 --

@@ -1,6 +1,6 @@
-/* $Id: sf_sdlist.h,v 1.10 2011/06/08 00:33:07 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This is hi
@@ -25,15 +25,29 @@
 #ifndef _SF_SDLIST
 #define _SF_SDLIST
 
-#include "sf_sdlist_types.h"
-
 /* based off Linked List structure p. 57  _Mastering algorithms in C_
  *
  * Differs from sf_list by using static listitem blocks.
  *
  * Use mempool as the interface to this code instead of trying to use it directly
- *
+ * 
  */
+
+typedef struct _SDListItem {
+    void *data;
+    struct _SDListItem *next;
+    struct _SDListItem *prev;
+} SDListItem;
+
+
+typedef struct sfSDList {
+    int size;
+    SDListItem *head;
+    SDListItem *tail;
+    void (*destroy)(void *data); /* delete function called for each
+                                    member of the linked list */
+} sfSDList;
+
 
 /* initialize a DList */
 int sf_sdlist_init(sfSDList *list, void (*destroy)(void *data));

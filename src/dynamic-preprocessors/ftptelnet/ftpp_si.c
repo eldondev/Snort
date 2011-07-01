@@ -1,12 +1,12 @@
 /*
  * ftpp_si.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -27,8 +27,8 @@
  * This file contains functions to select server configurations
  * and begin the FTPTelnet process.
  *
- * The Session Inspection Module interfaces with the Stream Inspection
- * Module and the User Interface Module to select the appropriate
+ * The Session Inspection Module interfaces with the Stream Inspection 
+ * Module and the User Interface Module to select the appropriate 
  * FTPTelnet configuration and in the case of stateful inspection the
  * Session Inspection Module retrieves the user-data from the Stream
  * Module.  For stateless inspection, the Session Inspection Module uses
@@ -46,10 +46,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "ftpp_return_codes.h"
 #include "ftpp_ui_config.h"
@@ -100,9 +96,9 @@ static int PortMatch(PROTO_CONF *Conf, unsigned short port)
  * Function: TelnetFreeSession(void *preproc_session)
  *
  * Purpose: This function frees the data that is associated with a session.
- *
+ * 
  * Arguments: preproc_session   => pointer to the session to free
- *
+ * 
  * Returns: None
  */
 static void TelnetFreeSession(void *preproc_session)
@@ -139,13 +135,13 @@ static void TelnetFreeSession(void *preproc_session)
  *          initialized for a new Session.  I've tried to keep this to
  *          a minimum, so we don't have to worry about initializing big
  *          structures.
- *
+ * 
  * Arguments: Session         => pointer to the session to reset
- *
+ * 
  * Returns: int => return code indicating error or success
  *
  */
-static inline int TelnetResetSession(TELNET_SESSION *Session)
+static INLINE int TelnetResetSession(TELNET_SESSION *Session)
 {
     Session->ft_ssn.proto = FTPP_SI_PROTO_TELNET;
     Session->telnet_conf = NULL;
@@ -260,7 +256,7 @@ static int TelnetStatelessSessionInspection(SFSnortPacket *p,
 
     return FTPP_SUCCESS;
 }
-
+    
 
 /*
  * Function: TelnetSessionInspection(Packet *p,
@@ -346,10 +342,10 @@ int TelnetSessionInspection(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
 #endif
 
     /*
-     * We get the server configuration and the session structure differently
-     * depending on what type of inspection we are doing.  In the case of
+     * We get the server configuration and the session structure differently 
+     * depending on what type of inspection we are doing.  In the case of 
      * stateful processing, we may get the session structure from the Stream
-     * Reassembly module (which includes the server configuration) or the
+     * Reassembly module (which includes the server configuration) or the 
      * structure will be allocated and added to the stream pointer for the
      * rest of the session.
      *
@@ -381,7 +377,7 @@ int TelnetSessionInspection(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
  *          the packet is a server response packet.
  *
  * Arguments: p             => pointer to the Packet
- *
+ * 
  * Returns: int => return code indicating the mode
  *
  */
@@ -389,8 +385,8 @@ int FTPGetPacketDir(SFSnortPacket *p)
 {
     if (p->payload_size >= 3)
     {
-        if (isdigit(p->payload[0]) &&
-            isdigit(p->payload[1]) &&
+        if (isdigit(p->payload[0]) && 
+            isdigit(p->payload[1]) && 
             isdigit(p->payload[2]) )
         {
             return FTPP_SI_SERVER_MODE;
@@ -404,9 +400,9 @@ int FTPGetPacketDir(SFSnortPacket *p)
 }
 
 /*
- * Function: FTPInitConf(Packet *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
- *                       FTP_CLIENT_PROTO_CONF **ClientConf,
- *                       FTP_SERVER_PROTO_CONF **ServerConf,
+ * Function: FTPInitConf(Packet *p, FTPTELNET_GLOBAL_CONF *GlobalConf, 
+ *                       FTP_CLIENT_PROTO_CONF **ClientConf, 
+ *                       FTP_SERVER_PROTO_CONF **ServerConf, 
  *                       FTPP_SI_INPUT *SiInput, int *piInspectMode)
  *
  * Purpose: When a session is initialized, we must select the appropriate
@@ -414,8 +410,8 @@ int FTPGetPacketDir(SFSnortPacket *p)
  *          on the source and destination ports.
  *
  * IMPORTANT NOTE:
- *   We should check to make sure that there are some unique configurations,
- *   otherwise we can just default to the global default and work some magic
+ *   We should check to make sure that there are some unique configurations, 
+ *   otherwise we can just default to the global default and work some magic 
  *   that way.
  *
  * Arguments: p                 => pointer to the Packet/Session
@@ -426,13 +422,13 @@ int FTPGetPacketDir(SFSnortPacket *p)
  *                                 config so we can set it.
  *            SiInput           => pointer to the packet info
  *            piInspectMode     => pointer so we can set the inspection mode
- *
+ * 
  * Returns: int => return code indicating error or success
  *
  */
-static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
-                          FTP_CLIENT_PROTO_CONF **ClientConf,
-                          FTP_SERVER_PROTO_CONF **ServerConf,
+static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf, 
+                          FTP_CLIENT_PROTO_CONF **ClientConf, 
+                          FTP_SERVER_PROTO_CONF **ServerConf, 
                           FTPP_SI_INPUT *SiInput, int *piInspectMode)
 {
     FTP_CLIENT_PROTO_CONF *ClientConfSip;
@@ -466,14 +462,14 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
     sip = ntohl(sip);
     dip = ntohl(dip);
 #endif
-
+    
     /*
      * We find the client configurations for both the source and dest IPs.
      * There should be a check on the global configuration to see if there
      * is at least one unique client configuration.  If there isn't then we
      * assume the global client configuration.
      */
-    ClientConfDip = ftpp_ui_client_lookup_find(GlobalConf->client_lookup,
+    ClientConfDip = ftpp_ui_client_lookup_find(GlobalConf->client_lookup, 
 #ifdef SUP_IP6
             &dip,
 #else
@@ -505,7 +501,7 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
      * is at least one unique client configuration.  If there isn't then we
      * assume the global client configuration.
      */
-    ServerConfDip = ftpp_ui_server_lookup_find(GlobalConf->server_lookup,
+    ServerConfDip = ftpp_ui_server_lookup_find(GlobalConf->server_lookup, 
 #ifdef SUP_IP6
             &dip,
 #else
@@ -538,8 +534,8 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
      * is a sort of problem.  We don't know which side is the client and which
      * side is the server so we have to assume one.
      *
-     * In stateful processing, we only do this stage on the startup of a
-     * session, so we can still assume that the initial packet is the client
+     * In stateful processing, we only do this stage on the startup of a 
+     * session, so we can still assume that the initial packet is the client 
      * talking.
      */
     iServerDip = PortMatch((PROTO_CONF*)ServerConfDip, SiInput->dport);
@@ -566,16 +562,16 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
             if (app_id == ftp_app_id || app_id == 0)
             {
 #endif
-
+            
             /*
-             * We check for the case where both SIP and DIP
+             * We check for the case where both SIP and DIP 
              * appear to be servers.  In this case, we assume server
              * and process that way.
              */
             if(iServerSip && iServerDip)
             {
                 /*
-                 * We check for the case where both SIP and DIP
+                 * We check for the case where both SIP and DIP 
                  * appear to be servers.  In this case, we look at
                  * the first few bytes of the packet to try to
                  * determine direction -- 3 digits indicate server
@@ -587,7 +583,7 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
                  * a server response mid-stream.
                  */
                 *piInspectMode = FTPGetPacketDir(p);
-                if (*piInspectMode == FTPP_SI_SERVER_MODE)
+                if (*piInspectMode == FTPP_SI_SERVER_MODE) 
                 {
                     /* Packet is from server --> src is Server */
                     *ClientConf = ClientConfDip;
@@ -674,7 +670,7 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
             *ServerConf = NULL;
             break;
     }
-
+            
     return iRet;
 }
 
@@ -682,9 +678,9 @@ static int FTPInitConf(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
  * Function: FTPFreeSession(void *preproc_session)
  *
  * Purpose: This function frees the data that is associated with a session.
- *
+ * 
  * Arguments: preproc_session   => pointer to the session to free
- *
+ * 
  * Returns: None
  */
 static void FTPFreeSession(void *preproc_session)
@@ -722,14 +718,14 @@ static void FTPFreeSession(void *preproc_session)
  *          initialized for a new Session.  I've tried to keep this to
  *          a minimum, so we don't have to worry about initializing big
  *          structures.
- *
+ * 
  * Arguments: FtpSession    => pointer to the session to reset
  *            first         => indicator whether this is a new conf
- *
+ * 
  * Returns: int => return code indicating error or success
  *
  */
-static inline int FTPResetSession(FTP_SESSION *FtpSession)
+static INLINE int FTPResetSession(FTP_SESSION *FtpSession)
 {
     FtpSession->ft_ssn.proto = FTPP_SI_PROTO_FTP;
 
@@ -878,7 +874,7 @@ static int FTPStatelessSessionInspection(SFSnortPacket *p,
 
     return FTPP_SUCCESS;
 }
-
+    
 
 /*
  * Function: FTPSessionInspection(Packet *p,
@@ -914,10 +910,10 @@ int FTPSessionInspection(SFSnortPacket *p, FTPTELNET_GLOBAL_CONF *GlobalConf,
     int iRet;
 
     /*
-     * We get the server configuration and the session structure differently
-     * depending on what type of inspection we are doing.  In the case of
+     * We get the server configuration and the session structure differently 
+     * depending on what type of inspection we are doing.  In the case of 
      * stateful processing, we may get the session structure from the Stream
-     * Reassembly module (which includes the server configuration) or the
+     * Reassembly module (which includes the server configuration) or the 
      * structure will be allocated and added to the stream pointer for the
      * rest of the session.
      *

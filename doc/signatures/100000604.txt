@@ -1,0 +1,73 @@
+Rule:
+
+--
+Sid:
+100000604
+--
+Summary:
+This event is generated when an attempt is made to exploit a remote file 
+include vulnerability in the "Indexu" application running on a webserver. 
+Access to the file "inv_send.php" using a remote file being passed as the 
+"admin_template_path" parameter may indicate that an exploitation attempt has 
+been attempted. 
+
+--
+Impact:
+Information gathering and system integrity compromise. Possible unauthorized 
+administrative access to the server or application. Possible execution of 
+arbitrary code of the attackers choosing in some cases.
+
+--
+Detailed Information:
+This event indicates that an attempt has been made to include a file from a 
+remote machine via the "admin_template_path" parameter in the "inv_send.php" 
+script used by the "Indexu" application running on a webserver.
+
+If stringent input checks are not performed by the CGI application, it may also 
+be possible for an attacker to execute system binaries or malicious code of the 
+attackers choosing.
+
+This event is generated when an attempt is made to gain unauthorized access to 
+a CGI application running ona web server. Some applications do not perform 
+stringent checks when validating the credentials of a client host connecting to 
+the services offered on a host server. This can lead to unauthorized access and 
+possibly escalated privileges to that of the administrator. Data stored on the 
+machine can be compromised and trust relationships between the victim server 
+and other hosts can be exploited by the attacker.
+
+--
+Affected Systems:
+All systems running CGI applications using Indexu
+--
+Attack Scenarios:
+An attacker can access an authentication mechanism and supply his/her own 
+credentials to gain access. Alternatively the attacker can exploit weaknesses 
+to gain access as the administrator by supplying input of their choosing to the 
+underlying CGI script.
+
+--
+Ease of Attack:
+Simple. Exploits exist.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Ensure the system is using an up to date version of the software and has had 
+all vendor supplied patches applied.
+
+--
+Contributors:
+Sourcefire Vulnerability Research Team
+Nigel Houghton <nigel.houghton@sourcefire.com>
+--
+Additional References:
+
+--
+

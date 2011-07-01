@@ -2,21 +2,12 @@ Flowbits Detection Capability
 -----------------------------
 
 The flowbits detection plugin uses the flow preprocessor to track rule state
-during a transport protocol session.  This is most useful for TCP sessions, as
+across transport protocol sessions.  This is most useful for TCP sessions, as
 it allows rules to generically track the state of an application protocol.
 
 The general configuration of the flowbits rule option is:
 
-    flowbits:<keyword>[,<STATE_NAME>][,<GROUP_NAME>];
-
-<GROUP_NAME> : This specifies the group to which the flowbits belong. When the
-GROUP_NAME isnt specified the flowbits belong to the default group. All the flowbits
-in a particular group (with an exception of default group) are mutually exclusive. 
-This means when one flowbits is set in a particular group all the other flowbits 
-in that group will be unset. A particular flow cannot belong to more than one 
-group. The group name should be limited to any alphanumeric string including periods, 
-dashes, and underscores. This argument is allowed only with set and toggle keywords.
-
+    flowbits:<keyword>[,<STATE_NAME>];
 
 Flowbits Keywords
 -----------------
@@ -28,10 +19,10 @@ underscores.
 
 set
 ---
-This keyword sets a STATE_NAME for a particular flow and unsets all the other flowbits
-in a group when the GROUP_NAME is passed. This keyword always returns true.
+This keyword sets a STATE_NAME for a particular flow.  This keyword always
+returns true.
 
-Usage:  flowbits:set,FOO[,BAR];
+Usage:  flowbits:set,FOO;
 
 unset
 -----
@@ -42,11 +33,10 @@ Usage:  flowbits:unset,FOO;
 
 toggle
 ------
-This keyword sets a STATE_NAME if unset and clears out all the other flowbits in a
-group when the GROUP_NAME is passed, and unsets a STATE_NAME if set. This keyword 
-always returns true.
+This keyword sets a STATE_NAME if unset, and unsets a STATE_NAME if set.  This
+keyword always returns true.
 
-Usage:  flowbits:toggle,FOO[,BAR];
+Usage:  flowbits:toggle,FOO;
 
 isset
 -----
@@ -85,4 +75,3 @@ Sample Rules
 alert tcp any 143 -> any any (msg:"IMAP login"; content:"OK LOGIN"; flowbits:set,logged_in;)
 alert tcp any any -> any 143 (msg:"IMAP lsub"; content:"LSUB"; flowbits:isset,logged_in;)
 alert tcp any any -> any 143 (msg:"IMAP LIST WITHOUT LOGIN"; content:"LIST"; flowbits:isnotset,logged_in;)
-alert tcp any any -> any any (msg:"JPG transfer"; content:".JPG"; nocase; flowbits:set,http.jpg,file_type;)

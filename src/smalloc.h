@@ -1,6 +1,6 @@
-/* $Id: smalloc.h,v 1.12 2011/06/08 00:33:07 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 
 #include <stdlib.h>
 
-#include "snort_debug.h"
+#include "debug.h"
 
 
 

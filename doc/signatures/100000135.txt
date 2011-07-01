@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000135
+
+-- 
+Summary: 
+This event is generated when an attempt to exploit a format string attack 
+against the GNU Mailutils imap4d server.
+
+-- 
+
+Impact: 
+A denial of service will occur, and it may be possible to execute arbitrary 
+code with the privileges of the user running the imap server.
+
+--
+Detailed Information:
+The vulnerability is triggered when the request tag contains format string 
+characters. This will cause the server to read and/or write at invalid memory 
+locations, potentially allowing an attacker to execute arbitrary code.
+
+--
+Affected Systems:
+GNU Mailutils 0.5
+GNU Mailutils 0.6
+
+--
+
+Attack Scenarios: 
+Publicly available scripts exist to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, exploit scripts exist.
+
+-- 
+
+False Positives:
+None known.
+
+--
+False Negatives:
+None Known
+
+-- 
+
+Corrective Action: 
+Upgrade to version 0.6.90 or higher.
+
+--
+Contributors: 
+Judy Novak <judy.novak@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

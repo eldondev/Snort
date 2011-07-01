@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -47,8 +47,5 @@ int s5UdpGetPortFilterStatus(
         int parsing
         );
 void Stream5UdpConfigFree(Stream5UdpConfig *);
-
-uint32_t Stream5GetUdpPrunes(void);
-void Stream5ResetUdpPrunes(void);
 
 #endif /* STREAM5_UDP_H_ */

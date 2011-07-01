@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000176
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in the lpd service for HP-UX.
+
+-- 
+Impact: 
+Denial of Service (DoS). Possible code execution.
+
+--
+Detailed Information:
+A vulnerability exists in the lpd service for HP-UX systems. An unauthenticated 
+attacker may issue a DoS attack on the victim lpd by sending malformed data to 
+the lpd service and attempting to overflow a fixed length buffer. It may also 
+be possible for an attacker to execute code of their choosing in the context of 
+the user running lpd.
+
+--
+Affected Systems:
+HP-UX 10.20
+HP-UX B11.10 and B11.11
+
+--
+Attack Scenarios: 
+An attacker can supply a malformed request to the lpd service on the victim 
+host that may leave the service unresponsive.
+
+-- 
+Ease of Attack: 
+Simple.
+
+-- 
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+Corrective Action: 
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+
+--

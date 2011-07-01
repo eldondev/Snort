@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,14 +17,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "dce2_udp.h"
 #include "snort_dce2.h"
 #include "dce2_cl.h"
@@ -64,7 +59,7 @@ DCE2_UdpSsnData * DCE2_UdpSsnInit(void)
 /********************************************************************
  * Function: DCE2_UdpProcess()
  *
- * Purpose: Main entry point for DCE/RPC over UDP processing.
+ * Purpose: Main entry point for DCE/RPC over UDP processing. 
  *
  * Arguments:
  *  DCE2_UdpSsnData * - a pointer to the data structure associated

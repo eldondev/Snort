@@ -18,13 +18,10 @@ anomaly_detection/hi_ad.o \
 utils/hi_util_kmap.o \
 utils/hi_util_xmalloc.o \
 utils/hi_util_hbm.o \
-utils/hi_cmd_lookup.o \
-utils/hi_paf.o \
 event_output/hi_eo_log.o \
 client/hi_client.o \
 client/hi_client_norm.o  \
 server/hi_server.o \
-server/hi_server_norm.o \
 normalization/hi_norm.o 
 
 INCLUDES = @INCLUDES@

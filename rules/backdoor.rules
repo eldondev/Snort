@@ -1,6 +1,21 @@
-# (C) Copyright 2001-2004, Martin Roesch, Brian Caswell, et al.
-#    All rights reserved.
-# $Id: backdoor.rules,v 1.50 2005/03/01 18:57:10 bmc Exp $
+# Copyright 2001-2005 Sourcefire, Inc. All Rights Reserved
+#
+# This file may contain proprietary rules that were created, tested and
+# certified by Sourcefire, Inc. (the "VRT Certified Rules") as well as
+# rules that were created by Sourcefire and other third parties and
+# distributed under the GNU General Public License (the "GPL Rules").  The
+# VRT Certified Rules contained in this file are the property of
+# Sourcefire, Inc. Copyright 2005 Sourcefire, Inc. All Rights Reserved.
+# The GPL Rules created by Sourcefire, Inc. are the property of
+# Sourcefire, Inc. Copyright 2002-2005 Sourcefire, Inc. All Rights
+# Reserved.  All other GPL Rules are owned and copyrighted by their
+# respective owners (please see www.snort.org/contributors for a list of
+# owners and their respective copyrights).  In order to determine what
+# rules are VRT Certified Rules or GPL Rules, please refer to the VRT
+# Certified Rules License Agreement.
+#
+#
+# $Id: backdoor.rules,v 1.44.2.6.2.3 2005/05/31 17:13:02 mwatchinski Exp $
 #---------------
 # BACKDOOR RULES
 #---------------
@@ -13,10 +28,7 @@ alert tcp $HOME_NET 16959 -> $EXTERNAL_NET any (msg:"BACKDOOR subseven DEFCON8 2
 alert tcp $HOME_NET 12345:12346 -> $EXTERNAL_NET any (msg:"BACKDOOR netbus active"; flow:from_server,established; content:"NetBus"; reference:arachnids,401; classtype:misc-activity; sid:109; rev:5;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 12345:12346 (msg:"BACKDOOR netbus getinfo"; flow:to_server,established; content:"GetInfo|0D|"; reference:arachnids,403; classtype:misc-activity; sid:110; rev:4;)
 
-
-alert tcp $EXTERNAL_NET any -> $HOME_NET 20034 (msg:"BACKDOOR NetBus Pro 2.0 connection request"; flow:to_server,established; content:"BN|20 00 02 00|"; depth:6; content:"|05 00|"; offset:8; depth:2; flowbits:set,backdoor.netbus_2.connect; flowbits:noalert; classtype:misc-activity; sid:3009; rev:1;)
-alert tcp $HOME_NET 20034 -> $EXTERNAL_NET any (msg:"BACKDOOR NetBus Pro 2.0 connection established"; flowbits:isset,backdoor.netbus_2.connect; flow:from_server,established; content:"BN|10 00 02 00|"; depth:6; content:"|05 00|"; offset:8; depth:2; classtype:misc-activity; sid:115; rev:8;)
-
+alert tcp $HOME_NET 20034 -> $EXTERNAL_NET any (msg:"BACKDOOR NetBus Pro 2.0 connection established"; flow:from_server,established; flowbits:isset,backdoor.netbus_2.connect; content:"BN|10 00 02 00|"; depth:6; content:"|05 00|"; depth:2; offset:8; classtype:misc-activity; sid:115; rev:9;)
 
 # 3150, 4120
 alert udp $EXTERNAL_NET any -> $HOME_NET 2140 (msg:"BACKDOOR DeepThroat 3.1 Connection attempt"; content:"00"; depth:2; reference:mcafee,98574; reference:nessus,10053; classtype:misc-activity; sid:1980; rev:4;)
@@ -90,24 +102,18 @@ alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"BACKDOOR typot trojan traffic
 alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"BACKDOOR FsSniffer connection attempt"; flow:to_server,established; content:"RemoteNC Control Password|3A|"; reference:nessus,11854; classtype:trojan-activity; sid:2271; rev:2;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 3127:3199 (msg:"BACKDOOR DoomJuice file upload attempt"; flow:to_server,established; content:"|85 13|<|9E A2|"; depth:5; reference:url,securityresponse.symantec.com/avcenter/venc/data/w32.hllw.doomjuice.html; classtype:trojan-activity; sid:2375; rev:3;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"BACKDOOR sensepost.exe command shell attempt"; flow:to_server,established; uricontent:"/sensepost.exe"; nocase; reference:nessus,11003; classtype:web-application-activity; sid:989; rev:11;)
-
-
-alert tcp $EXTERNAL_NET any -> $HOME_NET 22222 (msg:"BACKDOOR RUX the Tick get windows directory attempt"; flow:to_server,established; content:"WINDIR"; depth:6; classtype:misc-activity; sid:3010; rev:1;)
+alert tcp $HOME_NET 2000 -> $EXTERNAL_NET any (msg:"BACKDOOR Insane Network 4.0 connection established"; flow:from_server,established; content:"Insane Network vs 4.0 by Suid Flow|0A 0D|www.blackcode.com|0A 0D|[r00t]|23|"; depth:62; classtype:misc-activity; sid:3015; rev:3;)
+alert tcp $HOME_NET 63536 -> $EXTERNAL_NET any (msg:"BACKDOOR Insane Network 4.0 connection established port 63536"; flow:from_server,established; content:"Insane Network vs 4.0 by Suid Flow|0A 0D|www.blackcode.com|0A 0D|[r00t]|23|"; depth:62; classtype:misc-activity; sid:3016; rev:3;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 22222 (msg:"BACKDOOR RUX the Tick get system directory attempt"; flow:to_server,established; content:"SYSDIR"; depth:6; classtype:misc-activity; sid:3011; rev:1;)
-alert tcp $EXTERNAL_NET any -> $HOME_NET 22222 (msg:"BACKDOOR RUX the Tick upload/execute arbitrary file attempt"; flow:to_server,established; content:"ABCJZDATEIV"; depth:11; classtype:misc-activity; sid:3012; rev:1;)
-
+alert tcp $HOME_NET 23432 -> $EXTERNAL_NET any (msg:"BACKDOOR Asylum 0.1 connection established"; flow:from_server,established; flowbits:isset,backdoor.asylum.connect; content:"GNT"; depth:3; classtype:misc-activity; sid:3014; rev:3;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22222 (msg:"BACKDOOR RUX the Tick get windows directory attempt"; flow:to_server,established; content:"WINDIR"; depth:6; classtype:misc-activity; sid:3010; rev:1;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 23432 (msg:"BACKDOOR Asylum 0.1 connection request"; flow:to_server,established; content:"RQS"; depth:3; flowbits:set,backdoor.asylum.connect; flowbits:noalert; classtype:misc-activity; sid:3013; rev:2;)
-alert tcp $HOME_NET 23432 -> $EXTERNAL_NET any (msg:"BACKDOOR Asylum 0.1 connection established"; flowbits:isset,backdoor.asylum.connect; flow:from_server,established; content:"GNT"; depth:3; classtype:misc-activity; sid:3014; rev:2;)
-
-alert tcp $HOME_NET 2000 -> $EXTERNAL_NET any (msg:"BACKDOOR Insane Network 4.0 connection established"; flow:from_server,established; content:"Insane Network vs 4.0 by Suid Flow|0a 0d|www.blackcode.com|0a 0d|[r00t]|23|"; classtype:misc-activity; sid:3015; rev:1;)
-alert tcp $HOME_NET 63536 -> $EXTERNAL_NET any (msg:"BACKDOOR Insane Network 4.0 connection established port 63536"; flow:from_server,established; content:"Insane Network vs 4.0 by Suid Flow|0a 0d|www.blackcode.com|0a 0d|[r00t]|23|"; classtype:misc-activity; sid:3016; rev:1;)
-
-alert tcp $EXTERNAL_NET any -> $HOME_NET 1020 (msg:"BACKDOOR Vampire 1.2 connection request"; flow:to_server,established; content:"Hello..."; depth:8; flowbits: set,backdoor.vampire_12.connect; flowbits:noalert; classtype:misc-activity; sid:3063; rev:1;)
-alert tcp $HOME_NET 1020 -> $EXTERNAL_NET any (msg:"BACKDOOR Vampire 1.2 connection confirmation"; flowbits:isset,backdoor.vampire_12.connect; flow:from_server,established; content:"Vampire v1.2 Server On-Line....."; depth:32; classtype:misc-activity; sid:3064; rev:1;)
-
-
-alert tcp $HOME_NET 5880 -> $EXTERNAL_NET any (msg:"BACKDOOR Y3KRAT 1.5 Connect"; flow:from_server,established; content:"connected"; depth:9; flowbits:set,backdoor.y3krat_15.connect; flowbits:noalert; classtype:misc-activity; sid:3081; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 20034 (msg:"BACKDOOR NetBus Pro 2.0 connection request"; flow:to_server,established; content:"BN |00 02 00|"; depth:6; content:"|05 00|"; depth:2; offset:8; flowbits:set,backdoor.netbus_2.connect; flowbits:noalert; classtype:misc-activity; sid:3009; rev:2;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22222 (msg:"BACKDOOR RUX the Tick upload/execute arbitrary file attempt"; flow:to_server,established; content:"ABCJZDATEIV"; depth:11; classtype:misc-activity; sid:3012; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 1020 (msg:"BACKDOOR Vampire 1.2 connection request"; flow:to_server,established; content:"Hello..."; depth:8; flowbits:set,backdoor.vampire_12.connect; flowbits:noalert; classtype:misc-activity; sid:3063; rev:2;)
+alert tcp $HOME_NET 1020 -> $EXTERNAL_NET any (msg:"BACKDOOR Vampire 1.2 connection confirmation"; flow:from_server,established; flowbits:isset,backdoor.vampire_12.connect; content:"Vampire v1.2 Server On-Line....."; depth:32; classtype:misc-activity; sid:3064; rev:2;)
 alert tcp $EXTERNAL_NET any -> $HOME_NET 5880 (msg:"BACKDOOR Y3KRAT 1.5 Connect Client Response"; flow:to_server,established; content:"getclient"; depth:9; flowbits:isset,backdoor.y3krat_15.connect; flowbits:set,backdoor.y3krat_15.client.response; flowbits:noalert; classtype:misc-activity; sid:3082; rev:1;)
+alert tcp $HOME_NET 5880 -> $EXTERNAL_NET any (msg:"BACKDOOR Y3KRAT 1.5 Connect"; flow:from_server,established; content:"connected"; depth:9; flowbits:set,backdoor.y3krat_15.connect; flowbits:noalert; classtype:misc-activity; sid:3081; rev:1;)
 alert tcp $HOME_NET 5880 -> $EXTERNAL_NET any (msg:"BACKDOOR Y3KRAT 1.5 Connection confirmation"; flow:from_server, established; content:"client"; depth:6; flowbits:isset, backdoor.y3krat_15.client.response; classtype:misc-activity; sid:3083; rev:1;)
-alert tcp $EXTERNAL_NET any -> $HOME_NET 31337 (msg:"BACKDOOR BackOrifice 2000 Inbound Traffic"; flow:to_server,established; content:"|31 6a d0 d9|"; classtype:trojan-activity; sid:3155; rev:1;)
-alert tcp $EXTERNAL_NET any -> $HOME_NET 3127:3198 (msg:"BACKDOOR mydoom.a backdoor upload/execute attempt"; flow:to_server,established; content:"|85 13 3c 9e a2|"; depth:5; classtype:trojan-activity; sid:3272; rev:1;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 31337 (msg:"BACKDOOR BackOrifice 2000 Inbound Traffic"; flow:to_server,established; content:"1j|D0 D9|"; classtype:trojan-activity; sid:3155; rev:2;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 3127:3198 (msg:"BACKDOOR mydoom.a backdoor upload/execute attempt"; flow:to_server,established; content:"|85 13|<|9E A2|"; depth:5; classtype:trojan-activity; sid:3272; rev:2;)

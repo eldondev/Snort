@@ -1,5 +1,5 @@
 #!/bin/bash
-# $Id: generate-all-rpms,v 1.7 2005/08/12 20:22:13 ssturges Exp $
+# $Id$
 # Generate the "official" Snort.org RPMs.
 
 # The following will build 3 binary and 1 source RPM as follows:

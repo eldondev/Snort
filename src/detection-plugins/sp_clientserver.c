@@ -1,6 +1,6 @@
-/* $Id: sp_clientserver.c,v 1.39 2011/06/08 00:33:09 jjordan Exp $ */
+/* $Id$ */
 /*
- ** Copyright (C) 2002-2011 Sourcefire, Inc.
+ ** Copyright (C) 2002-2009 Sourcefire, Inc.
  ** Author: Martin Roesch
  **
  ** This program is free software; you can redistribute it and/or modify
@@ -19,18 +19,18 @@
  ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* sp_clientserver
- *
+/* sp_clientserver 
+ * 
  * Purpose:
  *
- * Wouldn't be nice if we could tell a TCP rule to only apply if it's going
- * to or from the client or server side of a connection?  Think of all the
+ * Wouldn't be nice if we could tell a TCP rule to only apply if it's going 
+ * to or from the client or server side of a connection?  Think of all the 
  * false alarms we could elminate!  That's what we're doing with this one,
  * it allows you to write rules that only apply to client or server packets.
  * One thing though, you *must* have stream4 enabled for it to work!
  *
  * Arguments:
- *
+ *   
  *   None.
  *
  * Effect:
@@ -55,13 +55,11 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "sf_types.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "plugin_enum.h"
 #include "snort.h"
@@ -106,13 +104,13 @@ uint32_t FlowHash(void *d)
 }
 
 int FlowCompare(void *l, void *r)
-{
+{   
     ClientServerData *left = (ClientServerData *)l;
     ClientServerData *right = (ClientServerData *)r;
 
     if (!left || !right)
         return DETECTION_OPTION_NOT_EQUAL;
-
+                                                             
     if (( left->from_server == right->from_server) &&
         ( left->from_client == right->from_client) &&
         ( left->ignore_reassembled == right->ignore_reassembled) &&
@@ -136,7 +134,7 @@ int OtnFlowFromServer( OptTreeNode * otn )
     {
         if( csd->from_server ) return 1;
     }
-    return 0;
+    return 0; 
 }
 int OtnFlowFromClient( OptTreeNode * otn )
 {
@@ -147,7 +145,7 @@ int OtnFlowFromClient( OptTreeNode * otn )
     {
         if( csd->from_client ) return 1;
     }
-    return 0;
+    return 0; 
 }
 int OtnFlowIgnoreReassembled( OptTreeNode * otn )
 {
@@ -158,7 +156,7 @@ int OtnFlowIgnoreReassembled( OptTreeNode * otn )
     {
         if( csd->ignore_reassembled ) return 1;
     }
-    return 0;
+    return 0; 
 }
 int OtnFlowOnlyReassembled( OptTreeNode * otn )
 {
@@ -169,11 +167,11 @@ int OtnFlowOnlyReassembled( OptTreeNode * otn )
     {
         if( csd->only_reassembled ) return 1;
     }
-    return 0;
+    return 0; 
 }
 
 /****************************************************************************
- *
+ * 
  * Function: SetupClientServer()
  *
  * Purpose: Generic detection engine plugin template.  Registers the
@@ -188,19 +186,19 @@ int OtnFlowOnlyReassembled( OptTreeNode * otn )
 void SetupClientServer(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("flow", FlowInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("flow", FlowInit, NULL, OPT_TYPE_DETECTION);
 
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("flow", &flowCheckPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
 
-    DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN,
+    DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, 
                             "Plugin: ClientServerName(Flow) Setup\n"););
 }
 
 
 /****************************************************************************
- *
+ * 
  * Function: FlowInit(char *, OptTreeNode *)
  *
  * Purpose: Configure the flow init option to register the appropriate checks
@@ -217,10 +215,10 @@ void FlowInit(char *data, OptTreeNode *otn, int protocol)
     /* multiple declaration check */
     if(otn->ds_list[PLUGIN_CLIENTSERVER])
     {
-        FatalError("%s(%d): Multiple flow options in rule\n", file_name,
+        FatalError("%s(%d): Multiple flow options in rule\n", file_name, 
                 file_line);
     }
-
+        
 
     InitFlowData(otn);
     ParseFlowArgs(data, otn);
@@ -234,7 +232,7 @@ void FlowInit(char *data, OptTreeNode *otn, int protocol)
                    "for UDP traffic\n", file_name, file_line);
         }
     }
-
+   
     if (protocol == IPPROTO_ICMP)
     {
         if ((csd->only_reassembled != ONLY_FRAG) && (csd->ignore_reassembled != IGNORE_FRAG))
@@ -246,7 +244,7 @@ void FlowInit(char *data, OptTreeNode *otn, int protocol)
 }
 
 
-static inline void CheckStream(char *token)
+static INLINE void CheckStream(char *token)
 {
     if (!stream_api)
     {
@@ -256,7 +254,7 @@ static inline void CheckStream(char *token)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: ParseFlowArgs(char *, OptTreeNode *)
  *
  * Purpose: parse the arguments to the flow plugin and alter the otn
@@ -285,9 +283,9 @@ void ParseFlowArgs(char *data, OptTreeNode *otn)
 
     token = strtok(p, ",");
 
-    while(token)
+    while(token) 
     {
-        DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN,
+        DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, 
                     "parsed %s,(%d)\n", token,strlen(token)););
 
         while(isspace((int)*token))
@@ -302,12 +300,12 @@ void ParseFlowArgs(char *data, OptTreeNode *otn)
         {
             CheckStream(token);
             csd->from_server = 1;
-        }
+        } 
         else if(!strcasecmp(token, "from_server"))
         {
             CheckStream(token);
             csd->from_server = 1;
-        }
+        } 
         else if(!strcasecmp(token, "from_client"))
         {
             CheckStream(token);
@@ -365,19 +363,13 @@ void ParseFlowArgs(char *data, OptTreeNode *otn)
                    "and flow_from server", file_name, file_line);
     }
 
-    if((csd->ignore_reassembled & IGNORE_STREAM) && (csd->only_reassembled & ONLY_STREAM))
+    if(csd->ignore_reassembled && csd->only_reassembled)
     {
         FatalError("%s:%d: Can't use no_stream and"
                    " only_stream", file_name,file_line);
     }
 
-    if((csd->ignore_reassembled & IGNORE_FRAG) && (csd->only_reassembled & ONLY_FRAG))
-    {
-        FatalError("%s:%d: Can't use no_frag and"
-                   " only_frag", file_name,file_line);
-    }
-
-    if(otn->stateless && (csd->from_client || csd->from_server))
+    if(otn->stateless && (csd->from_client || csd->from_server)) 
     {
         FatalError("%s:%d: Can't use flow: stateless option with"
                    " other options", file_name, file_line);
@@ -424,12 +416,12 @@ void ParseFlowArgs(char *data, OptTreeNode *otn)
         fpl->type = RULE_OPTION_TYPE_FLOW;
         fpl->context = (void *)csd;
     }
-
+    
     free(str);
 }
 
 /****************************************************************************
- *
+ * 
  * Function: InitFlowData(OptTreeNode *)
  *
  * Purpose: calloc the clientserver data node
@@ -444,10 +436,10 @@ void InitFlowData(OptTreeNode * otn)
 
     /* allocate the data structure and attach it to the
        rule's data struct list */
-    otn->ds_list[PLUGIN_CLIENTSERVER] = (ClientServerData *)
+    otn->ds_list[PLUGIN_CLIENTSERVER] = (ClientServerData *) 
         calloc(sizeof(ClientServerData), sizeof(char));
 
-    if(otn->ds_list[PLUGIN_CLIENTSERVER] == NULL)
+    if(otn->ds_list[PLUGIN_CLIENTSERVER] == NULL) 
     {
         FatalError("FlowData calloc Failed!\n");
     }
@@ -466,11 +458,41 @@ int CheckFlow(void *option_data, Packet *p)
         if ((csd->established == 1) && !(p->packet_flags & PKT_STREAM_EST))
         {
             /*
-            ** This option requires an established connection and it isn't
-            ** in that state yet, so no match.
+            **  We check to see if this packet may have been picked up in
+            **  midstream by stream4 on a timed out session.  If it was, then
+            **  we'll go ahead and inspect it anyway because it might be a 
+            **  packet that we dropped but the attacker has retransmitted after
+            **  the stream4 session timed out.
             */
-            PREPROC_PROFILE_END(flowCheckPerfStats);
-            return DETECTION_OPTION_NO_MATCH;
+#if 0
+            if(ScInlineMode())
+            {
+                switch(List->rtn->type)
+                {
+                    case RULE_DROP:
+                    case RULE_SDROP:
+
+                        if(stream_api && 
+                           !(stream_api->get_session_flags(p->ssnptr) & SSNFLAG_MIDSTREAM))
+                        {
+                            return DETECTION_OPTION_NO_MATCH;
+                        }
+                        break;
+
+                    default:
+                        return DETECTION_OPTION_NO_MATCH;
+                }
+            }
+            else
+#endif
+            {
+                /* 
+                ** This option requires an established connection and it isn't
+                ** in that state yet, so no match.
+                */
+                PREPROC_PROFILE_END(flowCheckPerfStats);
+                return DETECTION_OPTION_NO_MATCH;
+            }
         }
         else if ((csd->unestablished == 1) && (p->packet_flags & PKT_STREAM_EST))
         {
@@ -488,7 +510,7 @@ int CheckFlow(void *option_data, Packet *p)
     {
         if (ScStateful())
         {
-            if (!(p->packet_flags & PKT_FROM_CLIENT) &&
+            if (!(p->packet_flags & PKT_FROM_CLIENT) && 
                 (p->packet_flags & PKT_FROM_SERVER))
             {
                 /* No match on from_client */
@@ -503,7 +525,7 @@ int CheckFlow(void *option_data, Packet *p)
     {
         if (ScStateful())
         {
-            if (!(p->packet_flags & PKT_FROM_SERVER) &&
+            if (!(p->packet_flags & PKT_FROM_SERVER) && 
                 (p->packet_flags & PKT_FROM_CLIENT))
             {
                 /* No match on from_server */

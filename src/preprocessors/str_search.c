@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,16 +18,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 
 
 #include <sys/types.h>
 #include <stdlib.h>
 #include <ctype.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "str_search.h"
 #include "mpse.h"
@@ -41,7 +37,7 @@ typedef struct tag_search
 
 static t_search *_mpse = NULL;
 static unsigned int  _num_mpse=0;
-
+       
 void SearchFreeId(unsigned int id);
 
 int SearchInit(unsigned int num)
@@ -75,7 +71,7 @@ int SearchReInit(unsigned int i)
                             NULL, NULL, NULL);
     _mpse[i].max_len = 0;
     _mpse[i].in_use=1;
-
+    
     if ( !_mpse[i].mpse )
         return -1;
 
@@ -118,13 +114,13 @@ int SearchGetHandle(void)
         if ( !_mpse[i].mpse && !_mpse[i].in_use )
         {
             _mpse[i].in_use=1;
-
+            
             return i;
         }
     }
 
     return -1;
-
+    
 }
 
 int SearchPutHandle(unsigned int id)
@@ -141,8 +137,8 @@ int SearchPutHandle(unsigned int id)
 }
 
 
-/*
-    Do efficient search of data
+/*  
+    Do efficient search of data 
     @param   mpse_id    specify which engine to use to search
     @param   str        string to search
     @param   str_len    length of string to search
@@ -167,9 +163,9 @@ int SearchFindString(unsigned int mpse_id,
     }
 
     start_state = 0;
-    num = mpseSearch(_mpse[mpse_id].mpse, (unsigned char*)str, str_len, Match, (void *) str,
+    num = mpseSearch(_mpse[mpse_id].mpse, (unsigned char*)str, str_len, Match, (void *) str, 
 		    	&start_state );
-
+    
     return num;
 }
 
@@ -191,12 +187,12 @@ void SearchPrepPatterns(unsigned int mpse_id)
 /*
  * Instance Functions
  *
- * max_len is not handled by
+ * max_len is not handled by 
  */
 void *  SearchInstanceNew(void)
 {
     t_search * search = malloc(sizeof(t_search));
-    if( !search )
+    if( !search ) 
         return NULL;
 
     search->mpse  = mpseNew(MPSE_AC_BNFA, MPSE_DONT_INCREMENT_GLOBAL_COUNT,
@@ -224,13 +220,13 @@ void SearchInstanceFree( void * instance )
 void SearchInstanceAdd( void*instance, const char *pat, unsigned int pat_len, int id)
 {
     t_search * search = (t_search*)instance;
-
+   
     if( search && search->mpse )
         mpseAddPattern( search->mpse, (void *)pat, pat_len, 1, 0, 0, 0, (void *)(long) id, 0);
-
+    
     if ( search && pat_len > search->max_len )
          search->max_len = pat_len;
-
+    
 }
 void SearchInstancePrepPatterns(void * instance)
 {
@@ -243,14 +239,14 @@ void SearchInstancePrepPatterns(void * instance)
 
 int  SearchInstanceFindString(void * instance,
                               const char *str,
-                              unsigned int str_len,
-                              int confine,
+                              unsigned int str_len, 
+                              int confine, 
                               int (*Match) (void *, void *, int, void *, void *))
 {
     int num;
     int start_state = 0;
     t_search * search = (t_search*)instance;
-
+    
     if ( confine && (search->max_len > 0) )
     {
         if ( search->max_len < str_len )
@@ -260,9 +256,9 @@ int  SearchInstanceFindString(void * instance,
     }
     num = mpseSearch( search->mpse, (unsigned char*)str, str_len, Match, (void *) str,
             &start_state);
-
+    
     return num;
-
+    
 }
 
 

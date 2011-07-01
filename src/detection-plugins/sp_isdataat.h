@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003-2011 Sourcefire, Inc.
+** Copyright (C) 2003-2009 Sourcefire, Inc.
 ** 
 ** Brian Caswell <bmc@snort.org>
 **
@@ -19,7 +19,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_isdataat.h,v 1.12 2011/02/09 23:23:03 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SP_ISDATAAT_H__
 #define __SP_ISDATAAT_H__
@@ -33,7 +33,6 @@ typedef struct _IsDataAtData
     uint32_t offset;        /* byte location into the packet */
     uint8_t  flags;         /* relative to the doe_ptr? */
                              /* rawbytes buffer? */
-    int8_t offset_var;      /* index of byte_extract variable for offset */
 } IsDataAtData;
 
 void SetupIsDataAt(void);

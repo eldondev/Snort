@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000167
+
+-- 
+Summary: 
+The password-cracking tool Hydra has been detected in SMTP traffic.
+
+--
+Impact:
+An attacker may be attempting to break into one or more mail servers monitored 
+by Snort via a brute-force password attack. If successful, the attacker may 
+gain unauthorized access to internal networks.
+
+--
+Detailed Information:
+Hydra is a password-cracking tool released by a group of security experts 
+called THC, "The Hacker's Choice." When connecting to a mail server, it will 
+begin communications by sending either "HELO hydra" or "EHLO hydra", depending 
+upon the commands accepted by the remote server. Since a valid HELO or EHLO 
+command will contain the domain name of the system mail is being sent from, the 
+presence of either of these strings indicates that the Hydra tool is likely 
+being used.
+
+--
+Affected Systems:
+Any system running a mail server.
+
+--
+Attack Scenarios:
+Attackers will use the Hydra password-cracking tool.
+
+--
+Ease of Attack:
+Simple, as the program is publicly available and is well-documented.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Check system logs and Snort alert logs for suspicious activity, particularly 
+unusual logons. Ensure that secure passwords are being used throughout your 
+network.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+
+--

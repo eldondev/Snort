@@ -1,6 +1,6 @@
-/* $Id: mempool.c,v 1.25 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -37,16 +37,10 @@
 #endif
 
 #include "mempool.h"
-#include "sf_sdlist.h"
 #include "util.h"
-#include "snort_debug.h"
-/*SharedObjectAddStarts
-#include "sf_dynamic_preprocessor.h"
-SharedObjectAddEnds */
+#include "debug.h"
 
-//#define TEST_MEMPOOL
-
-static inline void mempool_free_pools(MemPool *mempool)
+static INLINE void mempool_free_pools(MemPool *mempool)
 {
     if (mempool == NULL)
         return;
@@ -72,19 +66,19 @@ static inline void mempool_free_pools(MemPool *mempool)
 
 /* Function: int mempool_init(MemPool *mempool,
  *                            PoolCount num_objects, size_t obj_size)
- *
+ * 
  * Purpose: initialize a mempool object and allocate memory for it
  * Args: mempool - pointer to a MemPool struct
  *       num_objects - number of items in this pool
  *       obj_size    - size of the items
- *
+ * 
  * Returns: 0 on success, 1 on failure
- */
+ */ 
 
 int mempool_init(MemPool *mempool, PoolCount num_objects, size_t obj_size)
 {
     PoolCount i;
-
+    
     if(mempool == NULL)
         return 1;
 
@@ -95,7 +89,7 @@ int mempool_init(MemPool *mempool, PoolCount num_objects, size_t obj_size)
         return 1;
 
     mempool->obj_size = obj_size;
-
+    
     /* this is the basis pool that represents all the *data pointers
        in the list */
     mempool->datapool = calloc(num_objects, obj_size);
@@ -146,26 +140,29 @@ int mempool_init(MemPool *mempool, PoolCount num_objects, size_t obj_size)
 
         bp = &mempool->bucketpool[i];
         itemp = &mempool->listpool[i];
-
+        
         /* each bucket knows where it resides in the list */
         bp->key = itemp;
 
-#ifdef TEST_MEMPOOL
+#ifdef TEST_MEMPOOL        
         printf("listpool: %p itemp: %p diff: %u\n",
-            mempool->listpool, itemp,
-            (((char *) itemp) - ((char *) mempool->listpool)));
-#endif
-
+               mempool->listpool, itemp,
+               (((char *) itemp) -
+                ((char *) mempool->listpool)));
+#endif /* TEST_MEMPOOL */
+               
         bp->data = ((char *) mempool->datapool) + (i * mempool->obj_size);
-
-#ifdef TEST_MEMPOOL
+        
+#ifdef TEST_MEMPOOL        
         printf("datapool: %p bp.data: %p diff: %u\n",
-            mempool->datapool,
-            mempool->datapool + (i * mempool->obj_size),
-            (((char *) bp->data) - ((char *) mempool->datapool)));
-#endif
+               mempool->datapool,
+               mempool->datapool + (i * mempool->obj_size),
+               (((char *) bp->data) -
+                ((char *) mempool->datapool)));
+#endif /* TEST_MEMPOOL */
+        
 
-        if(sf_sdlist_append(&mempool->free_list,
+        if(sf_sdlist_append(&mempool->free_list,                           
                             &mempool->bucketpool[i],
                             &mempool->listpool[i]))
         {
@@ -175,19 +172,22 @@ int mempool_init(MemPool *mempool, PoolCount num_objects, size_t obj_size)
             return 1;
         }
 
-        mempool->total++;
+        mempool->free++;
     }
 
+    mempool->used = 0;
+    mempool->total = num_objects;
+    
     return 0;
 }
 
-/* Function: int mempool_clean(MemPool *mempool)
- *
+/* Function: int mempool_clean(MemPool *mempool) 
+ * 
  * Purpose: return all memory to free list
  * Args: mempool - pointer to a MemPool struct
- *
+ * 
  * Returns: 0 on success, -1 on failure
- */
+ */ 
 int mempool_clean(MemPool *mempool)
 {
     unsigned int i;
@@ -200,11 +200,13 @@ int mempool_clean(MemPool *mempool)
     ret = sf_sdlist_delete(&mempool->used_list);
     if (ret != 0)
         return -1;
+    mempool->used = 0;
 
     /* clean free list */
     ret = sf_sdlist_delete(&mempool->free_list);
     if (ret != 0)
         return -1;
+    mempool->free = 0;
 
     /* add everything back to free list */
     for (i = 0; i < mempool->total; i++)
@@ -213,18 +215,20 @@ int mempool_clean(MemPool *mempool)
                                &mempool->listpool[i]);
         if (ret == -1)
             return -1;
+
+        mempool->free++;
     }
 
     return 0;
 }
 
-/* Function: int mempool_destroy(MemPool *mempool)
- *
+/* Function: int mempool_destroy(MemPool *mempool) 
+ * 
  * Purpose: destroy a set of mempool objects
  * Args: mempool - pointer to a MemPool struct
- *
+ * 
  * Returns: 0 on success, 1 on failure
- */
+ */ 
 int mempool_destroy(MemPool *mempool)
 {
     if(mempool == NULL)
@@ -234,24 +238,29 @@ int mempool_destroy(MemPool *mempool)
 
     /* TBD - callback to free up every stray pointer */
     memset(mempool, 0, sizeof(MemPool));
-
-    return 0;
+    
+    return 0;    
 }
 
 
 /* Function: MemBucket *mempool_alloc(MemPool *mempool);
- *
+ * 
  * Purpose: allocate a new object from the mempool
  * Args: mempool - pointer to a MemPool struct
- *
+ * 
  * Returns: a pointer to the mempool object on success, NULL on failure
- */
+ */ 
 MemBucket *mempool_alloc(MemPool *mempool)
 {
     SDListItem *li = NULL;
     MemBucket *b;
-
+    
     if(mempool == NULL)
+    {
+        return NULL;
+    }
+
+    if(mempool->free <= 0)
     {
         return NULL;
     }
@@ -264,49 +273,44 @@ MemBucket *mempool_alloc(MemPool *mempool)
 
     if((li == NULL) || sf_sdlist_remove(&mempool->free_list, li))
     {
-#ifdef TEST_MEMPOOL
         printf("Failure on sf_sdlist_remove\n");
-#endif
         return NULL;
     }
 
+    mempool->free--;
+    mempool->used++;
+
     if(sf_sdlist_append(&mempool->used_list, li->data, li))
     {
-#ifdef TEST_MEMPOOL
         printf("Failure on sf_sdlist_append\n");
-#endif
         return NULL;
     }
 
     /* TBD -- make configurable */
     b = li->data;
     bzero(b->data, mempool->obj_size);
-
+    
     return b;
 }
 
 void mempool_free(MemPool *mempool, MemBucket *obj)
-{
-    if ((mempool == NULL) || (obj == NULL))
-        return;
-
+{       
     if(sf_sdlist_remove(&mempool->used_list, obj->key))
     {
-#ifdef TEST_MEMPOOL
         printf("failure on remove from used_list");
-#endif
         return;
     }
+    
+    mempool->used--;
 
     /* put the address of the membucket back in the list */
     if(sf_sdlist_append(&mempool->free_list, obj, obj->key))
     {
-#ifdef TEST_MEMPOOL
         printf("failure on add to free_list");
-#endif
         return;
     }
 
+    mempool->free++;    
     return;
 }
 
@@ -319,6 +323,7 @@ int main(void)
     MemBucket *bucks[SIZE];
     MemBucket *bucket = NULL;
     int i;
+    long long a = 1;
 
     //char *stuffs[4] = { "eenie", "meenie", "minie", "moe" };
     char *stuffs2[36] =
@@ -332,7 +337,7 @@ int main(void)
            "1eenie", "2meenie", "3minie", " 4moe",
            "1eenie", "2meenie", "3minie", " 4moe"
         };
-
+    
     if(mempool_init(&test, 36, 256))
     {
         printf("error in mempool initialization\n");
@@ -358,7 +363,7 @@ int main(void)
         mempool_free(&test, bucks[i]);
         bucks[i] = NULL;
     }
-
+    
     for(i = 0; i < 14; i++)
     {
         if((bucks[i] = mempool_alloc(&test)) == NULL)
@@ -374,9 +379,9 @@ int main(void)
         printf("bucket->data: %s\n", (char *) bucket->data);
     }
 
-    printf("free: %u, used: %u\n", test.free_list.size, test.used_list.size);
+    printf("free: %u, used: %u\n", test.free, test.used);
 
-
+    
     return 0;
 }
 #endif /* TEST_MEMPOOL */

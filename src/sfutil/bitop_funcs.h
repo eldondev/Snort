@@ -1,9 +1,9 @@
 /*
-** $Id: bitop_funcs.h,v 1.13 2011/06/08 00:33:19 jjordan Exp $
-**
+** $Id$
+** 
 ** bitopt_funcs.h
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Dan Roelker <droelker@sourcefire.com>
 ** Marc Norton <mnorton@sourcefire.com>
 **
@@ -27,7 +27,7 @@
 **   5.23.02 - Moved bitop functions to bitop.h to inline. Norton/Roelker
 **   1.21.04 - Added static initialization. Roelker
 **   9.13.05 - Separated type and inline func definitions. Sturges
-**
+** 
 */
 
 #ifndef _BITOP_FUNCS_H
@@ -41,7 +41,7 @@
 #include "config.h"
 #endif
 
-#include "snort_debug.h"
+#include "debug.h"
 #include "bitop.h"
 
 /*
@@ -58,7 +58,7 @@
 **  @return  0  successful
 **  @return !0  failed
 */
-static inline int boInitStaticBITOP(BITOP *BitOp,int iBytes,unsigned char *buf)
+static INLINE int boInitStaticBITOP(BITOP *BitOp,int iBytes,unsigned char *buf)
 {
     if(iBytes < 1 || !buf || !BitOp)
         return 1;
@@ -92,7 +92,7 @@ static inline int boInitStaticBITOP(BITOP *BitOp,int iBytes,unsigned char *buf)
 **    int - 0 if successful, 1 if failed.
 **
 */
-static inline int boInitBITOP(BITOP *BitOp, int iSize)
+static INLINE int boInitBITOP(BITOP *BitOp, int iSize)
 {
     int iBytes;
 
@@ -115,7 +115,7 @@ static inline int boInitBITOP(BITOP *BitOp, int iSize)
     }
 
     iBytes = iSize >> 3;
-    if(iSize & 7)
+    if(iSize & 7) 
     {
         iBytes++;
     }
@@ -147,7 +147,7 @@ static inline int boInitBITOP(BITOP *BitOp, int iSize)
 **    int - 0 if successful, 1 if failed.
 **
 */
-static inline int boResetBITOP(BITOP *BitOp)
+static INLINE int boResetBITOP(BITOP *BitOp)
 {
     if (BitOp == NULL)
         return 1;
@@ -171,7 +171,7 @@ static inline int boResetBITOP(BITOP *BitOp)
 **    int - 0 if successful, 1 if failed.
 **
 */
-static inline int boSetAllBits(BITOP *BitOp)
+static INLINE int boSetAllBits(BITOP *BitOp)
 {
     if (BitOp == NULL)
         return 1;
@@ -196,7 +196,7 @@ static inline int boSetAllBits(BITOP *BitOp)
 **    int - 0 if the bit was set, 1 if there was an error.
 **
 */
-static inline int boSetBit(BITOP *BitOp, unsigned int uiPos)
+static INLINE int boSetBit(BITOP *BitOp, unsigned int uiPos)
 {
     unsigned char  mask;
 
@@ -228,7 +228,7 @@ static inline int boSetBit(BITOP *BitOp, unsigned int uiPos)
 **    int - 0 if bit not set, 1 if bit is set.
 **
 */
-static inline int boIsBitSet(BITOP *BitOp, unsigned int uiPos)
+static INLINE int boIsBitSet(BITOP *BitOp, unsigned int uiPos)
 {
     unsigned char  mask;
 
@@ -259,7 +259,7 @@ static inline int boIsBitSet(BITOP *BitOp, unsigned int uiPos)
 **    int - 0 if the bit was cleared, 1 if there was an error.
 **
 */
-static inline void boClearBit(BITOP *BitOp, unsigned int uiPos)
+static INLINE void boClearBit(BITOP *BitOp, unsigned int uiPos)
 {
     unsigned char  mask;
 
@@ -290,7 +290,7 @@ static inline void boClearBit(BITOP *BitOp, unsigned int uiPos)
 **    int - 0 if the byte was cleared, 1 if there was an error.
 **
 */
-static inline void boClearByte(BITOP *BitOp, unsigned int uiPos)
+static INLINE void boClearByte(BITOP *BitOp, unsigned int uiPos)
 {
     /*
     **  Sanity Check while clearing bytes
@@ -320,7 +320,7 @@ static inline void boClearByte(BITOP *BitOp, unsigned int uiPos)
  **    void function
  **
  **/
-static inline void boFreeBITOP(BITOP *BitOp)
+static INLINE void boFreeBITOP(BITOP *BitOp)
 {
     if((BitOp == NULL) || (BitOp->pucBitBuffer == NULL))
         return;

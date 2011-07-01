@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_rpc_check.c,v 1.33 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -32,11 +32,10 @@
 #endif /* !WIN32 */
 
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "plugin_enum.h"
 #include "sfhashfcn.h"
@@ -54,7 +53,7 @@ extern PreprocStats ruleOTNEvalPerfStats;
 /*
  * This is driven by 64-bit Solaris which doesn't
  * define _LONG
- *
+ * 
  */
 
 #ifndef IXDR_GET_LONG
@@ -118,7 +117,7 @@ int RpcCheckCompare(void *l, void *r)
 
 
 /****************************************************************************
- *
+ * 
  * Function: SetupRpcCheck()
  *
  * Purpose: Register the rpc option keyword with its setup function
@@ -131,7 +130,7 @@ int RpcCheckCompare(void *l, void *r)
 void SetupRpcCheck(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("rpc", RpcCheckInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("rpc", RpcCheckInit, NULL, OPT_TYPE_DETECTION);
 
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("rpc", &rpcCheckPerfStats, 3, &ruleOTNEvalPerfStats);
@@ -142,7 +141,7 @@ void SetupRpcCheck(void)
 
 
 /****************************************************************************
- *
+ * 
  * Function: RpcCheckInit(char *, OptTreeNode *)
  *
  * Purpose: Parse the rpc keyword arguments and link the detection module
@@ -163,7 +162,7 @@ void RpcCheckInit(char *data, OptTreeNode *otn, int protocol)
                    file_name, file_line);
     }
 
-    /* multiple declaration check */
+    /* multiple declaration check */ 
     if(otn->ds_list[PLUGIN_RPC_CHECK])
     {
         FatalError("%s(%d): Multiple rpc options in rule\n", file_name,
@@ -175,11 +174,11 @@ void RpcCheckInit(char *data, OptTreeNode *otn, int protocol)
     otn->ds_list[PLUGIN_RPC_CHECK] = (RpcCheckData *)
             SnortAlloc(sizeof(RpcCheckData));
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     ParseRpc(data, otn);
 
-    /* finally, attach the option's detection function to the rule's
+    /* finally, attach the option's detection function to the rule's 
        detect function pointer list */
     fpl = AddOptFuncToList(CheckRpc, otn);
     fpl->type = RULE_OPTION_TYPE_RPC_CHECK;
@@ -188,7 +187,7 @@ void RpcCheckInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: ParseRpc(char *, OptTreeNode *)
  *
  * Purpose: Parse the RPC keyword's arguments
@@ -223,9 +222,9 @@ void ParseRpc(char *data, OptTreeNode *otn)
     {
         FatalError("%s(%d): Invalid applicaion number in rpc rule option\n",file_name,file_line);
     }
-
+    
     if(*tmp == '\0') return;
-
+    
     data=++tmp;
     if(*data != '*')
     {
@@ -256,7 +255,7 @@ void ParseRpc(char *data, OptTreeNode *otn)
 
 
 /****************************************************************************
- *
+ * 
  * Function: CheckRpc(char *, OptTreeNode *)
  *
  * Purpose: Test if the packet RPC equals the rule option's rpc
@@ -274,19 +273,19 @@ int CheckRpc(void *option_data, Packet *p)
     u_long xid, rpcvers, prog, vers, proc;
     enum msg_type direction;
     int rval = DETECTION_OPTION_NO_MATCH;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     int i;
 #endif
     PROFILE_VARS;
 
-    if(!p->iph_api || (IsTCP(p) && !p->tcph)
-       || (IsUDP(p) && !p->udph))
+    if(!p->iph || (p->iph->ip_proto == IPPROTO_TCP && !p->tcph)
+       || (p->iph->ip_proto == IPPROTO_UDP && !p->udph))
         return 0; /* if error occured while ip header
                    * was processed, return 0 automagically.  */
 
     PREPROC_PROFILE_START(rpcCheckPerfStats);
 
-    if( IsTCP(p) )
+    if(p->iph->ip_proto == IPPROTO_TCP)
     {
         /* offset to rpc_msg */
         c+=4;
@@ -309,7 +308,7 @@ int CheckRpc(void *option_data, Packet *p)
         }
     }
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     DebugMessage(DEBUG_PLUGIN,"<---xid---> <---dir---> <---rpc--->"
                               " <---prog--> <---vers--> <---proc-->\n");
     for(i=0; i<24; i++)

@@ -1,4 +1,4 @@
-/* $Id: stdint.h,v 1.12 2010/12/20 17:15:27 jjordan Exp $ */
+/* $Id$ */
 /*
 ** Copyright (C) 1998-2003 Chris Reid <chris.reid@codecraftconsultants.com>
 **
@@ -28,11 +28,8 @@ typedef __int16   int16_t;
 typedef __int32   int32_t;
 
 typedef unsigned __int8    uint8_t;
-#define UINT8_T_DEFINED
 typedef unsigned __int16   uint16_t;
-#define UINT16_T_DEFINED
 typedef unsigned __int32   uint32_t;
-#define UINT32_T_DEFINED
 
 #ifdef _MSC_VER
 # if _MSC_VER <= 1200  /* Visual C++ 6.0 */
@@ -55,14 +52,10 @@ typedef          __int64    int64_t;
 # if _MSC_VER <= 1200
 typedef long int           intptr_t;
 typedef unsigned long int  uintptr_t;
-#define _INTPTR_T_DEFINED
-#define _UINTPTR_T_DEFINED
 # endif  /* #if _MSC_VER <= 1200 */
 #else
 typedef long int           intptr_t;
 typedef unsigned long int  uintptr_t;
-#define _INTPTR_T_DEFINED
-#define _UINTPTR_T_DEFINED
 #endif  /* #ifdef _MSC_VER */
 
 #ifndef HAVE_U_INT8_T

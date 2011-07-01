@@ -1,0 +1,41 @@
+
+Template: snort{PACKAGE}/configure_db
+Type: boolean
+Default: true
+_Description: Set up a database for snort{PACKAGE} to log to?
+ No database has been set up for Snort to log to. Before continuing,
+ you should make sure you have:
+ .
+  - the server host name (that server must allow TCP connections
+    from this machine);
+  - a database on that server;
+  - a username and password to access the database.
+ .
+ If some of these requirements are missing, reject this option and
+ run with regular file logging support.
+ .
+ Database logging can be reconfigured later by running
+ 'dpkg-reconfigure -plow snort{PACKAGE}'.
+
+Template: snort{PACKAGE}/db_host
+Type: string
+_Description: Database server hostname:
+ Please specify the host name of a database server that allows
+ incoming connections from this host.
+
+Template: snort{PACKAGE}/db_database
+Type: string
+_Description: Database name:
+ Please specify the name of an existing database to which the
+ database user has write access.
+
+Template: snort{PACKAGE}/db_user
+Type: string
+_Description: Username for database access:
+ Please specify a database server username with write access to the database.
+
+Template: snort{PACKAGE}/db_pass
+Type: password
+_Description: Password for the database connection:
+ Please enter the password to use to connect to the Snort Alert database.
+

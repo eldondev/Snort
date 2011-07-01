@@ -1,7 +1,7 @@
-/* $Id: inet_aton.c,v 1.7 2011/02/09 23:23:38 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2008 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as

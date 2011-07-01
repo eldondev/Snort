@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -24,7 +24,7 @@
 #include "sf_ip.h"
 #include "ipv6_port.h"
 #include "sfrt.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 /**Number of additional policies allocated with each re-alloc operation. */
 #define POLICY_ALLOCATION_CHUNK 10
@@ -124,7 +124,7 @@ void sfNetworkDeleteBinding(
     snort_ip_p
     );
 
-static inline tSfPolicyId sfGetDefaultPolicy(
+static INLINE tSfPolicyId sfGetDefaultPolicy(
     tSfPolicyConfig *config
     )
 {
@@ -134,7 +134,7 @@ static inline tSfPolicyId sfGetDefaultPolicy(
     return config->defaultPolicyId;
 }
 
-static inline void sfSetDefaultPolicy(
+static INLINE void sfSetDefaultPolicy(
     tSfPolicyConfig *config,
     tSfPolicyId policyId
     )
@@ -145,7 +145,7 @@ static inline void sfSetDefaultPolicy(
     config->defaultPolicyId = policyId;
 }
 
-static inline tSfPolicyId sfPolicyNumAllocated(
+static INLINE tSfPolicyId sfPolicyNumAllocated(
     tSfPolicyConfig *config
     )
 {
@@ -157,8 +157,8 @@ static inline tSfPolicyId sfPolicyNumAllocated(
 
 //dynamic array functions
 int sfDynArrayCheckBounds (
-        void ** dynArray,
-        unsigned int index,
+        void ** dynArray, 
+        unsigned int index, 
         unsigned int *maxElements
         );
 #endif

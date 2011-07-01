@@ -76,14 +76,8 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 --
 Additional References:
 
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2001-0779
-
 CIAC:
 http://www.ciac.org/ciac/bulletins/m-008.shtml
-
-Bugtraq:
-http://www.securityfocus.com/bid/2763
 
 Security Focus Mailing List Archive:
 http://www.securityfocus.com/archive/1/187086

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,27 +18,21 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /*
   sfmemcap.c
 
   These functions wrap the alloc & free functions. They enforce a memory cap using
   the MEMCAP structure.  The MEMCAP structure tracks memory usage.  Each allocation
-  has 4 bytes added to it so we can store the allocation size.  This allows us to
+  has 4 bytes added to it so we can store the allocation size.  This allows us to 
   free a block and accurately track how much memory was recovered.
-
-  Marc Norton
+  
+  Marc Norton  
 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
-#include "snort_debug.h"
 #include "sfmemcap.h"
 #include "util.h"
 
@@ -62,7 +56,7 @@ MEMCAP * sfmemcap_new( unsigned nbytes )
 	 mc = (MEMCAP*)calloc(1,sizeof(MEMCAP));
 
          if( mc ) sfmemcap_init( mc, nbytes );
-
+	 
 	 return mc;
 }
 

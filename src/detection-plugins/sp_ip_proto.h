@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,12 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_ip_proto.h,v 1.15 2011/02/09 23:23:03 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SP_IP_PROTO_H__
 #define __SP_IP_PROTO_H__
 
 #include "rules.h"
-#include "treenodes.h"
 #include "sf_types.h"
 
 void SetupIpProto(void);

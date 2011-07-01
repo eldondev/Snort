@@ -185,9 +185,8 @@ Option syntax
     memcap                  <memcap>              NO      memcap 102400
     disable_defrag          NONE                  NO      OFF
     max_frag_len            <max-frag-len>        NO      OFF
-    events                  <events>              NO      OFF
+    events                  <events>              NO      events [smb, co, cl]
     reassemble_threshold    <re-thresh>           NO      OFF
-    disabled                NONE		  NO	  OFF
 
     memcap           = 1024-4194303 (kilobytes)
     max-frag-len     = 1514-65535
@@ -202,12 +201,6 @@ Option explanations
         Specifies the maximum amount of run-time memory that can be allocated.
         Run-time memory includes any memory allocated after configuration.
         Default is 100 MB.
-    disabled
-        This optional keyword is allowed with any policy to avoid packet processing. 
-	This option disables the preprocessor. When the preprocessor is disabled
-        only the memcap option is applied when specified with the configuration.
-        The other options are parsed but not used. Any valid configuration may have
-        "disabled" added to it.
     disable_defrag
         Tells the preprocessor not to do DCE/RPC defragmentation.  Default is
         to do defragmentation.
@@ -215,7 +208,7 @@ Option explanations
         Specifies the maximum fragment size that will be added to the
         defragmention module. If a fragment is greater than this size, it is
         truncated before being added to the defragmentation module.  Default is
-        set to -1. The allowed ranges for this option are 1514 - 65535.
+        not set.
     events
         Specifies the classes of events to enable.  (See Events section for an
         enumeration and explanation of events.)
@@ -229,6 +222,7 @@ Option explanations
              cl
                  Stands for connectionless DCE/RPC. Alert on events related
                  to connectionless DCE/RPC processing.
+        Defaults are smb, co and cl.
     reassemble_threshold
         Specifies a minimum number of bytes in the DCE/RPC desegmentation and
         defragmentation buffers before creating a reassembly packet to send to
@@ -259,7 +253,7 @@ Configuration examples
      preprocessor dcerpc2: reassemble_threshold 500
 
 Default configuration
-     preprocessor dcerpc2: memcap 102400
+     preprocessor dcerpc2: memcap 102400, events [smb, co, cl]
 
 Server Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -439,7 +433,7 @@ Default configuration
 
 Complete dcerpc2 default configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   preprocessor dcerpc2: memcap 102400
+   preprocessor dcerpc2: memcap 102400, events [smb, co, cl]
    preprocessor dcerpc2_server: default, policy WinXP, \
      detect [smb [139,445], tcp 135, udp 135, rpc-over-http-server 593], \
      autodetect [tcp 1025:, udp 1025:, rpc-over-http-server 1025:], \
@@ -729,18 +723,6 @@ version operation is true. This option will not match if the fragment is not a
 first fragment (or full request) unless the "any_frag" option is supplied in
 which case only the interface UUID and version need match.  Note that a
 defragmented DCE/RPC request will be considered a full request.
-
-Using this rule option will automatically insert fast pattern contents into
-the fast pattern matcher.  For UDP rules, the interface UUID, in both big and
-little endian format will be inserted into the fast pattern matcher.  For TCP
-rules, (1) if the rule option "flow:to_server|from_client" is used, |05 00 00|
-will be inserted into the fast pattern matcher, (2) if the rule option
-"flow:from_server|to_client" is used, |05 00 02| will be inserted into the
-fast pattern matcher and (3) if the flow isn't known, |05 00| will be inserted
-into the fast pattern matcher.  Note that if the rule already has content rule
-options in it, the best (meaning longest) pattern will be used.  If a content
-in the rule uses the fast_pattern rule option, it will unequivocally be used
-over the above mentioned patterns.
 
 dce_opnum
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

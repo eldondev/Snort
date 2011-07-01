@@ -12,7 +12,7 @@ Command line arguments
 -r <file>               Read a single pcap.
 --pcap-single=<file>    Same as -r.  Added for completeness.
 --pcap-file=<file>      File that contains a list of pcaps to read.  Can
-                        specify path to pcap or directory to recurse to
+                        specifiy path to pcap or directory to recurse to
                         get pcaps.
 --pcap-list="<list>"    A space separated list of pcaps to read.
 --pcap-dir=<dir>        A directory to recurse to look for pcaps.  Sorted
@@ -21,7 +21,7 @@ Command line arguments
                         file or directory.  This filter will apply to any
                         --pcap-file or --pcap-dir args following.  Use
                         --pcap-no-filter to delete filter for following 
-                        --pcap-file or --pcap-dir args or specify
+                        --pcap-file or --pcap-dir args or specifiy
                         --pcap-filter again to forget previous filter and
                         to apply to following --pcap-file or --pcap-dir args.
 --pcap-no-filter        Reset to use no filter when getting pcaps from file

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,17 +18,17 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_client_norm.c
-**
+**  
 **  @author     Daniel Roelker <droelker@sourcefire.com>
-**
+**  
 **  @brief      HTTP client normalization routines
-**
-**  We deal with the normalization of HTTP client requests headers and
+**  
+**  We deal with the normalization of HTTP client requests headers and 
 **  URI.
-**
+**  
 **  In this file, we handle all the different HTTP request URI evasions.  The
 **  list is:
 **      - ASCII decoding
@@ -39,10 +39,8 @@
 **      - Double decoding
 **      - %U decoding
 **      - Bare Byte Unicode decoding
-**
-**      Base 36 is deprecated and essentially a noop
 **      - Base36 decoding
-**
+**  
 **  NOTES:
 **      - Initial development.  DJR
 */
@@ -51,16 +49,13 @@
 #include <sys/types.h>
 #include <ctype.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "hi_norm.h"
 #include "hi_util.h"
 #include "hi_return_codes.h"
 
-#include "snort_bounds.h"
+#include "bounds.h"
 
+#define MAX_URI 4096
 
 int hi_split_header_cookie(HI_SESSION *Session, u_char *header, int *i_header_len,
                            u_char *cookie_header, int *i_cookie_len,
@@ -79,7 +74,7 @@ int hi_split_header_cookie(HI_SESSION *Session, u_char *header, int *i_header_le
     const u_char *cookie_end;
 
     if (!cookie || !i_header_len || !i_cookie_len)
-        return HI_INVALID_ARG;
+        return iRet;
 
     /* Can't use hi_util_in_bounds header because == is okay */
     if (cookie->cookie_end > raw_header + i_raw_header_len)
@@ -207,7 +202,6 @@ int hi_client_norm(HI_SESSION *Session)
     int iHeaderBufSize = MAX_URI;
     int iCookieBufSize = MAX_URI;
     int iPostBufSize = MAX_URI;
-    uint16_t encodeType = 0;
 
     if(!Session || !Session->server_conf)
     {
@@ -215,33 +209,26 @@ int hi_client_norm(HI_SESSION *Session)
     }
 
     ClientReq = &Session->client.request;
-    ClientReq->uri_encode_type = 0;
-    ClientReq->header_encode_type = 0;
-    ClientReq->cookie_encode_type = 0;
-    ClientReq->post_encode_type = 0;
 
     /* Handle URI normalization */
     if(ClientReq->uri_norm)
     {
         Session->norm_flags &= ~HI_BODY;
-        iRet = hi_norm_uri(Session, UriBuf, &iUriBufSize,
-                           ClientReq->uri, ClientReq->uri_size, &encodeType);
+        iRet = hi_norm_uri(Session, UriBuf, &iUriBufSize, 
+                           ClientReq->uri, ClientReq->uri_size);
         if (iRet == HI_NONFATAL_ERR)
         {
             /* There was a non-fatal problem normalizing */
             ClientReq->uri_norm = NULL;
             ClientReq->uri_norm_size = 0;
-            ClientReq->uri_encode_type = 0;
         }
-        else
+        else 
         {
-            /* Client code is expecting these to be set to non-NULL if
+            /* Client code is expecting these to be set to non-NULL if 
              * normalization occurred. */
             ClientReq->uri_norm      = UriBuf;
             ClientReq->uri_norm_size = iUriBufSize;
-            ClientReq->uri_encode_type = encodeType;
         }
-        encodeType = 0;
     }
 
     if (ClientReq->cookie.cookie)
@@ -253,12 +240,6 @@ int hi_client_norm(HI_SESSION *Session)
             RawCookieBuf, &iRawCookieBufSize,
             ClientReq->header_raw, ClientReq->header_raw_size,
             &ClientReq->cookie);
-        if( iRet == HI_SUCCESS )
-        {
-            ClientReq->cookie.cookie = RawCookieBuf;
-            ClientReq->cookie.cookie_end = RawCookieBuf + iRawCookieBufSize;
-
-        }
     }
     else
     {
@@ -279,91 +260,80 @@ int hi_client_norm(HI_SESSION *Session)
     if(ClientReq->header_norm && Session->server_conf->normalize_headers)
     {
         Session->norm_flags &= ~HI_BODY;
-        iRet = hi_norm_uri(Session, HeaderBuf, &iHeaderBufSize,
-                       RawHeaderBuf, iRawHeaderBufSize, &encodeType);
+        iRet = hi_norm_uri(Session, HeaderBuf, &iHeaderBufSize, 
+                       RawHeaderBuf, iRawHeaderBufSize);
         if (iRet == HI_NONFATAL_ERR)
         {
             /* There was a non-fatal problem normalizing */
             ClientReq->header_norm = NULL;
             ClientReq->header_norm_size = 0;
-            ClientReq->header_encode_type = 0;
         }
-        else
+        else 
         {
-            /* Client code is expecting these to be set to non-NULL if
+            /* Client code is expecting these to be set to non-NULL if 
              * normalization occurred. */
             ClientReq->header_norm      = HeaderBuf;
             ClientReq->header_norm_size = iHeaderBufSize;
-            ClientReq->header_encode_type = encodeType;
         }
-        encodeType = 0;
     }
     else
     {
-        /* Client code is expecting these to be set to non-NULL if
+        /* Client code is expecting these to be set to non-NULL if 
          * normalization occurred. */
         if (iRawHeaderBufSize)
         {
             ClientReq->header_norm      = RawHeaderBuf;
             ClientReq->header_norm_size = iRawHeaderBufSize;
-            ClientReq->header_encode_type = 0;
         }
     }
 
-    if(ClientReq->cookie.cookie && Session->server_conf->normalize_cookies)
+    if(ClientReq->header_norm && Session->server_conf->normalize_cookies)
     {
         Session->norm_flags &= ~HI_BODY;
-        iRet = hi_norm_uri(Session, CookieBuf, &iCookieBufSize,
-                       RawCookieBuf, iRawCookieBufSize, &encodeType);
+        iRet = hi_norm_uri(Session, CookieBuf, &iCookieBufSize, 
+                       RawCookieBuf, iRawCookieBufSize);
         if (iRet == HI_NONFATAL_ERR)
         {
             /* There was a non-fatal problem normalizing */
             ClientReq->cookie_norm = NULL;
             ClientReq->cookie_norm_size = 0;
-            ClientReq->cookie_encode_type = 0;
         }
-        else
+        else 
         {
-            /* Client code is expecting these to be set to non-NULL if
+            /* Client code is expecting these to be set to non-NULL if 
              * normalization occurred. */
             ClientReq->cookie_norm      = CookieBuf;
             ClientReq->cookie_norm_size = iCookieBufSize;
-            ClientReq->cookie_encode_type = encodeType;
         }
-        encodeType = 0;
     }
     else
     {
-        /* Client code is expecting these to be set to non-NULL if
+        /* Client code is expecting these to be set to non-NULL if 
          * normalization occurred. */
         if (iRawCookieBufSize)
         {
             ClientReq->cookie_norm      = RawCookieBuf;
             ClientReq->cookie_norm_size = iRawCookieBufSize;
-            ClientReq->cookie_encode_type = 0;
         }
     }
 
-    /* Handle normalization of post methods.
+    /* Handle normalization of post methods. 
      * Note: posts go into a different buffer. */
     if(ClientReq->post_norm)
     {
         Session->norm_flags |= HI_BODY;
-        iRet = hi_norm_uri(Session, PostBuf, &iPostBufSize,
-                           ClientReq->post_raw, ClientReq->post_raw_size, &encodeType);
+        iRet = hi_norm_uri(Session, PostBuf, &iPostBufSize, 
+                           ClientReq->post_raw, ClientReq->post_raw_size);
         if (iRet == HI_NONFATAL_ERR)
         {
             ClientReq->post_norm = NULL;
             ClientReq->post_norm_size = 0;
-            ClientReq->post_encode_type = 0;
         }
-        else
+        else 
         {
             ClientReq->post_norm      = PostBuf;
             ClientReq->post_norm_size = iPostBufSize;
-            ClientReq->post_encode_type = encodeType;
         }
-        encodeType = 0;
     }
 
     /*

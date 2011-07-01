@@ -1,6 +1,21 @@
-# (C) Copyright 2001-2004, Martin Roesch, Brian Caswell, et al.
-#    All rights reserved.
-# $Id: web-php.rules,v 1.23 2005/01/12 15:46:11 bmc Exp $
+# Copyright 2001-2005 Sourcefire, Inc. All Rights Reserved
+#
+# This file may contain proprietary rules that were created, tested and
+# certified by Sourcefire, Inc. (the "VRT Certified Rules") as well as
+# rules that were created by Sourcefire and other third parties and
+# distributed under the GNU General Public License (the "GPL Rules").  The
+# VRT Certified Rules contained in this file are the property of
+# Sourcefire, Inc. Copyright 2005 Sourcefire, Inc. All Rights Reserved.
+# The GPL Rules created by Sourcefire, Inc. are the property of
+# Sourcefire, Inc. Copyright 2002-2005 Sourcefire, Inc. All Rights
+# Reserved.  All other GPL Rules are owned and copyrighted by their
+# respective owners (please see www.snort.org/contributors for a list of
+# owners and their respective copyrights).  In order to determine what
+# rules are VRT Certified Rules or GPL Rules, please refer to the VRT
+# Certified Rules License Agreement.
+#
+#
+# $Id: web-php.rules,v 1.21.2.2.2.2 2005/07/22 19:19:54 mwatchinski Exp $
 #--------------
 # WEB-PHP RULES
 #--------------
@@ -125,9 +140,6 @@ alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP newsPHP L
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP PhpGedView PGV authentication_index.php base directory manipulation attempt"; flow:to_server,established; uricontent:"/authentication_index.php"; nocase; content:"PGV_BASE_DIRECTORY"; nocase; reference:bugtraq,9368; reference:cve,2004-0030; classtype:web-application-attack; sid:2366; rev:4;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP PhpGedView PGV functions.php base directory manipulation attempt"; flow:to_server,established; uricontent:"/functions.php"; nocase; content:"PGV_BASE_DIRECTORY"; nocase; reference:bugtraq,9368; reference:cve,2004-0030; classtype:web-application-attack; sid:2367; rev:4;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP PhpGedView PGV config_gedcom.php base directory manipulation attempt"; flow:to_server,established; uricontent:"/config_gedcom.php"; nocase; content:"PGV_BASE_DIRECTORY"; nocase; reference:bugtraq,9368; reference:cve,2004-0030; classtype:web-application-attack; sid:2368; rev:4;)
-alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP PhpGedView PGV base directory manipulation"; flow:to_server,established; uricontent:"_conf.php"; nocase; content:"PGV_BASE_DIRECTORY"; nocase; reference:bugtraq,9368; classtype:web-application-attack; sid:2926; rev:1;)
-
-
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP Photopost PHP Pro showphoto.php access"; flow:to_server,established; uricontent:"/showphoto.php"; nocase; reference:bugtraq,9557; classtype:web-application-activity; sid:2372; rev:2;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP /_admin access"; flow:to_server,established; uricontent:"/_admin/"; nocase; reference:bugtraq,9537; reference:nessus,12032; classtype:web-application-activity; sid:2393; rev:1;)
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP WAnewsletter newsletter.php file include attempt"; flow:to_server,established; uricontent:"newsletter.php"; nocase; content:"waroot"; nocase; content:"start.php"; nocase; reference:bugtraq,6965; classtype:web-application-attack; sid:2398; rev:1;)
@@ -147,3 +159,4 @@ alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP Opt-X hea
 alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP TUTOS path disclosure attempt"; flow:to_server,established; uricontent:"/note_overview.php"; content:"id="; reference:bugtraq,10129; reference:url,www.securiteam.com/unixfocus/5FP0J15CKE.html; classtype:web-application-activity; sid:2588; rev:1;)
 
 alert tcp $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"WEB-PHP PHPNuke Forum viewtopic SQL insertion attempt"; flow:to_server,established; uricontent:"/modules.php"; nocase; content:"name=Forums"; content:"file=viewtopic"; pcre:"/forum=.*'/"; reference:bugtraq,7193; classtype:web-application-attack; sid:2654; rev:2;)
+alert tcp $EXTERNAL_NET any -> $HTTP_SERVERS $HTTP_PORTS (msg:"WEB-PHP PhpGedView PGV base directory manipulation"; flow:to_server,established; uricontent:"_conf.php"; nocase; content:"PGV_BASE_DIRECTORY"; nocase; reference:bugtraq,9368; classtype:web-application-attack; sid:2926; rev:1;)

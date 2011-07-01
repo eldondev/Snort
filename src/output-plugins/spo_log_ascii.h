@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 **
 **  Author(s):  Andrew R. Baker <andrewb@sourcefire.com>
 **
@@ -20,7 +20,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_log_ascii.h,v 1.10 2011/02/09 23:23:27 jjordan Exp $ */
+/* $Id$ */
 
 
 #ifndef __SPO_LOG_ASCII_H__

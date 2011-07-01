@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,14 +18,14 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
  * @file   sf_textlog.h
- * @author Russ Combs <rcombs@sourcefire.com>
+ * @author Russ Combs <cmg@sourcefire.com>
  * @date   Fri Jun 27 10:34:37 2003
- *
+ * 
  * @brief  declares buffered text stream for logging
- *
+ * 
  * Declares a TextLog_*() api for buffered logging.  This allows
  * relatively painless transition from fprintf(), fwrite(), etc.
  * to a buffer that is formatted in memory and written with one
@@ -43,6 +43,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
+#include "debug.h" /* for INLINE */
+
+typedef int bool;
+#define TRUE 1
+#define FALSE 0
 
 #define K_BYTES (1024)
 #define M_BYTES (K_BYTES*K_BYTES)
@@ -84,28 +90,28 @@ bool TextLog_Flush(TextLog*);
   * helper functions
   *-------------------------------------------------------------------
   */
- static inline int TextLog_Tell (TextLog* this)
+ static INLINE int TextLog_Tell (TextLog* this)
  {
      return this->pos;
  }
-
- static inline int TextLog_Avail (TextLog* this)
+ 
+ static INLINE int TextLog_Avail (TextLog* this)
  {
      return this->maxBuf - this->pos - 1;
  }
-
- static inline void TextLog_Reset (TextLog* this)
- {
+ 
+ static INLINE void TextLog_Reset (TextLog* this)
+ {   
      this->pos = 0;
      this->buf[this->pos] = '\0';
  }
 
-static inline bool TextLog_NewLine (TextLog* this)
+static INLINE bool TextLog_NewLine (TextLog* this)
 {
     return TextLog_Putc(this, '\n');
 }
 
-static inline bool TextLog_Puts (TextLog* this, const char* str)
+static INLINE bool TextLog_Puts (TextLog* this, const char* str)
 {
     return TextLog_Write(this, str, strlen(str));
 }

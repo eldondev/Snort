@@ -103,7 +103,7 @@ the time window (more on windows below). On TCP scan alerts, sfPortscan
 will also display any open ports that were scanned. On TCP sweep alerts
 however, sfPortscan will only track open ports after the alert has been
 triggered. Open port events are not individual alerts, but tags based
-off the original scan alert.
+off the orginal scan alert.
 
 -- Configuration --
 
@@ -139,7 +139,7 @@ The parameters you can use to configure the portscan module are:
 
   "Low" alerts are only generated on error packets sent from the
   target host, and because of the nature of error responses, this
-  setting should see very few false positives. However, this setting
+  setting should see very few false postives. However, this setting
   will never trigger a Filtered Scan alert because of a lack of error
   responses. This setting is based on a static time window of 60
   seconds, afterwhich this window is reset.
@@ -177,13 +177,6 @@ The parameters you can use to configure the portscan module are:
 * memcap { positive integer }
   The maximum number of bytes to allocate for portscan detection.  The
   higher this number the more nodes that can be tracked.
-
-* disabled  
-  This optional keyword is allowed with any policy to avoid packet processing. 
-  This option disables the preprocessor. When the preprocessor is disabled
-  only the memcap option is applied when specified with the configuration.
-  The other options are parsed but not used. Any valid configuration may have
-  "disabled" added to it.
 
 * logfile { <file> } 
   This option will output portscan events to the file specified. If
@@ -342,7 +335,7 @@ for your network(s).  Here are some tuning tips:
      level, but for now the user must manually do this.  The easiest way to
      determine false positives is through simple ratio estimations.  The
      following is a list of ratios to estimate and the associated values that
-     indicate a legitmate scan and not a false positive.
+     indicate a legimite scan and not a false positive.
      
      Connection Count / IP Count:  This ratio indicates an estimated average of
      connections per IP.  For portscans, this ratio should be high, the higher

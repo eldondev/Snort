@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steve Sturges
  *         Andy Mullican
@@ -26,17 +26,13 @@
  *
  * Loop Option operations for dynamic rule engine
  */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_dynamic_define.h"
 #include "sf_snort_packet.h"
 #include "sf_snort_plugin_api.h"
 #include "sfghash.h"
 
 #include "sf_dynamic_engine.h"
-#include "sf_snort_detection_engine.h"
+
+extern DynamicEngineData _ded;
 
 /* From sf_snort_plugin_api.c -- not exported from shared lib,
  * but available to other code within the shared lib.
@@ -98,7 +94,7 @@ int DynamicElementInitialize(Rule *rule, DynamicElement *element)
 
     if (!rule->ruleData)
     {
-        DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
+        DynamicEngineFatalMessage("Runtime rule data location '%s' for rule [%d:%d] is unknown\n",
                                   element->refId, rule->info.genID, rule->info.sigID);
     }
 
@@ -113,7 +109,7 @@ int DynamicElementInitialize(Rule *rule, DynamicElement *element)
         else
         {
             element->data.dynamicInt = NULL;
-            DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
+            DynamicEngineFatalMessage("Runtime rule data location '%s' for rule [%d:%d] is unknown\n",
                                       element->refId, rule->info.genID, rule->info.sigID);
             //return -1;
         }
@@ -165,14 +161,14 @@ int LoopInfoInitialize(Rule *rule, LoopInfo *loopInfo)
 }
 
 
-/*
+/* 
  *  Get buffer size remaining
- *
+ * 
  *          p: packet data structure, same as the one found in snort.
  *      flags: defines what kind of content buffer to look at
  *     cursor: current position within buffer
  *
- * Returns:
+ * Returns: 
  *    > 0 : size of buffer remaining
  *    = 0 : no buffer remaining
  *    < 0 : error
@@ -206,14 +202,14 @@ int getSizeRemaining(void *p, u_int32_t flags, const u_int8_t *cursor)
     return size;
 }
 
-/*
+/* 
  *  Get maximum loop iterations possible
- *
+ * 
  *          p: packet data structure, same as the one found in snort.
  *       loop: structure that defines buffer via flags, and has cursor increment
  *     cursor: current position within buffer
  *
- * Returns:
+ * Returns: 
  *    >= 0 : calculated max possible loop count
  *     < 0 : error
  *
@@ -320,7 +316,7 @@ ENGINE_LINKAGE int loopEval(void *p, LoopInfo *loop, const u_int8_t **cursor)
         startValue = loop->start->data.staticInt;
     else
         startValue = *(loop->start->data.dynamicInt);
-
+   
     if (loop->end->dynamicType == DYNAMIC_TYPE_INT_STATIC)
         endValue = loop->end->data.staticInt;
     else

@@ -1,0 +1,59 @@
+Rule: 
+
+--
+Sid: 
+100000168
+
+-- 
+Summary: 
+The password-cracking tool Hydra has been detected in HTTP traffic.
+
+--
+Impact:
+An attacker may be attempting to break into one or more web servers monitored 
+by Snort via a brute-force password attack. If successful, the attacker may 
+gain unauthorized access to internal networks.
+
+--
+Detailed Information:
+Hydra is a password-cracking tool released by a group of security experts 
+called THC, "The Hacker's Choice." Requests sent by this tool to a web server 
+contain the User-Agent string "Mozilla/4.0 (Hydra)". Since normal browsers' 
+User-Agent strings do not contain the string "(Hydra)", the presence of this 
+string indicates that the Hydra tool is likely being used.
+
+--
+Affected Systems:
+Any system running a web server.
+
+--
+Attack Scenarios:
+Attackers will use the Hydra password-cracking tool.
+
+--
+Ease of Attack:
+Simple, as the program is publicly available and is well-documented.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Check system logs and Snort alert logs for suspicious activity, particularly 
+unusual logons. Ensure that secure passwords are being used throughout your 
+network.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+
+--

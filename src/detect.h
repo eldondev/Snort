@@ -1,6 +1,6 @@
-/* $Id: detect.h,v 1.28 2011/06/08 00:33:05 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -27,27 +27,30 @@
 #include "config.h"
 #endif
 
-#include "snort_debug.h"
+#include "debug.h"
 #include "decode.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "parser.h"
 #include "plugbase.h"
 #include "log.h"
 #include "event.h"
+#ifdef PORTLISTS
 #include "sfutil/sfportobject.h"
+#endif
 
 /*  P R O T O T Y P E S  ******************************************************/
 extern int do_detect;
 extern int do_detect_content;
-extern uint16_t event_id;
 
 /* rule match action functions */
 int PassAction(void);
 int ActivateAction(Packet *, OptTreeNode *, Event *);
 int AlertAction(Packet *, OptTreeNode *, Event *);
 int DropAction(Packet *, OptTreeNode *, Event *);
+#ifdef GIDS
 int SDropAction(Packet *, OptTreeNode *, Event *);
+int RejectAction(Packet *, OptTreeNode *, Event *);
+#endif /* GIDS */
 int DynamicAction(Packet *, OptTreeNode *, Event *);
 int LogAction(Packet *, OptTreeNode *, Event *);
 
@@ -60,10 +63,18 @@ int EvalHeader(RuleTreeNode *, Packet *, int);
 int EvalOpts(OptTreeNode *, Packet *);
 void TriggerResponses(Packet *, OptTreeNode *);
 
+#ifdef PORTLISTS
 #ifdef SUP_IP6
 int CheckAddrPort(sfip_var_t *, PortObject* , Packet *, uint32_t, int);
 #else
 int CheckAddrPort(IpAddrSet *, PortObject* , Packet *, uint32_t, int);
+#endif
+#else
+#ifdef SUP_IP6
+int CheckAddrPort(sfip_var_t *, uint16_t, uint16_t, Packet *, uint32_t, int);
+#else
+int CheckAddrPort(IpAddrSet *, uint16_t, uint16_t, Packet *, uint32_t, int);
+#endif
 #endif
 
 /* detection modules */
@@ -85,21 +96,18 @@ void CallAlertPlugins(Packet *, char *, void *, Event *);
 void CallLogFuncs(Packet *, char *, ListHead *, Event *);
 void CallAlertFuncs(Packet *, char *, ListHead *, Event *);
 
-static inline void DisableDetect(Packet *p)
+void ObfuscatePacket(Packet *p);
+
+static INLINE void DisableDetect(Packet *p)
 {
     DisablePreprocessors(p);
     do_detect_content = 0;
 }
 
-static inline void DisableAllDetect(Packet *p)
+static INLINE void DisableAllDetect(Packet *p)
 {
     DisablePreprocessors(p);
     do_detect = do_detect_content = 0;
 }
-
-/* counter for number of times we evaluate rules.  Used to
- * cache result of check for rule option tree nodes. */
-extern uint64_t rule_eval_pkt_count;
-
 
 #endif /* __DETECT_H__ */

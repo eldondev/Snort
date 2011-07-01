@@ -1,6 +1,6 @@
-/* $Id: signature.h,v 1.21 2011/06/08 00:33:07 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Author(s):   Andrew R. Baker <andrewb@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,9 @@
 #ifndef __SIGNATURE_H__
 #define __SIGNATURE_H__
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #ifdef OSF1
 #include <sys/bitypes.h>
 #endif
@@ -30,6 +33,9 @@
 
 #include "sfutil/sfghash.h"
 #include "sf_types.h"
+
+/* Enable Port Lists */
+#define PORTLISTS
 
 struct _OptTreeNode;
 struct _SnortConfig;
@@ -95,11 +101,13 @@ typedef struct _OtnKey
 #define SI_RULE_TYPE_PREPROC 2
 
 #ifdef TARGET_BASED
+#ifdef PORTLISTS 
 typedef struct _ServiceInfo
 {
     char *service;
     int16_t service_ordinal;
 } ServiceInfo;
+#endif
 #endif
 
 typedef struct _SigInfo
@@ -112,12 +120,11 @@ typedef struct _SigInfo
     uint32_t   priority;
     char        *message;
     ReferenceNode *refs;
-    char          shared; /* shared object rule */
-    char          dup_opt_func; /* has soid, and refers to another shared object rule */
-    char          rule_type; /* 0-std rule, 1-decoder, rule, 3 preprocessor rule */
-    char          rule_flushing; /* 0-disabled, 1-enabled */
+    int           shared; /* shared object rule */
+    int           rule_type; /* 0-std rule, 1-decoder, rule, 3 preprocessor rule */
+    int           rule_flushing; /* 0-disabled, 1-enabled */
     OtnKey otnKey;
-#ifdef TARGET_BASED
+#if defined(TARGET_BASED) && defined(PORTLISTS)
     unsigned int num_services;
     ServiceInfo *services;
     char          *os;

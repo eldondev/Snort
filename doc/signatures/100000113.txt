@@ -1,0 +1,64 @@
+Rule: 
+
+--
+Sid: 
+100000113
+
+-- 
+Summary: 
+This event is generated when an attacker attempts to execute arbitrary commands 
+on a system running the HappyMall E-Commerce suite.
+
+-- 
+
+Impact: 
+Attackers may run arbitrary commands of their choosing with the permissions of 
+the affected script.
+
+--
+Detailed Information:
+By specifying a value for the "file" parameter of the "member_html.cgi" script 
+that is enclosed by any combination of pipe or semicolon characters, attackers 
+may execute arbitrary commands on the host system with the privileges of the 
+affected script.
+
+--
+Affected Systems:
+HappyCGI HappyMall 4.3
+HappyCGI HappyMall 4.4
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited using a web browser, or an automated script.
+
+-- 
+
+Ease of Attack: 
+Simple, as a web browser or publicly available exploits may be used.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+An unconfirmed patch is available at the URI listed in the Additional 
+References section.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+http://happymall.happycgi.com/forum/forum_detail.cgi?thread=353
+
+--

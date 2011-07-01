@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 2001 Phil Wood <cpw@lanl.gov>
 **
@@ -19,7 +19,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_ip_same_check.h,v 1.14 2011/02/09 23:23:03 jjordan Exp $ */
+/* $Id$ */
 #ifndef __SP_IP_SAME_CHECK_H__
 #define __SP_IP_SAME_CHECK_H__
 

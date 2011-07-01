@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -84,12 +84,5 @@ typedef struct _SSLPP_counters
                                SSL_CAPP_FLAG | SSL_SAPP_FLAG)
 #define SSLPP_ENCRYPTED_FLAGS2 (SSL_HS_SDONE_FLAG | SSL_CHANGE_CIPHER_FLAG | \
                                 SSL_CAPP_FLAG | SSL_SAPP_FLAG)
-
-#define GENERATOR_SPP_SSLPP 137
-#define     SSL_INVALID_CLIENT_HELLO               1
-#define     SSL_INVALID_SERVER_HELLO               2
-
-#define SSL_INVALID_CLIENT_HELLO_STR "(ssp_ssl) Invalid Client HELLO after Server HELLO Detected"
-#define SSL_INVALID_SERVER_HELLO_STR "(ssp_ssl) Invalid Server HELLO without Client HELLO Detected"
     
 #endif /* SPP_SSLPP_H */

@@ -1,4 +1,4 @@
-/*  $Id: rpc_des.h,v 1.3 2003/10/20 15:03:45 chrisgreen Exp $ */
+/*  $Id$ */
 x/*	$OpenBSD: rpc_des.h,v 1.3 1998/02/10 06:25:33 deraadt Exp $	*/
 
 /* crypto/des/rpc_des.h */

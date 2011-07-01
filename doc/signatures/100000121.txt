@@ -1,0 +1,63 @@
+Rule: 
+
+--
+Sid: 
+100000121
+
+-- 
+Summary: 
+This event is generated when a script named "test" is accessed from a location 
+outside of EXTERNAL_NET.
+
+-- 
+
+Impact: 
+Varies depending upon the script.
+
+--
+Detailed Information:
+Generally speaking, scripts named "test" should not be accessed by anyone 
+outside of the developer's internal network. These scripts rarely lack proper 
+input sanitization, often allow unfettered access to sensitive resources, and 
+can suffer from a host of vulnerabilities due to the fact that developers 
+generally do not have security in mind when testing a script. 
+
+--
+Affected Systems:
+Any system with an improperly secured developer test script.
+
+--
+
+Attack Scenarios: 
+Attacks vary depending upon the nature of the script.
+
+-- 
+
+Ease of Attack: 
+The ease of attacks vary depending upon the nature of the script.
+
+-- 
+
+False Positives:
+Some scripts may legitimately be named "test", or developers may access these 
+scripts from outside of their internal development environment. Users who are 
+receiving an inordinate amount of false positives may wish to disable this rule.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Test scripts should be properly hardened if they are made publicly available, 
+or access to them should be restricted to authorized personnel.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

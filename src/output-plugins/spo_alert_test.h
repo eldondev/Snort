@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -17,7 +17,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_test.h,v 1.6 2011/02/09 23:23:27 jjordan Exp $ */
+/* $Id$ */
 
 /* This file gets included in plugbase.h when it is integrated into the rest 
  * of the program.  Sometime in The Future, I'll whip up a bad ass Perl script

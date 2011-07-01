@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -38,7 +38,7 @@ void ThresholdConfigFree(ThresholdConfig *);
 void sfthreshold_reset(void);
 int sfthreshold_create(ThresholdConfig *, THDX_STRUCT *);
 int sfthreshold_test(unsigned int, unsigned int, snort_ip_p, snort_ip_p, long curtime);
-void print_thresholding(ThresholdConfig*, unsigned shutdown);
+void print_thresholding(ThresholdConfig *);
 void sfthreshold_reset_active(void);
 void sfthreshold_free(void);
 

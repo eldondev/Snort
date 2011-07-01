@@ -1,6 +1,6 @@
-/* $Id: detection_options.c,v 1.22 2011/06/08 00:33:09 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -23,7 +23,7 @@
 **  @file        detection_options.c
 **
 **  @author      Steven Sturges
-**
+** 
 **  @brief       Support functions for rule option tree
 **
 **  This implements tree processing for rule options, evaluating common
@@ -31,16 +31,10 @@
 **
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "sfutil/sfxhash.h"
 #include "sfutil/sfhashfcn.h"
 #include "detection_options.h"
-#include "detection_util.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "util.h"
 #include "fpcreate.h"
 #include "parser.h"
@@ -48,7 +42,6 @@
 #include "sp_asn1.h"
 #include "sp_byte_check.h"
 #include "sp_byte_jump.h"
-#include "sp_byte_extract.h"
 #include "sp_clientserver.h"
 #include "sp_cvs.h"
 #include "sp_dsize_check.h"
@@ -64,8 +57,6 @@
 #include "sp_ip_proto.h"
 #include "sp_ip_same_check.h"
 #include "sp_ip_tos_check.h"
-#include "sp_file_data.h"
-#include "sp_base64_decode.h"
 #include "sp_isdataat.h"
 #include "sp_pattern_match.h"
 #include "sp_pcre.h"
@@ -95,6 +86,15 @@
 #include "sfPolicy.h"
 #include "detection_filter.h"
 
+extern const uint8_t *doe_ptr;
+
+/* Used when adding detection option tree */
+extern SnortConfig *snort_conf_for_fast_pattern;
+
+/* Used when parsing detection options */
+extern SnortConfig *snort_conf_for_parsing;
+extern SnortConfig *snort_conf;
+
 typedef struct _detection_option_key
 {
     option_type_t option_type;
@@ -121,9 +121,6 @@ uint32_t detection_option_hash_func(SFHASHFCN *p, unsigned char *k, int n)
         case RULE_OPTION_TYPE_BYTE_JUMP:
             hash = ByteJumpHash(key->option_data);
             break;
-        case RULE_OPTION_TYPE_BYTE_EXTRACT:
-            hash = ByteExtractHash(key->option_data);
-            break;
         case RULE_OPTION_TYPE_FLOW:
             hash = FlowHash(key->option_data);
             break;
@@ -137,16 +134,6 @@ uint32_t detection_option_hash_func(SFHASHFCN *p, unsigned char *k, int n)
             hash = FlowBitsHash(key->option_data);
             break;
         case RULE_OPTION_TYPE_FTPBOUNCE:
-            break;
-        case RULE_OPTION_TYPE_FILE_DATA:
-            hash = FileDataHash(key->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DECODE:
-            hash = Base64DecodeHash(key->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DATA:
-            break;
-        case RULE_OPTION_TYPE_PKT_DATA:
             break;
         case RULE_OPTION_TYPE_ICMP_CODE:
             hash = IcmpCodeCheckHash(key->option_data);
@@ -275,9 +262,6 @@ int detection_option_key_compare_func(const void *k1, const void *k2, size_t n)
         case RULE_OPTION_TYPE_BYTE_JUMP:
             ret = ByteJumpCompare(key1->option_data, key2->option_data);
             break;
-        case RULE_OPTION_TYPE_BYTE_EXTRACT:
-            ret = ByteExtractCompare(key1->option_data, key2->option_data);
-            break;
         case RULE_OPTION_TYPE_FLOW:
             ret = FlowCompare(key1->option_data, key2->option_data);
             break;
@@ -291,16 +275,6 @@ int detection_option_key_compare_func(const void *k1, const void *k2, size_t n)
             ret = FlowBitsCompare(key1->option_data, key2->option_data);
             break;
         case RULE_OPTION_TYPE_FTPBOUNCE:
-            break;
-        case RULE_OPTION_TYPE_FILE_DATA:
-            ret = FileDataCompare(key1->option_data, key2->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DECODE:
-            ret = Base64DecodeCompare(key1->option_data, key2->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DATA:
-            break;
-        case RULE_OPTION_TYPE_PKT_DATA:
             break;
         case RULE_OPTION_TYPE_ICMP_CODE:
             ret = IcmpCodeCheckCompare(key1->option_data, key2->option_data);
@@ -382,7 +356,6 @@ int detection_option_key_compare_func(const void *k1, const void *k2, size_t n)
 #ifdef DYNAMIC_PLUGIN
         case RULE_OPTION_TYPE_HDR_OPT_CHECK:
             ret = HdrOptCheckCompare(key1->option_data, key2->option_data);
-            break;
         case RULE_OPTION_TYPE_PREPROCESSOR:
             ret = PreprocessorRuleOptionCompare(key1->option_data, key2->option_data);
             break;
@@ -411,9 +384,6 @@ int detection_hash_free_func(void *option_key, void *data)
         case RULE_OPTION_TYPE_BYTE_JUMP:
             free(key->option_data);
             break;
-        case RULE_OPTION_TYPE_BYTE_EXTRACT:
-            ByteExtractFree(key->option_data);
-            break;
         case RULE_OPTION_TYPE_FLOW:
             free(key->option_data);
             break;
@@ -428,16 +398,6 @@ int detection_hash_free_func(void *option_key, void *data)
             break;
         case RULE_OPTION_TYPE_FTPBOUNCE:
             /* Data is NULL, nothing to free */
-            break;
-        case RULE_OPTION_TYPE_FILE_DATA:
-            free(key->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DECODE:
-            free(key->option_data);
-            break;
-        case RULE_OPTION_TYPE_BASE64_DATA:
-            break;
-        case RULE_OPTION_TYPE_PKT_DATA:
             break;
         case RULE_OPTION_TYPE_ICMP_CODE:
             free(key->option_data);
@@ -733,7 +693,6 @@ char *option_type_str[] =
     "RULE_OPTION_TYPE_ASN1",
     "RULE_OPTION_TYPE_BYTE_TEST",
     "RULE_OPTION_TYPE_BYTE_JUMP",
-    "RULE_OPTION_TYPE_BYTE_EXTRACT",
     "RULE_OPTION_TYPE_FLOW",
     "RULE_OPTION_TYPE_CVS",
     "RULE_OPTION_TYPE_DSIZE",
@@ -751,10 +710,6 @@ char *option_type_str[] =
     "RULE_OPTION_TYPE_IP_SAME",
     "RULE_OPTION_TYPE_IP_TOS",
     "RULE_OPTION_TYPE_IS_DATA_AT",
-    "RULE_OPTION_TYPE_FILE_DATA",
-    "RULE_OPTION_TYPE_BASE64_DECODE",
-    "RULE_OPTION_TYPE_BASE64_DATA",
-    "RULE_OPTION_TYPE_PKT_DATA",
     "RULE_OPTION_TYPE_CONTENT",
     "RULE_OPTION_TYPE_CONTENT_URI",
     "RULE_OPTION_TYPE_PCRE",
@@ -774,7 +729,6 @@ char *option_type_str[] =
     "RULE_OPTION_TYPE_URILEN"
 #ifdef DYNAMIC_PLUGIN
     ,
-    "RULE_OPTION_TYPE_HDR_OPT_CHECK",
     "RULE_OPTION_TYPE_PREPROCESSOR",
     "RULE_OPTION_TYPE_DYNAMIC"
 #endif
@@ -802,7 +756,7 @@ void print_option_tree(detection_option_tree_node_t *node, int level)
 
 int add_detection_option_tree(detection_option_tree_node_t *option_tree, void **existing_data)
 {
-    SnortConfig *sc = snort_conf_for_parsing;
+    SnortConfig *sc = snort_conf_for_fast_pattern;
     detection_option_key_t key;
 
     if (sc == NULL)
@@ -833,27 +787,23 @@ int add_detection_option_tree(detection_option_tree_node_t *option_tree, void **
     return DETECTION_OPTION_NOT_EQUAL;
 }
 
-uint64_t rule_eval_pkt_count = 0;
+extern uint8_t DecodeBuffer[DECODE_BLEN];  /* decode.c */
 
 int detection_option_node_evaluate(detection_option_tree_node_t *node, detection_option_eval_data_t *eval_data)
 {
     int i, result = 0, prior_result = 0;
     int rval = DETECTION_OPTION_NO_MATCH;
-    const uint8_t *orig_doe_ptr;
+    const uint8_t *start_doe_ptr = NULL, *tmp_doe_ptr, *orig_doe_ptr;
     char tmp_noalert_flag = 0;
     PatternMatchData dup_content_option_data;
     PcreData dup_pcre_option_data;
     const uint8_t *dp = NULL;
+    int dsize;
     char continue_loop = 1;
-    int loop_count = 0;
-    uint32_t tmp_byte_extract_vars[NUM_BYTE_EXTRACT_VARS];
-    uint16_t save_dflags = 0;
     NODE_PROFILE_VARS;
 
     if (!node || !eval_data || !eval_data->p || !eval_data->pomd || !eval_data->otnx)
         return 0;
-
-    save_dflags = Get_DetectFlags();
 
     /* see if evaluated it before ... */
     if (node->last_check.is_relative == 0)
@@ -861,16 +811,14 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
         /* Only matters if not relative... */
         if ((node->last_check.ts.tv_usec == eval_data->p->pkth->ts.tv_usec) &&
             (node->last_check.ts.tv_sec == eval_data->p->pkth->ts.tv_sec) &&
-            (node->last_check.packet_number == rule_eval_pkt_count) &&
+            (node->last_check.packet_number == pc.total_from_pcap) &&
             (node->last_check.pipeline_number == eval_data->p->http_pipeline_count) &&
             (node->last_check.rebuild_flag == (eval_data->p->packet_flags & REBUILD_FLAGS)) &&
-            (!(eval_data->p->packet_flags & (PKT_DCE_PKT|PKT_RPC_PKT|PKT_ALLOW_MULTIPLE_DETECT))))
+            (!(eval_data->p->packet_flags & PKT_DCE_PKT)))
         {
             /* eval'd this rule option before on this packet,
              * use the cached result. */
-            if ((node->last_check.flowbit_failed == 0) &&
-                !(eval_data->p->packet_flags & PKT_IP_RULE_2ND) &&
-                !(eval_data->p->proto_bits & PROTO_BIT__TEREDO))
+            if ((node->last_check.flowbit_failed == 0) && !(eval_data->p->packet_flags & PKT_IP_RULE_2ND))
             {
                 return node->last_check.result;
             }
@@ -881,7 +829,7 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
 
     node->last_check.ts.tv_sec = eval_data->p->pkth->ts.tv_sec;
     node->last_check.ts.tv_usec = eval_data->p->pkth->ts.tv_usec;
-    node->last_check.packet_number = rule_eval_pkt_count;
+    node->last_check.packet_number = pc.total_from_pcap;
     node->last_check.pipeline_number = eval_data->p->http_pipeline_count;
     node->last_check.rebuild_flag = (eval_data->p->packet_flags & REBUILD_FLAGS);
     node->last_check.flowbit_failed = 0;
@@ -892,92 +840,20 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
     if (node->option_type == RULE_OPTION_TYPE_CONTENT)
     {
         PatternMatchDuplicatePmd(node->option_data, &dup_content_option_data);
-
-        if (dup_content_option_data.buffer_func == CHECK_URI_PATTERN_MATCH)
+        if ((eval_data->p->packet_flags & PKT_ALT_DECODE) && (dup_content_option_data.rawbytes == 0))
         {
-            if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_STAT_MSG))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_STAT_MSG].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_STAT_CODE))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_STAT_CODE].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_RAW_COOKIE))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_COOKIE].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_RAW_HEADER))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_HEADER].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_RAW_URI))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_URI].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_COOKIE))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_COOKIE].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_METHOD))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_METHOD].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_CLIENT_BODY))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_CLIENT_BODY].uri;
-            else if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_HEADER))
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_HEADER].uri;
-            else /* if (dup_content_option_data.uri_buffer & (1 << HTTP_BUFFER_URI)) */
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_URI].uri;
-        }
-        else if (dup_content_option_data.rawbytes == 0)
-        {
-            /* If AltDetect is set by calling the rule options which set it,
-             * we should use the Alt Detect before checking for any other buffers.
-             * Alt Detect will take precedence over the Alt Decode and/or packet data.
-             */
-            if(Is_DetectFlag(FLAG_ALT_DETECT))
-                dp = (uint8_t *)DetectBuffer.data;
-            else if(Is_DetectFlag(FLAG_ALT_DECODE))
-                dp = (uint8_t *)DecodeBuffer.data;
-            else
-                dp = eval_data->p->data;
+            dp = (uint8_t *)DecodeBuffer;
+            dsize = eval_data->p->alt_dsize;
         }
         else
         {
             dp = eval_data->p->data;
+            dsize = eval_data->p->dsize;
         }
     }
     else if (node->option_type == RULE_OPTION_TYPE_PCRE)
     {
         PcreDuplicatePcreData(node->option_data, &dup_pcre_option_data);
-
-        if (dup_pcre_option_data.options & SNORT_PCRE_URI_BUFS)
-        {
-            if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_STAT_MSG)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_STAT_MSG].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_STAT_CODE)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_STAT_CODE].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_RAW_COOKIE)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_COOKIE].uri;
-            else if(dup_pcre_option_data.options & SNORT_PCRE_HTTP_RAW_HEADER)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_HEADER].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_RAW_URI)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_RAW_URI].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_COOKIE)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_COOKIE].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_METHOD)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_METHOD].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_BODY)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_CLIENT_BODY].uri;
-            else if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_HEADER)
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_HEADER].uri;
-            else /* if (dup_pcre_option_data.options & SNORT_PCRE_HTTP_URI) */
-                dp = (uint8_t *)UriBufs[HTTP_BUFFER_URI].uri;
-        }
-        else if (!(dup_pcre_option_data.options & SNORT_PCRE_RAWBYTES))
-        {
-            /* If AltDetect is set by calling the rule options which set it, 
-             * we should use the Alt Detect before checking for any other buffers.
-             * Alt Detect will take precedence over the Alt Decode and/or packet data.
-             */
-            if(Is_DetectFlag(FLAG_ALT_DETECT))
-                dp = (uint8_t *)DetectBuffer.data;
-            else if(Is_DetectFlag(FLAG_ALT_DECODE))
-                dp = (uint8_t *)DecodeBuffer.data;
-            else
-                dp = eval_data->p->data;
-        }
-        else
-        {
-            dp = eval_data->p->data;
-        }
     }
 
     /* No, haven't evaluated this one before... Check it. */
@@ -999,6 +875,7 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                     if (pmd)
                         pattern_size = pmd->pattern_size;
 #ifdef TARGET_BASED
+#ifdef PORTLISTS
                     if (eval_data->p->application_protocol_ordinal != 0)
                     {
                         for (svc_idx = 0;
@@ -1026,6 +903,7 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                         }
                     }
 #endif
+#endif
                     if (fpEvalRTN(getRuntimeRtnFromOtn(otn), eval_data->p, check_ports))
                     {
                         if ( !otn->detection_filter ||
@@ -1042,7 +920,8 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                             {
                                 fpAddMatch(eval_data->pomd, eval_data->otnx, pattern_size, otn);
                             }
-                            result = rval = DETECTION_OPTION_MATCH;
+                            result++;
+                            rval = DETECTION_OPTION_MATCH;
                         }
                     }
                 }
@@ -1060,7 +939,7 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                     {
                         if ((dup_content_option_data.last_check.ts.tv_sec == eval_data->p->pkth->ts.tv_sec) &&
                             (dup_content_option_data.last_check.ts.tv_usec == eval_data->p->pkth->ts.tv_usec) &&
-                            (dup_content_option_data.last_check.packet_number == rule_eval_pkt_count) &&
+                            (dup_content_option_data.last_check.packet_number == pc.total_from_pcap) &&
                             (dup_content_option_data.last_check.rebuild_flag == (eval_data->p->packet_flags & REBUILD_FLAGS)))
                         {
                             rval = DETECTION_OPTION_NO_MATCH;
@@ -1069,34 +948,50 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                     }
 
                     rval = node->evaluate(&dup_content_option_data, eval_data->p);
+                    if (rval == DETECTION_OPTION_MATCH)
+                    {
+                        if (!dup_content_option_data.exception_flag)
+                        {
+                            if (doe_ptr == start_doe_ptr)
+                            {
+                                /* result doe_ptr == starting doe_ptr, meaning
+                                 * this is the same search result we just had.
+                                 * and already evaluated.  We're done.
+                                 */
+                                rval = DETECTION_OPTION_NO_MATCH;
+                            }
+                            else
+                            {
+                                start_doe_ptr = doe_ptr - dup_content_option_data.pattern_size + dup_content_option_data.pattern_max_jump_size;
+                            }
+                        }
+                        else
+                        {
+                            start_doe_ptr = NULL;
+                        }
+                    }
                 }
                 break;
             case RULE_OPTION_TYPE_PCRE:
                 if (node->evaluate)
                 {
                     rval = node->evaluate(&dup_pcre_option_data, eval_data->p);
-                }
-                break;
-            case RULE_OPTION_TYPE_PKT_DATA:
-            case RULE_OPTION_TYPE_FILE_DATA:
-            case RULE_OPTION_TYPE_BASE64_DATA:
-                if (node->evaluate)
-                {
-                    save_dflags = Get_DetectFlags();
-                    rval = node->evaluate(node->option_data, eval_data->p);
+                    if (rval == DETECTION_OPTION_MATCH)
+                    {
+                        /* Start at end of current pattern */
+                        start_doe_ptr = doe_ptr;
+                    }
                 }
                 break;
             case RULE_OPTION_TYPE_ASN1:
             case RULE_OPTION_TYPE_BYTE_TEST:
             case RULE_OPTION_TYPE_BYTE_JUMP:
-            case RULE_OPTION_TYPE_BYTE_EXTRACT:
             case RULE_OPTION_TYPE_FLOW:
             case RULE_OPTION_TYPE_CVS:
             case RULE_OPTION_TYPE_CONTENT_URI:
             case RULE_OPTION_TYPE_DSIZE:
             case RULE_OPTION_TYPE_FLOWBIT:
             case RULE_OPTION_TYPE_FTPBOUNCE:
-            case RULE_OPTION_TYPE_BASE64_DECODE:
             case RULE_OPTION_TYPE_ICMP_CODE:
             case RULE_OPTION_TYPE_ICMP_ID:
             case RULE_OPTION_TYPE_ICMP_SEQ:
@@ -1156,31 +1051,30 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
             eval_data->flowbit_noalert = 1;
         }
 
-        /* Back up byte_extract vars so they don't get overwritten between rules */
-        for (i = 0; i < NUM_BYTE_EXTRACT_VARS; i++)
-        {
-            GetByteExtractValue(&(tmp_byte_extract_vars[i]), (int8_t)i);
-        }
+        tmp_doe_ptr = doe_ptr;
 
 #ifdef PPM_MGR
-        if( PPM_PKTS_ENABLED() )
+        if( PPM_ENABLED() )
         {
             PPM_GET_TIME();
-            PPM_PACKET_TEST();
-            if( PPM_PACKET_ABORT_FLAG() )
+            /* Packet test */
+            if( PPM_PKTS_ENABLED() )
             {
-                /* bail if we exceeded time */
-                if (result == DETECTION_OPTION_NO_MATCH)
+                PPM_PACKET_TEST();
+                if( PPM_PACKET_ABORT_FLAG() )
                 {
-                    NODE_PROFILE_END_NOMATCH(node);
+                    /* bail if we exceeded time */
+                    if (result == DETECTION_OPTION_NO_MATCH)
+                    {
+                        NODE_PROFILE_END_NOMATCH(node);
+                    }
+                    else
+                    {
+                        NODE_PROFILE_END_MATCH(node);
+                    }
+                    node->last_check.result = result;
+                    return result;
                 }
-                else
-                {
-                    NODE_PROFILE_END_MATCH(node);
-                }
-                node->last_check.result = result;
-                Reset_DetectFlags(save_dflags);
-                return result;
             }
         }
 #endif
@@ -1190,123 +1084,37 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
         /* Passed, check the children. */
         if (node->num_children)
         {
-            const uint8_t *tmp_doe_ptr = doe_ptr;
-            const uint8_t tmp_doe_flags = doe_buf_flags;
-
             for (i=0;i<node->num_children; i++)
             {
-                int j = 0;
-                detection_option_tree_node_t *child_node = node->children[i];
-
-                /* reset the DOE ptr for each child from here */
-                SetDoePtr(tmp_doe_ptr, tmp_doe_flags);
-
-                for (j = 0; j < NUM_BYTE_EXTRACT_VARS; j++)
-                {
-                    SetByteExtractValue(tmp_byte_extract_vars[j], (int8_t)j);
-                }
-
-                if (loop_count > 0)
-                {
-                    if (child_node->result == DETECTION_OPTION_NO_MATCH)
-                    {
-                        if (((child_node->option_type == RULE_OPTION_TYPE_CONTENT)
-                                    || (child_node->option_type == RULE_OPTION_TYPE_PCRE))
-                                && !child_node->last_check.is_relative)
-                        {
-                            /* If it's a non-relative content or pcre, no reason
-                             * to check again.  Only increment result once.
-                             * Should hit this condition on first loop iteration. */
-                            if (loop_count == 1)
-                                result++;
-                            continue;
-                        }
-                        else if ((child_node->option_type == RULE_OPTION_TYPE_CONTENT)
-                                && child_node->last_check.is_relative)
-                        {
-                            PatternMatchData *pmd = (PatternMatchData *)child_node->option_data;
-
-                            /* Check for an unbounded relative search.  If this
-                             * failed before, it's going to fail again so don't
-                             * go down this path again */
-                            if (pmd->within == 0)
-                            {
-                                /* Only increment result once. Should hit this
-                                 * condition on first loop iteration. */
-                                if (loop_count == 1)
-                                    result++;
-                                continue;
-                            }
-                        }
-                    }
-                    else if (child_node->option_type == RULE_OPTION_TYPE_LEAF_NODE)
-                    {
-                        /* Leaf node matched, don't eval again */
-                        continue;
-                    }
-                    else if (child_node->result == child_node->num_children)
-                    {
-                        /* This branch of the tree matched or has options that
-                         * don't need to be evaluated again, so don't need to
-                         * evaluate this option again */
-                        continue;
-                    }
-                }
-
-                child_node->result = detection_option_node_evaluate(node->children[i], eval_data);
-                if (child_node->option_type == RULE_OPTION_TYPE_LEAF_NODE)
-                {
-                    /* Leaf node won't have any children but will return success
-                     * or failure */
-                    result += child_node->result;
-                }
-                else if (child_node->result == child_node->num_children)
-                {
-                    /* Indicate that the child's tree branches are done */
-                    result++;
-                }
+                doe_ptr = tmp_doe_ptr; /* reset the DOE ptr for each child from here */
+                result += detection_option_node_evaluate(node->children[i], eval_data);
 #ifdef PPM_MGR
-                if( PPM_PKTS_ENABLED() )
+                if( PPM_ENABLED() )
                 {
                     PPM_GET_TIME();
-                    PPM_PACKET_TEST();
-                    if( PPM_PACKET_ABORT_FLAG() )
+
+                    /* Packet test */
+                    if( PPM_PKTS_ENABLED() )
                     {
-                        /* bail if we exceeded time */
-                        node->last_check.result = result;
-                        Reset_DetectFlags(save_dflags);
-                        return result;
+                        PPM_PACKET_TEST();
+                        if( PPM_PACKET_ABORT_FLAG() )
+                        {
+                            /* bail if we exceeded time */
+                            node->last_check.result = result;
+                            return result;
+                        }
                     }
                 }
 #endif
             }
-
-            /* If all children branches matched, we don't need to reeval any of
-             * the children so don't need to reeval this content/pcre rule
-             * option at a new offset.
-             * Else, reset the DOE ptr to last eval for offset/depth,
-             * distance/within adjustments for this same content/pcre
-             * rule option */
-            if (result == node->num_children)
-                continue_loop = 0;
-            else
-                SetDoePtr(tmp_doe_ptr, tmp_doe_flags);
-
-            /* Don't need to reset since it's only checked after we've gone
-             * through the loop at least once and the result will have
-             * been set again already */
-            //for (i = 0; i < node->num_children; i++)
-            //    node->children[i]->result;
         }
-
-        if (result - prior_result > 0
+        if (result - prior_result > 0 
             && node->option_type == RULE_OPTION_TYPE_CONTENT
             && Replace_OffsetStored(&dup_content_option_data) && ScInlineMode())
         {
             Replace_QueueChange(&dup_content_option_data);
             prior_result = result;
         }
-
         NODE_PROFILE_TMPSTART(node);
 
         if (rval == DETECTION_OPTION_NO_ALERT)
@@ -1315,7 +1123,7 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
             eval_data->flowbit_noalert = tmp_noalert_flag;
         }
 
-        if (continue_loop && (rval == DETECTION_OPTION_MATCH) && (node->relative_children))
+        if ((rval == DETECTION_OPTION_MATCH) && (node->relative_children))
         {
             if (node->option_type == RULE_OPTION_TYPE_CONTENT)
             {
@@ -1325,34 +1133,15 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
                 }
                 else
                 {
-                    const uint8_t *orig_ptr;
-
-                    if (dup_content_option_data.use_doe)
-                        orig_ptr = (orig_doe_ptr == NULL) ? dp : orig_doe_ptr;
-                    else
-                        orig_ptr = dp;
-
-                    continue_loop = PatternMatchAdjustRelativeOffsets((PatternMatchData *)node->option_data,
-                            &dup_content_option_data, doe_ptr, orig_ptr);
+                    continue_loop = PatternMatchAdjustRelativeOffsets(&dup_content_option_data, orig_doe_ptr, start_doe_ptr, dp);
+                    doe_ptr = start_doe_ptr;
+                    dup_content_option_data.use_doe = 1;
                 }
             }
             else if (node->option_type == RULE_OPTION_TYPE_PCRE)
             {
-                if (dup_pcre_option_data.options & SNORT_PCRE_INVERT)
-                {
-                    continue_loop = 0;
-                }
-                else
-                {
-                    const uint8_t *orig_ptr;
-
-                    if (dup_pcre_option_data.options & SNORT_PCRE_RELATIVE)
-                        orig_ptr = (orig_doe_ptr == NULL) ? dp : orig_doe_ptr;
-                    else
-                        orig_ptr = dp;
-
-                    continue_loop = PcreAdjustRelativeOffsets(&dup_pcre_option_data, doe_ptr - orig_ptr);
-                }
+                continue_loop = PcreAdjustRelativeOffsets(&dup_pcre_option_data, doe_ptr - orig_doe_ptr);
+                doe_ptr = start_doe_ptr;
             }
             else
             {
@@ -1370,11 +1159,6 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
         if (continue_loop && PROFILING_RULES)
             node->checks++;
 #endif
-
-        loop_count++;
-
-        if (continue_loop)
-            UpdateDoePtr(orig_doe_ptr, 0);
 
     } while (continue_loop);
 
@@ -1394,8 +1178,6 @@ int detection_option_node_evaluate(detection_option_tree_node_t *node, detection
     {
         NODE_PROFILE_END_MATCH(node);
     }
-
-    Reset_DetectFlags(save_dflags);
     return result;
 }
 

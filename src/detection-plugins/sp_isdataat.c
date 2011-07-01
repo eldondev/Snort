@@ -1,6 +1,6 @@
-/* $Id: sp_isdataat.c,v 1.24 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 /*
- ** Copyright (C) 1998-2011 Sourcefire, Inc.
+ ** Copyright (C) 1998-2009 Sourcefire, Inc.
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License Version 2 as
@@ -19,7 +19,7 @@
  */
 
 /* sp_isdataat
- *
+ * 
  * Purpose:
  *    Test a specific byte to see if there is data.  (Basicly, rule keyword
  *    into inBounds)
@@ -29,7 +29,7 @@
  *    ["relative"]  look for byte location relative to the end of the last
  *                  pattern match
  *    ["rawbytes"]  force use of the non-normalized buffer.
- *
+ *   
  * Sample:
  *   alert tcp any any -> any 110 (msg:"POP3 user overflow"; \
  *      content:"USER"; isdataat:30,relative; content:!"|0a|"; within:30;)
@@ -47,21 +47,18 @@
 #endif
 #include <errno.h>
 
-#include "sf_types.h"
-#include "snort_bounds.h"
+#include "bounds.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "mstring.h"
 
 #include "snort.h"
 #include "profiler.h"
 #include "sp_isdataat.h"
-#include "sp_byte_extract.h"
 #ifdef PERF_PROFILING
 PreprocStats isDataAtPerfStats;
 extern PreprocStats ruleOTNEvalPerfStats;
@@ -69,13 +66,16 @@ extern PreprocStats ruleOTNEvalPerfStats;
 
 #include "sfhashfcn.h"
 #include "detection_options.h"
-#include "detection_util.h"
 
 extern char *file_name;  /* this is the file name from rules.c, generally used
                             for error messages */
 
 extern int file_line;    /* this is the file line number from rules.c that is
                             used to indicate file lines for error messages */
+
+extern const uint8_t *doe_ptr;
+
+extern uint8_t DecodeBuffer[DECODE_BLEN];
 
 void IsDataAtInit(char *, OptTreeNode *, int);
 void IsDataAtParse(char *, IsDataAtData *, OptTreeNode *);
@@ -90,10 +90,6 @@ uint32_t IsDataAtHash(void *d)
     b = data->flags;
     c = RULE_OPTION_TYPE_IS_DATA_AT;
 
-    mix(a,b,c);
-
-    a += data->offset_var;
-
     final(a,b,c);
 
     return c;
@@ -106,10 +102,9 @@ int IsDataAtCompare(void *l, void *r)
 
     if (!left || !right)
         return DETECTION_OPTION_NOT_EQUAL;
-
+                                
     if (( left->offset == right->offset) &&
-        ( left->flags == right->flags) &&
-        ( left->offset_var == right->offset_var) )
+        ( left->flags == right->flags))
     {
         return DETECTION_OPTION_EQUAL;
     }
@@ -118,7 +113,7 @@ int IsDataAtCompare(void *l, void *r)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: SetupIsDataAt()
  *
  * Purpose: Load 'er up
@@ -131,7 +126,7 @@ int IsDataAtCompare(void *l, void *r)
 void SetupIsDataAt(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("isdataat", IsDataAtInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("isdataat", IsDataAtInit, NULL, OPT_TYPE_DETECTION);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("isdataat", &isDataAtPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
@@ -141,10 +136,10 @@ void SetupIsDataAt(void)
 
 
 /****************************************************************************
- *
+ * 
  * Function: IsDataAt(char *, OptTreeNode *, int protocol)
  *
- * Purpose: Generic rule configuration function.  Handles parsing the rule
+ * Purpose: Generic rule configuration function.  Handles parsing the rule 
  *          information and attaching the associated detection function to
  *          the OTN.
  *
@@ -167,11 +162,11 @@ void IsDataAtInit(char *data, OptTreeNode *otn, int protocol)
 
     if(idx == NULL)
     {
-        FatalError("%s(%d): Unable to allocate IsDataAt data node\n",
+        FatalError("%s(%d): Unable to allocate IsDataAt data node\n", 
                 file_name, file_line);
     }
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     IsDataAtParse(data, idx, otn);
 
@@ -183,7 +178,7 @@ void IsDataAtInit(char *data, OptTreeNode *otn, int protocol)
 
     fpl = AddOptFuncToList(IsDataAt, otn);
     fpl->type = RULE_OPTION_TYPE_IS_DATA_AT;
-
+    
     /* attach it to the context node so that we can call each instance
      * individually
      */
@@ -196,7 +191,7 @@ void IsDataAtInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: IsDataAt(char *, IsDataAtData *, OptTreeNode *)
  *
  * Purpose: This is the function that is used to process the option keyword's
@@ -216,46 +211,26 @@ void IsDataAtParse(char *data, IsDataAtData *idx, OptTreeNode *otn)
     int i;
     char *cptr;
     char *endp;
-    char *offset;
 
     toks = mSplit(data, ",", 3, &num_toks, 0);
 
-    if(num_toks > 3)
+    if(num_toks > 3) 
         FatalError("%s (%d): Bad arguments to IsDataAt: %s\n", file_name,
                 file_line, data);
-    offset = toks[0];
-    if(*offset == '!')
-    {
-        idx->flags |= ISDATAAT_NOT_FLAG;
-        offset++;
-        while(isspace((int)*offset)) {offset++;}
-    }
 
     /* set how many bytes to process from the packet */
-    if (isdigit(offset[0]) || offset[0] == '-')
+    idx->offset = strtol(toks[0], &endp, 10);
+
+    if(toks[0] == endp)
     {
-        idx->offset = strtol(offset, &endp, 10);
-        idx->offset_var = -1;
-
-        if(offset == endp)
-        {
-            FatalError("%s(%d): Unable to parse as byte value %s\n",
-                       file_name, file_line, toks[0]);
-        }
-
-        if(idx->offset > 65535)
-        {
-            FatalError("%s(%d): IsDataAt offset greater than max IPV4 packet size",
-                    file_name, file_line);
-        }
+        FatalError("%s(%d): Unable to parse as byte value %s\n",
+                   file_name, file_line, toks[0]);
     }
-    else
+
+    if(idx->offset > 65535)
     {
-        idx->offset_var = GetVarByName(offset);
-        if (idx->offset_var == BYTE_EXTRACT_NO_VAR)
-        {
-            FatalError("%s (%d): %s\n", file_name, file_line, BYTE_EXTRACT_INVALID_ERR_STR);
-        }
+        FatalError("%s(%d): IsDataAt offset greater than max IPV4 packet size",
+                file_name, file_line);
     }
 
     for (i=1; i< num_toks; i++)
@@ -286,7 +261,7 @@ void IsDataAtParse(char *data, IsDataAtData *idx, OptTreeNode *otn)
 
 
 /****************************************************************************
- *
+ * 
  * Function: IsDataAt(char *, OptTreeNode *, OptFpList *)
  *
  * Purpose: Use this function to perform the particular detection routine
@@ -297,7 +272,7 @@ void IsDataAtParse(char *data, IsDataAtData *idx, OptTreeNode *otn)
  *            fp_list => pointer to the function pointer list
  *
  * Returns: If the detection test fails, this function *must* return a zero!
- *          On success, it calls the next function in the detection list
+ *          On success, it calls the next function in the detection list 
  *
  ****************************************************************************/
 int IsDataAt(void *option_data, Packet *p)
@@ -316,52 +291,33 @@ int IsDataAt(void *option_data, Packet *p)
         return rval;
     }
 
-    /* Get values from byte_extract variables, if present. */
-    if (isdata->offset_var >= 0 && isdata->offset_var < NUM_BYTE_EXTRACT_VARS)
-    {
-        GetByteExtractValue(&(isdata->offset), isdata->offset_var);
-    }
-
     if (isdata->flags & ISDATAAT_RAWBYTES_FLAG)
     {
         /* Rawbytes specified, force use of that buffer */
         dsize = p->dsize;
         start_ptr = p->data;
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
                     "Using RAWBYTES buffer!\n"););
     }
-    else if (Is_DetectFlag(FLAG_ALT_DETECT))
-    {
-        dsize = DetectBuffer.len;
-        start_ptr = DetectBuffer.data;
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-                "Using Alternative Detect buffer!\n"););
-    }
-    else if(Is_DetectFlag(FLAG_ALT_DECODE))
+    else if(p->packet_flags & PKT_ALT_DECODE)
     {
         /* If normalized buffer available, use it... */
-        dsize = DecodeBuffer.len;
-        start_ptr = DecodeBuffer.data;
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+        dsize = p->alt_dsize;
+        start_ptr = DecodeBuffer;
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
                     "Using Alternative Decode buffer!\n"););
     }
     else
     {
-        if(IsLimitedDetect(p))
-            dsize = p->alt_dsize;
-        else
-            dsize = p->dsize;
+        dsize = p->dsize;
         start_ptr = p->data;
     }
 
     base_ptr = start_ptr;
     end_ptr = start_ptr + dsize;
-
-    if((isdata->flags & ISDATAAT_RELATIVE_FLAG) && doe_ptr)
+    
+    if(doe_ptr)
     {
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-                                "Checking relative offset!\n"););
-
         if(!inBounds(start_ptr, end_ptr, doe_ptr))
         {
             DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
@@ -369,7 +325,12 @@ int IsDataAt(void *option_data, Packet *p)
             PREPROC_PROFILE_END(isDataAtPerfStats);
             return rval;
         }
+    }
 
+    if((isdata->flags & ISDATAAT_RELATIVE_FLAG) && doe_ptr)
+    {
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+                                "Checking relative offset!\n"););
         base_ptr = doe_ptr + isdata->offset;
     }
     else

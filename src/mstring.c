@@ -1,6 +1,6 @@
-/* $Id: mstring.c,v 1.48 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 
 ** This program is free software; you can redistribute it and/or modify
@@ -50,12 +50,16 @@
 #include <ctype.h>
 #include <sys/types.h>
 
-#include "sf_types.h"
 #include "mstring.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "plugbase.h" /* needed for fasthex() */
 #include "util.h"
-#include "detection_util.h"
+
+#ifdef GIDS
+extern int detect_depth;
+#endif /* GIDS */
+
+extern const uint8_t *doe_ptr;
 
 static char * mSplitAddTok(const char *, const int, const char *, const char);
 
@@ -224,7 +228,7 @@ char ** mSplit(const char *str, const char *sep_chars, const int max_toks,
                 if (!isspace((int)str[j - 1]))
                     break;
             }
-
+             
             /* Allocate a buffer.  The length will not have included the
              * meta char of escaped separators */
             toks[cur_tok] = mSplitAddTok(&str[tok_start], j - tok_start, sep_chars, meta_char);
@@ -346,7 +350,7 @@ char ** mSplit(const char *str, const char *sep_chars, const int max_toks,
 
         return NULL;
     }
-
+    
     /* Trim whitespace at end of last tok */
     for (j = i; j > tok_start; j--)
     {
@@ -511,7 +515,7 @@ int mContainsSubstr(const char *buf, int b_len, const char *pat, int p_len)
     const char *p_idx;  /* index ptr into the pattern buffer */
     const char *b_end;  /* ptr to the end of the data buffer */
     int m_cnt = 0;      /* number of pattern matches so far... */
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     unsigned long loopcnt = 0;
 #endif
 
@@ -524,7 +528,7 @@ int mContainsSubstr(const char *buf, int b_len, const char *pat, int p_len)
 
     do
     {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         loopcnt++;
 #endif
 
@@ -671,7 +675,7 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
 {
     int b_idx = plen;
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     char *hexbuf;
     int cmpcnt = 0;
 #endif
@@ -679,7 +683,7 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
     DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,"buf: %p  blen: %d  ptrn: %p  "
                 "plen: %d\n", buf, blen, ptrn, plen););
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     hexbuf = fasthex((const u_char *)buf, blen);
     DebugMessage(DEBUG_PATTERN_MATCH,"buf: %s\n", hexbuf);
     free(hexbuf);
@@ -688,7 +692,7 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
     free(hexbuf);
     DebugMessage(DEBUG_PATTERN_MATCH,"buf: %p  blen: %d  ptrn: %p  "
                  "plen: %d\n", buf, blen, ptrn, plen);
-#endif /* DEBUG_MSGS */
+#endif /* DEBUG */
     if(plen == 0)
         return 1;
 
@@ -698,7 +702,7 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
 
         while(buf[--b_idx] == ptrn[--p_idx])
         {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             cmpcnt++;
 #endif
             if(b_idx < 0)
@@ -706,9 +710,15 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
 
             if(p_idx == 0)
             {
-                DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+                DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
                             "match: compares = %d.\n", cmpcnt););
-                UpdateDoePtr(((const uint8_t *)&(buf[b_idx]) + plen), 0);
+
+                doe_ptr = (const uint8_t *)&(buf[b_idx]) + plen;
+
+#ifdef GIDS
+                detect_depth = b_idx;
+#endif /* GIDS */
+
                 return 1;
             }
         }
@@ -750,7 +760,7 @@ int mSearch(const char *buf, int blen, const char *ptrn, int plen, int *skip, in
 int mSearchCI(const char *buf, int blen, const char *ptrn, int plen, int *skip, int *shift)
 {
     int b_idx = plen;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     int cmpcnt = 0;
 #endif
 
@@ -761,18 +771,21 @@ int mSearchCI(const char *buf, int blen, const char *ptrn, int plen, int *skip, 
     {
         int p_idx = plen, skip_stride, shift_stride;
 
-        while((unsigned char) ptrn[--p_idx] ==
+        while((unsigned char) ptrn[--p_idx] == 
                 toupper((unsigned char) buf[--b_idx]))
         {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             cmpcnt++;
 #endif
             if(p_idx == 0)
             {
-                DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
-                            "match: compares = %d.\n",
+                DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
+                            "match: compares = %d.\n", 
                             cmpcnt););
-                UpdateDoePtr(((const uint8_t *)&(buf[b_idx]) + plen), 0);
+                doe_ptr = (const uint8_t *)&(buf[b_idx]) + plen;
+#ifdef GIDS
+                detect_depth = b_idx;
+#endif /* GIDS */
                 return 1;
             }
         }
@@ -814,17 +827,17 @@ int mSearchREG(const char *buf, int blen, const char *ptrn, int plen, int *skip,
     int b_idx = plen;
     int literal = 0;
     int regexcomp = 0;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     int cmpcnt = 0;
-#endif /* DEBUG_MSGS */
-
+#endif /*DEBUG*/
+    
     DEBUG_WRAP(
 	       DebugMessage(DEBUG_PATTERN_MATCH, "buf: %p  blen: %d  ptrn: %p "
 			    " plen: %d b_idx: %d\n", buf, blen, ptrn, plen, b_idx);
 	       DebugMessage(DEBUG_PATTERN_MATCH, "packet data: \"%s\"\n", buf);
 	       DebugMessage(DEBUG_PATTERN_MATCH, "matching for \"%s\"\n", ptrn);
 	       );
-
+	       
     if(plen == 0)
         return 1;
 
@@ -834,8 +847,8 @@ int mSearchREG(const char *buf, int blen, const char *ptrn, int plen, int *skip,
 
 	DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "Looping... "
 				"([%d]0x%X (%c) -> [%d]0x%X(%c))\n",
-				b_idx, buf[b_idx-1],
-				buf[b_idx-1],
+				b_idx, buf[b_idx-1], 
+				buf[b_idx-1], 
 				p_idx, ptrn[p_idx-1], ptrn[p_idx-1]););
 
         while(buf[--b_idx] == ptrn[--p_idx]
@@ -843,9 +856,9 @@ int mSearchREG(const char *buf, int blen, const char *ptrn, int plen, int *skip,
               || (ptrn[p_idx] == '*' && !literal)
               || (ptrn[p_idx] == '\\' && !literal))
         {
-	    DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "comparing: b:%c -> p:%c\n",
+	    DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "comparing: b:%c -> p:%c\n", 
 				    buf[b_idx], ptrn[p_idx]););
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             cmpcnt++;
 #endif
 
@@ -877,7 +890,7 @@ int mSearchREG(const char *buf, int blen, const char *ptrn, int plen, int *skip,
 
             if(p_idx == 0)
             {
-		DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "match: compares = %d.\n",
+		DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "match: compares = %d.\n", 
 					cmpcnt););
                 return 1;
             }
@@ -889,7 +902,7 @@ int mSearchREG(const char *buf, int blen, const char *ptrn, int plen, int *skip,
 	DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "skip-shifting...\n"););
 	skip_stride = skip[(unsigned char) buf[b_idx]];
 	shift_stride = shift[p_idx];
-
+	
 	b_idx += (skip_stride > shift_stride) ? skip_stride : shift_stride;
 	DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, "b_idx skip-shifted to %d\n", b_idx););
 	b_idx += regexcomp;

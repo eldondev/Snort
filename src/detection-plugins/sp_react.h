@@ -1,7 +1,7 @@
-/* $Id: sp_react.h,v 1.26 2011/02/09 23:23:05 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -29,5 +29,11 @@ void ReactFree(void *d);
 uint32_t ReactHash(void *d);
 int ReactCompare(void *l, void *r);
 #endif  /* ENABLE_REACT */
+
+#if defined(ENABLE_REACT) || defined(ENABLE_RESPONSE)
+extern int nd;  /* libnet raw socket descriptor */
+void RawSocket_Open();
+void RawSocket_Close();
+#endif
 
 #endif  /* __SP_REACT_H__ */

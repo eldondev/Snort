@@ -1,7 +1,7 @@
-/* $Id: sf_convert_dynamic.h,v 1.6 2011/02/09 23:23:08 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as

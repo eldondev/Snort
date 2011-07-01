@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# $Id: verstuff.pl,v 1.9 2005/05/05 20:01:32 jhewlett Exp $
+# $Id$
 # Author: Chris Green <cmg@sourcefire.com>
 # Purpose: make sure snort versions stay in sync
 # Created: Tue Jul 22 17:21:42 EDT 2003

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
 
 #ifndef _DCE2_SMB_H_
@@ -30,7 +30,7 @@
 #include "smb.h"
 #include "sf_snort_packet.h"
 #include "sf_types.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 /********************************************************************
  * Macros
@@ -99,7 +99,7 @@ typedef struct _DCE2_SmbSessionTracker
     int tid;
     DCE2_List *tids;
 
-    /* Co trackers for fids created on session using
+    /* Co trackers for fids created on session using 
      * only IPC tids - specific for Samba and Win2000 */
     DCE2_SmbFidTrackerNode ft_node;
     DCE2_List *fts;
@@ -132,7 +132,7 @@ typedef struct _DCE2_SmbSsnData
     /* Client can send multiple tree connects before server responses.
      * Since for a Tree Connect we rely on the client to determine if
      * the tree will be IPC$ upon acceptance by server, we need to
-     * queue them up */
+     * queue them up */ 
     DCE2_CQueue *tc_queue;
 
     DCE2_SmbBlockRaw br;
@@ -177,7 +177,7 @@ typedef struct _DCE2_SmbSsnData
 /********************************************************************
  * Inline function prototypes
  ********************************************************************/
-static inline DCE2_TransType DCE2_SmbAutodetect(const SFSnortPacket *);
+static INLINE DCE2_TransType DCE2_SmbAutodetect(const SFSnortPacket *);
 
 /********************************************************************
  * Public function prototypes
@@ -202,7 +202,7 @@ void DCE2_SmbSsnFree(void *);
  *  DCE2_TranType
  *
  *********************************************************************/
-static inline DCE2_TransType DCE2_SmbAutodetect(const SFSnortPacket *p)
+static INLINE DCE2_TransType DCE2_SmbAutodetect(const SFSnortPacket *p)
 {
     if (p->payload_size >= sizeof(NbssHdr))
     {

@@ -1,0 +1,62 @@
+Rule: 
+
+--
+Sid: 
+100000103
+
+-- 
+Summary: 
+This event is generated when an empty UDP packet is sent to port 7649, where 
+Breed game servers typically listen.
+
+-- 
+
+Impact: 
+Upon receiving such a packet, the server will crash, causing a denial of 
+service condition.
+
+--
+Detailed Information:
+Breed game servers will pass a NULL pointer upon receiving an empty UDP packet 
+on port 7649, causing an immediate crash. The server must be restarted for 
+service to resume.
+
+--
+Affected Systems:
+Brat Designs Breed 
+Brat Designs Breed Patch #1
+
+--
+
+Attack Scenarios: 
+A script that generates empty UDP packets can be used to perform this attack.
+
+-- 
+
+Ease of Attack: 
+Simple; public exploits exist.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+No known patches or workarounds exist. System administrators may be able to 
+reject these packets at their firewall, depending upon the abilities of the 
+firewall system they use.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

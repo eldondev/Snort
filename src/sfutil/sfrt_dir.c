@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2006-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -24,7 +24,7 @@
  * @author  Adam Keeton <akeeton@sourcefire.com>
  * @date    Thu July 20 10:16:26 EDT 2006
  *
- * The implementation uses an multibit-trie that is similar to Gupta et-al's
+ * The implementation uses an multibit-trie that is similar to Gupta et-al's 
  * DIR-n-m.
  */
 
@@ -35,7 +35,6 @@
 #include <stdarg.h> /* For variadic */
 #include <stdio.h>
 #include <string.h> /* For memset   */
-#include "sf_types.h"
 #include "sfrt.h"
 #include "sfrt_dir.h"
 
@@ -55,20 +54,20 @@ typedef IP IPLOOKUP;
 #endif
 
 /* Create new "sub" table of 2^width entries */
-static dir_sub_table_t *_sub_table_new(dir_table_t *root, uint32_t dimension,
+static dir_sub_table_t *_sub_table_new(dir_table_t *root, uint32_t dimension, 
                                        uint32_t prefill, uint32_t bit_length)
 {
 
-    int width = root->dimensions[dimension];
+    int width = root->dimensions[dimension];   
     int len = 1 << width;
     int index;
     dir_sub_table_t *sub;
 
     /* Check if creating this node will exceed the memory cap.
-     * The symbols in the conditional (other than cap), come from the
+     * The symbols in the conditional (other than cap), come from the 
      * allocs below. */
-    if( root->mem_cap < ( root->allocated +
-                          sizeof(dir_sub_table_t) +
+    if( root->mem_cap < ( root->allocated + 
+                          sizeof(dir_sub_table_t) + 
                           sizeof(word) * len + len ) ||
         bit_length > 128)
     {
@@ -100,9 +99,9 @@ static dir_sub_table_t *_sub_table_new(dir_table_t *root, uint32_t dimension,
 
     /* A "length" needs to be stored with each entry above.  The length refers
      * to how specific the insertion that set the entry was.  It is necessary
-     * so that the entry is not overwritten by less general routing
+     * so that the entry is not overwritten by less general routing 
      * information if "RT_FAVOR_SPECIFIC" insertions are being performed. */
-    sub->lengths = (char*)malloc(sub->num_entries);
+    sub->lengths = (char*)malloc(sub->num_entries); 
 
     if(!sub->lengths)
     {
@@ -190,7 +189,7 @@ static void _sub_table_free(uint32_t *allocated, dir_sub_table_t *sub)
 
     for(index=0; index < sub->num_entries; index++)
     {
-        /* The following condition will only be true if
+        /* The following condition will only be true if 
          * this entry is a pointer  */
         if( !sub->lengths[index] && sub->entries[index] )
         {
@@ -200,7 +199,7 @@ static void _sub_table_free(uint32_t *allocated, dir_sub_table_t *sub)
 
     if(sub->entries)
     {
-        /* This probably does not need to be checked
+        /* This probably does not need to be checked 
          * since if it was not allocated, we would have errored out
          * in _sub_table_new */
         free(sub->entries);
@@ -210,7 +209,7 @@ static void _sub_table_free(uint32_t *allocated, dir_sub_table_t *sub)
 
     if(sub->lengths)
     {
-        /* This probably does not need to be checked
+        /* This probably does not need to be checked 
          * since if it was not allocated, we would have errored out
          * in _sub_table_new */
         free(sub->lengths);
@@ -235,7 +234,7 @@ void sfrt_dir_free(void *tbl)
 
     if(table->sub_table)
     {
-        _sub_table_free(&table->allocated, table->sub_table);
+        _sub_table_free(&table->allocated, table->sub_table);            
     }
 
     if(table->dimensions)
@@ -246,7 +245,7 @@ void sfrt_dir_free(void *tbl)
     free(table);
 }
 
-static inline void _dir_fill_all(uint32_t *allocated, uint32_t index, uint32_t fill,
+static INLINE void _dir_fill_all(uint32_t *allocated, uint32_t index, uint32_t fill, 
                                  word length, uint32_t val, dir_sub_table_t *table)
 {
 
@@ -257,7 +256,7 @@ static inline void _dir_fill_all(uint32_t *allocated, uint32_t index, uint32_t f
          * pointer ... otherwise free it to avoid a huge memory leak. */
         if( table->entries[index] && !table->lengths[index])
         {
-            _sub_table_free(allocated, (dir_sub_table_t*)table->entries[index]);
+            _sub_table_free(allocated, (dir_sub_table_t*)table->entries[index]); 
         }
 
         table->entries[index] = val;
@@ -265,15 +264,15 @@ static inline void _dir_fill_all(uint32_t *allocated, uint32_t index, uint32_t f
     }
 }
 
-static inline void _dir_fill_less_specific(int index, int fill,
+static INLINE void _dir_fill_less_specific(int index, int fill, 
                                            word length, uint32_t val, dir_sub_table_t *table)
 {
 
     /* Fill entries */
     for(; index < fill; index++)
     {
-        /* If we encounter a pointer, and we're inserting at this level, we
-         * automatically know that this entry refers to more specific
+        /* If we encounter a pointer, and we're inserting at this level, we 
+         * automatically know that this entry refers to more specific 
          * information.  However, there might only be one more specific entry
          * in the entire block, meaning the rest must be filled.
          *
@@ -286,7 +285,7 @@ static inline void _dir_fill_less_specific(int index, int fill,
 
         if( !table->lengths[index] && table->entries[index])
         {
-            dir_sub_table_t *next = (dir_sub_table_t*)table->entries[index];
+            dir_sub_table_t *next = (dir_sub_table_t*)table->entries[index];          
             _dir_fill_less_specific(0, 1 << next->width, length, val, next);
         }
         else if(length >= (word)table->lengths[index])
@@ -302,11 +301,11 @@ static inline void _dir_fill_less_specific(int index, int fill,
  * that should house the value "ptr"
  * @param ip        IP address structure
  * @param cur_len   Number of bits of the IP left at this depth
- * @param length    Number of bits of the IP used to specify this CIDR
+ * @param length    Number of bits of the IP used to specify this CIDR 
  * @param ptr       Information to be associated with this IP range
  * @param master_table    The table that describes all, returned by dir_new */
-static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
-                           int current_depth, int behavior,
+static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr, 
+                           int current_depth, int behavior, 
                            dir_sub_table_t *sub_table, dir_table_t *root_table)
 {
 
@@ -355,10 +354,10 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
     /* Check if this is the last table to traverse to */
     if(sub_table->width >= cur_len)
     {
-        /* Calculate how many entries need to be filled
+        /* Calculate how many entries need to be filled 
          * in this table. If the table is 24 bits wide, and the entry
          * is 20 bytes long, 2^4 entries need to be filled. */
-        fill = 1 << (sub_table->width - cur_len);
+        fill = 1 << (sub_table->width - cur_len); 
 
         index = (index >> (sub_table->width - cur_len)) <<
             (sub_table->width - cur_len);
@@ -368,7 +367,7 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
         /* Favor most recent CIDR */
         if(behavior == RT_FAVOR_TIME)
         {
-            _dir_fill_all(&root_table->allocated, index, fill, length,
+            _dir_fill_all(&root_table->allocated, index, fill, length, 
                           (word)ptr, sub_table);
         }
         /* Fill over less specific CIDR */
@@ -380,10 +379,10 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
     /* Need to traverse to a sub-table */
     else
     {
-        dir_sub_table_t *next_sub =
+        dir_sub_table_t *next_sub = 
             (dir_sub_table_t *)sub_table->entries[index];
 
-        /* Check if we need to alloc a new sub table.
+        /* Check if we need to alloc a new sub table. 
          * If next_sub was 0/NULL, there's no entry at this index
          * If the length is non-zero, there is an entry */
         if(!next_sub || sub_table->lengths[index])
@@ -393,8 +392,8 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
                 return RT_INSERT_FAILURE;
             }
 
-            sub_table->entries[index] =
-                (word) _sub_table_new(root_table, current_depth+1,
+            sub_table->entries[index] = 
+                (word) _sub_table_new(root_table, current_depth+1, 
                                       (word) next_sub, sub_table->lengths[index]);
 
             sub_table->cur_num++;
@@ -413,12 +412,12 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
 #ifdef SUP_IP6
         ip->bits += sub_table->width;
         _dir_sub_insert(ip, length,
-                        cur_len - sub_table->width, ptr, current_depth+1,
+                        cur_len - sub_table->width, ptr, current_depth+1, 
                         behavior, next_sub, root_table);
 #else
         iplu = *ip << sub_table->width;
         _dir_sub_insert(&iplu, length,
-                        cur_len - sub_table->width, ptr, current_depth+1,
+                        cur_len - sub_table->width, ptr, current_depth+1, 
                         behavior, next_sub, root_table);
 #endif
     }
@@ -431,7 +430,7 @@ static int _dir_sub_insert(IPLOOKUP *ip, int length, int cur_len, GENERIC ptr,
  * @param len       Number of bits of the IP used for lookup
  * @param ptr       Information to be associated with this IP range
  * @param master_table    The table that describes all, returned by dir_new */
-int sfrt_dir_insert(IP ip, int len, word data_index,
+int sfrt_dir_insert(IP ip, int len, word data_index, 
                     int behavior, void *table)
 {
     dir_table_t *root = (dir_table_t*)table;

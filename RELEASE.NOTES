@@ -1,70 +1,14 @@
-2011-06-13 - Snort 2.9.1 Beta
-
-[*] New Additions
-  * HTTP aware TCP reassembly support within HTTP Inspect and
-    Stream5, allowing Snort to more intelligently inspect HTTP
-    requests and responses.  See README.stream5 subsection
-    related to Protocol Aware Flushing (PAF).
-
-  * SIP preprocessor to identify SIP call channels and provide
-    rule access via new rule option keywords.  See the Snort
-    Manual and README.sip for details.
-
-  * POP3 & IMAP preprocessors to decode email attachments in
-    Base64, Quoted Printable, and uuencode formats, and updates
-    to SMTP preprocessor for decoding email attachments encoded
-    as Quoted Printable and uuencode formats.  See the Snort
-    Manual, README.pop, README.imap, and README.SMTP for details.
-
-  * Add support for reading large pcap files.
+2009-12-15 - Snort 2.8.5.2
 
 [*] Improvements
-  * Logging of HTTP URL (host and filename), SMTP attachment
-    filenames and email recipients when Snort generates events
-    on related traffic.
+   * Improvements to HTTP Inspect for handling of pipelined requests
+     and chunked encodings.
 
-  * Updates to give shared library rules direct access to gzip
-    decoding capabilities.
+   * Updated the documentation for output plugins and log limits.
 
-  * Rule Option Improvements:
+   * Fixed building on AIX 6.
 
-    - Updates to content modifier http_cookie to not include
-      the HTTP header names themselves in the buffer.  This change
-      may affect existing rules that leverage this keyword.
+   * Fixed reloading of auto-iface variables when privileges had been dropped.
 
-    - Updates to the file_data and base64_data rule option keywords
-      and added a pkt_data rule option keyword that sets the buffer
-      to be used for subsequent content/pcre/etc rule options.
-
-    - Updates to the tcp flag rule option keyword to support 'C'
-      and 'E' for CWR and ECN bits.
-
-    - Updates to byte_extract rule option keyword to support
-      the same string formats as with byte_test and byte_jump.
-
-  * Updates to Snort's build infrastructure and autoconf script
-    for portability and improved checks for library dependencies.
-
-  * Many updates and improvements to the Snort documentation.  Special
-    thanks to all of the contributors from the Snort community for
-    working with us and making the documentation more accurate and
-    usable.
-
-  * Updates to the sensitive data preprocessor for handling HTTP
-    traffic and reducing false positives.
-
-  * Updates to Snort's config parsing to give more meaningful
-    error messages relating to snort.conf errors and configuration
-    display at startup.
-
-  * Updates to Snort's active response packets whether via response
-    keyword or part of inline normalization.
-
-  * Improvements to HTTP Inspect processing of chunked HTTP data.
-
-  * Updates to the statistics Snort prints to console or syslog
-    at exit for different preproessors.
-
-  * To facilitate easier building of Snort on many of the different
-    platforms supported, Snort now uses pkg-config to check for
-    certain library locations. Obtain pkg-config from freedesktop.org.
+   * Fixed issues at startup and perfstats rotation with old versions of
+     libc (2.2, 2.3) & linux threads.

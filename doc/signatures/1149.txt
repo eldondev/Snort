@@ -65,10 +65,4 @@ Snort documentation contributed by Neal Timm <nealtimm@sbcglobal.net>
 -- 
 Additional References:
 
-Bugtraq:
-http://securityfocus.com/bid/128/info/
-
-CVE:
-http://icat.nist.gov/icat.cfm?cvename=CVE-1999-0021
-
 --

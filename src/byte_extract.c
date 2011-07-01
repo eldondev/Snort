@@ -1,6 +1,6 @@
-/* $Id: byte_extract.c,v 1.13 2011/06/08 00:33:05 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2003-2011 Sourcefire, Inc.
+** Copyright (C) 2003-2009 Sourcefire, Inc.
 **               Chris Green <cmg@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -21,12 +21,6 @@
 **
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "snort.h"
-
 #include <sys/types.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -35,18 +29,18 @@
 #endif
 #include <errno.h>
 
-#include "snort_bounds.h"
+#include "bounds.h"
 #include "byte_extract.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 #define TEXTLEN  (PARSELEN + 1)
-
-/**
+ 
+/** 
  * Grab a binary representation of data from a buffer
  *
  * This method will read either a big or little endian value in binary
- * data from the packet and return an uint32_t value.
- *
+ * data from the packet and return an uint32_t value. 
+ * 
  * @param endianess value to read the byte as
  * @param bytes_to_grab how many bytes should we grab from the packet
  * @param data pointer to where to grab the data from
@@ -71,11 +65,11 @@ int byte_extract(int endianess, int bytes_to_grab, const uint8_t *ptr,
     {
         return -3;
     }
-
+    
     if(!inBounds(start,end,ptr))
     {
         return -3;
-    }
+    }        
 
     /*
      * We only support grabbing 1, 2, or 4 bytes of binary data.
@@ -136,9 +130,9 @@ int byte_extract(int endianess, int bytes_to_grab, const uint8_t *ptr,
     return 0;
 }
 
-/**
+/** 
  * Grab a string representation of data from a buffer
- *
+ * 
  * @param base base representation for data: -> man stroul()
  * @param bytes_to_grab how many bytes should we grab from the packet
  * @param data pointer to where to grab the data from
@@ -166,11 +160,11 @@ int string_extract(int bytes_to_grab, int base, const uint8_t *ptr,
     {
         return -3;
     }
-
+    
     if(!inBounds(start,end,ptr))
     {
         return -3;
-    }
+    }        
 
     for(x=0;x<bytes_to_grab; x++)
     {
@@ -178,22 +172,22 @@ int string_extract(int bytes_to_grab, int base, const uint8_t *ptr,
     }
 
     byte_array[bytes_to_grab] = '\0';
-
+    
     *value = strtoul(byte_array, &parse_helper, base);
-
+    
     if(byte_array == parse_helper)
     {
         return -1;
     }
 
-#ifdef TEST_BYTE_EXTRACT
+#ifdef TEST_BYTE_EXTRACT    
     printf("[----]\n");
     for(x=0;(x<=TEXTLEN) && (byte_array[x] != '\0');x++)
         printf("%c", byte_array[x]);
     printf("\n");
-
+            
     printf("converted value: 0x%08X (%u) %s\n", *value, *value, (char *) byte_array);
-#endif /* TEST_BYTE_EXTRACT */
+#endif /* TEST_BYTE_EXTRACT */    
     return(parse_helper - byte_array);  /* Return the number of bytes actually extracted */
 }
 
@@ -205,8 +199,8 @@ void test_extract(void)
 {
     int i;
     uint32_t ret;
-
-    uint8_t value1[2];
+    
+    uint8_t value1[2];    
     uint8_t value2[2];
     uint8_t value3[4];
 
@@ -239,7 +233,7 @@ void test_extract(void)
         printf("test 2: value: %x %u\n", ret, ret);
     }
 
-
+    
     if(byte_extract(LITTLE, 2, value1 + 2, value1, value1 + 2, &ret))
     {
         printf("test 3 failed correctly\n");
@@ -268,7 +262,7 @@ void test_extract(void)
         printf("test 2: value: %x %u\n", ret, ret);
     }
 
-
+    
     if(byte_extract(LITTLE, 2, value2 + 2, value2, value2 + 2, &ret))
     {
         printf("test 3 failed correctly\n");
@@ -297,7 +291,7 @@ void test_extract(void)
         printf("test 2: value: %x %u\n", ret, ret);
     }
 
-
+    
     if(byte_extract(LITTLE, 4, value3 + 2, value3, value3 + 4, &ret))
     {
         printf("test 3 failed correctly\n");
@@ -316,7 +310,7 @@ void test_extract(void)
             printf("[loop] %d failed correctly\n", i);
         }
         else
-        {
+        {         
             printf("[loop] value: %x %x\n", ret, *(uint32_t *) &value3);
         }
     }
@@ -327,7 +321,7 @@ void test_string(void)
     char *stringdata = "21212312412";
     int datalen = strlen(stringdata);
     uint32_t ret;
-
+    
     if(string_extract(4, 10, stringdata,  stringdata, stringdata + datalen,  &ret) < 0)
     {
         printf("TS1: Failed\n");
@@ -355,7 +349,7 @@ void test_string(void)
         printf("TS3: value %x %u\n", ret, ret);
     }
 
-
+    
     if(string_extract(19, 10, stringdata,  stringdata, stringdata + datalen,  &ret) < 0)
     {
         printf("TS4: Failed Normally\n");

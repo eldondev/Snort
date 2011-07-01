@@ -72,6 +72,10 @@ config asn1
 config chroot
 config daemon
 config detection_filter
+config flexresp2_attempts
+config flexresp2_interface
+config flexresp2_memcap
+config flexresp2_rows
 config flowbits_size
 config interface
 config logdir
@@ -80,7 +84,6 @@ config nolog
 config no_promisc
 config pkt_count
 config rate_filter
-config response
 config read_bin_file
 config set_gid
 config set_uid

@@ -1,6 +1,6 @@
-/* $Id: IpAddrSet.h,v 1.14 2011/02/09 23:23:28 jjordan Exp $ */
+/* $Id$ */
 /*
- * Copyright (C) 2002-2011 Sourcefire, Inc.
+ * Copyright (C) 2002-2009 Sourcefire, Inc.
  *
  * Author(s):  Andrew R. Baker <andrewb@sourcefire.com>
  *
@@ -46,7 +46,6 @@ typedef struct _IpAddrSet
 {
     IpAddrNode *iplist;
     IpAddrNode *neg_iplist;
-    uint32_t id;
 } IpAddrSet;
 #endif  /* SUP_IP6 */
 

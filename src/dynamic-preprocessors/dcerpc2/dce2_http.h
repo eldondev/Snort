@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,9 +18,9 @@
  *
  ****************************************************************************
  * Provides session handling of an RPC over HTTP transport.
- *
+ * 
  * 8/17/2008 - Initial implementation ... Todd Wease <twease@sourcefire.com>
- *
+ * 
  ****************************************************************************/
 
 #ifndef _DCE2_HTTP_H_
@@ -65,9 +65,9 @@ typedef struct _DCE2_HttpSsnData
 /********************************************************************
  * Inline function prototypes
  ********************************************************************/
-static inline DCE2_TransType DCE2_HttpAutodetectProxy(const SFSnortPacket *);
-static inline DCE2_TransType DCE2_HttpAutodetectServer(const SFSnortPacket *);
-static inline int DCE2_HttpDecode(const SFSnortPacket *);
+static INLINE DCE2_TransType DCE2_HttpAutodetectProxy(const SFSnortPacket *);
+static INLINE DCE2_TransType DCE2_HttpAutodetectServer(const SFSnortPacket *);
+static INLINE int DCE2_HttpDecode(const SFSnortPacket *);
 
 /********************************************************************
  * Public function prototypes
@@ -95,7 +95,7 @@ void DCE2_HttpSsnFree(void *);
  *      DCE2_TRANS_TYPE__NONE if a proxy is not autodetected.
  *
  ********************************************************************/
-static inline DCE2_TransType DCE2_HttpAutodetectProxy(const SFSnortPacket *p)
+static INLINE DCE2_TransType DCE2_HttpAutodetectProxy(const SFSnortPacket *p)
 {
     const char *buf = NULL;
     int buf_len = 0;
@@ -141,7 +141,7 @@ static inline DCE2_TransType DCE2_HttpAutodetectProxy(const SFSnortPacket *p)
  *      DCE2_TRANS_TYPE__NONE if a server is not autodetected.
  *
  ********************************************************************/
-static inline DCE2_TransType DCE2_HttpAutodetectServer(const SFSnortPacket *p)
+static INLINE DCE2_TransType DCE2_HttpAutodetectServer(const SFSnortPacket *p)
 {
     if (DCE2_SsnFromClient(p))
         return DCE2_TRANS_TYPE__NONE;
@@ -172,7 +172,7 @@ static inline DCE2_TransType DCE2_HttpAutodetectServer(const SFSnortPacket *p)
  *      Zero if the packet was not http_inspect decoded
  *
  ********************************************************************/
-static inline int DCE2_HttpDecode(const SFSnortPacket *p)
+static INLINE int DCE2_HttpDecode(const SFSnortPacket *p)
 {
     return p->flags & FLAG_HTTP_DECODE;
 }

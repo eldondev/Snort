@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_ipoption_check.c,v 1.31 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -28,13 +28,11 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "sf_types.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "plugin_enum.h"
 
@@ -91,7 +89,7 @@ int IpOptionCheckCompare(void *l, void *r)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: SetupTemplate()
  *
  * Purpose: Generic detection engine plugin template.  Registers the
@@ -105,7 +103,7 @@ int IpOptionCheckCompare(void *l, void *r)
 void SetupIpOptionCheck(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("ipopts", IpOptionInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("ipopts", IpOptionInit, NULL, OPT_TYPE_DETECTION);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("ipopts", &ipOptionPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
@@ -114,10 +112,10 @@ void SetupIpOptionCheck(void)
 
 
 /****************************************************************************
- *
+ * 
  * Function: TemplateInit(char *, OptTreeNode *)
  *
- * Purpose: Generic rule configuration function.  Handles parsing the rule
+ * Purpose: Generic rule configuration function.  Handles parsing the rule 
  *          information and attaching the associated detection function to
  *          the OTN.
  *
@@ -130,7 +128,7 @@ void SetupIpOptionCheck(void)
 void IpOptionInit(char *data, OptTreeNode *otn, int protocol)
 {
     OptFpList *fpl;
-    /* multiple declaration check */
+    /* multiple declaration check */ 
     if(otn->ds_list[PLUGIN_IPOPTION_CHECK])
     {
         FatalError("%s(%d): Multiple ipopts options in rule\n", file_name,
@@ -142,11 +140,11 @@ void IpOptionInit(char *data, OptTreeNode *otn, int protocol)
     otn->ds_list[PLUGIN_IPOPTION_CHECK] = (IpOptionData *)
             SnortAlloc(sizeof(IpOptionData));
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     ParseIpOptionData(data, otn);
 
-    /* finally, attach the option's detection function to the rule's
+    /* finally, attach the option's detection function to the rule's 
        detect function pointer list */
     fpl = AddOptFuncToList(CheckIpOptions, otn);
     fpl->type = RULE_OPTION_TYPE_IP_OPTION;
@@ -156,7 +154,7 @@ void IpOptionInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: TemplateRuleParseFunction(char *, OptTreeNode *)
  *
  * Purpose: This is the function that is used to process the option keyword's
@@ -183,7 +181,7 @@ void ParseIpOptionData(char *data, OptTreeNode *otn)
     }
 
     while(isspace((u_char)*data))
-        data++;
+        data++; 
 
 
     if(strcasecmp(data, "rr") == 0)
@@ -247,7 +245,7 @@ void ParseIpOptionData(char *data, OptTreeNode *otn)
 
 
 /****************************************************************************
- *
+ * 
  * Function: TemplateDetectorFunction(char *, OptTreeNode *)
  *
  * Purpose: Use this function to perform the particular detection routine

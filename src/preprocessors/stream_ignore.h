@@ -1,7 +1,7 @@
-/* $Id: stream_ignore.h,v 1.13 2011/06/08 00:33:18 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 ** AUTHOR: Steven Sturges
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -43,10 +43,9 @@
 int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
                   snort_ip_p srvIP, uint16_t srvPort,
                   char protocol, char direction, char flags,
-                  uint32_t timeout, int16_t appId);
+                  uint32_t timeout);
 
-char CheckIgnoreChannel(Packet *, int16_t *appId);
-int isIgnored(Packet *);
+char CheckIgnoreChannel(Packet *);
 void CleanupIgnore(void);
 
 #endif /* STREAM_IGNORE_H_ */

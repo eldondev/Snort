@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -20,7 +20,8 @@
 #ifndef IPV6_PORT_H
 #define IPV6_PORT_H
 
-#include "snort_debug.h"
+#include "sf_types.h"
+#include "debug.h"
 
 ///////////////////
 /* IPv6 and IPv4 */
@@ -56,16 +57,13 @@ typedef sfip_t *snort_ip_p;
 #define IP_LESSER(x,y)   (sfip_compare(x,y) == SFIP_LESSER)
 #define IP_GREATER(x,y)  (sfip_compare(x,y) == SFIP_GREATER)
 
-#define IS_IP4(x) (x->family == AF_INET)
-#define IS_IP6(x) (x->family == AF_INET6)
-
 #define GET_IPH_TOS(p)   p->iph_api->iph_ret_tos(p)
 #define GET_IPH_LEN(p)   p->iph_api->iph_ret_len(p)
 #define GET_IPH_TTL(p)   p->iph_api->iph_ret_ttl(p)
 #define GET_IPH_ID(p)    p->iph_api->iph_ret_id(p)
 #define GET_IPH_OFF(p)   p->iph_api->iph_ret_off(p)
 #define GET_IPH_VER(p)   p->iph_api->iph_ret_ver(p)
-#define GET_IPH_PROTO(p) (IS_IP6(p) ? (p->ip6h->next) : (p->iph_api->iph_ret_proto(p)))
+#define GET_IPH_PROTO(p) p->iph_api->iph_ret_proto(p)
 
 #define GET_ORIG_IPH_PROTO(p)   p->orig_iph_api->orig_iph_ret_proto(p)
 #define GET_ORIG_IPH_VER(p)     p->orig_iph_api->orig_iph_ret_ver(p)
@@ -73,6 +71,8 @@ typedef sfip_t *snort_ip_p;
 #define GET_ORIG_IPH_OFF(p)     p->orig_iph_api->orig_iph_ret_off(p)
 #define GET_ORIG_IPH_PROTO(p)   p->orig_iph_api->orig_iph_ret_proto(p)
 
+#define IS_IP4(x) (x->family == AF_INET)
+#define IS_IP6(x) (x->family == AF_INET6)
 /* XXX make sure these aren't getting confused with sfip_is_valid within the code */
 #define IPH_IS_VALID(p) iph_is_valid(p)
 
@@ -80,13 +80,13 @@ typedef sfip_t *snort_ip_p;
 
 #define IS_SET(x) sfip_is_set(&x)
 
-/* This loop trickery is intentional.  If each copy is performed
+/* This loop trickery is intentional.  If each copy is performed 
  * individually on each field, then the following expression gets broken:
- *
+ *  
  *      if(conditional) IP_COPY_VALUE(a,b);
- *
+ *      
  * If the macro is instead enclosed in braces, then having a semicolon
- * trailing the macro causes compile breakage.
+ * trailing the macro causes compile breakage. 
  * So: use loop. */
 #define IP_COPY_VALUE(x,y) \
         do {  \
@@ -109,7 +109,7 @@ typedef sfip_t *snort_ip_p;
 #define IP_VAL(ipt)  (*ipt)
 #define IP_SIZE(ipp) (sfip_size(ipp))
 
-static inline int sfip_equal (snort_ip* ip1, snort_ip* ip2)
+static INLINE int sfip_equal (snort_ip* ip1, snort_ip* ip2)
 {
     if ( ip1->family != ip2->family )
     {
@@ -130,6 +130,9 @@ static inline int sfip_equal (snort_ip* ip1, snort_ip* ip2)
 ///////////////
 /* IPv4 only */
 #include <sys/types.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 typedef u_int32_t snort_ip; /* 32 bits only -- don't use unsigned long */
 typedef u_int32_t snort_ip_p; /* 32 bits only -- don't use unsigned long */
@@ -187,7 +190,7 @@ typedef u_int32_t snort_ip_p; /* 32 bits only -- don't use unsigned long */
 #define IP_VAL(ipt)  (ipt)
 #define IP_SIZE(ipp) (sizeof(ipp))
 
-static inline int sfip_equal (snort_ip ip1, snort_ip ip2)
+static INLINE int sfip_equal (snort_ip ip1, snort_ip ip2)
 {
     return IP_EQUALITY(ip1, ip2);
 }

@@ -37,19 +37,10 @@
 #include "util.h"
 #include "sftarget_reader.h"
 #include "log.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "sf_types.h"
 
 #define YYSTACK_USE_ALLOCA 0
-
-/* define the initial stack-sizes */
-
-#ifdef YYMAXDEPTH
-#undef YYMAXDEPTH
-#define YYMAXDEPTH  70000
-#else
-#define YYMAXDEPTH  70000
-#endif
 
 extern ServiceClient sfat_client_or_service;
 extern char *sfat_grammar_error;

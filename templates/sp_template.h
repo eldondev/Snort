@@ -1,4 +1,4 @@
-/* $Id: sp_template.h,v 1.4 2004/02/13 16:19:03 roesch Exp $ */
+/* $Id$ */
 /* Snort Detection Plugin Header File Template */
 
 /* 

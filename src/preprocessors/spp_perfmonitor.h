@@ -1,8 +1,8 @@
-/* $Id: spp_perfmonitor.h,v 1.11 2011/02/09 23:23:29 jjordan Exp $
+/* $Id$
 **
 **  spp_perfmonitor.h
 **
-**  Copyright (C) 2002-2011 Sourcefire, Inc.
+**  Copyright (C) 2002-2009 Sourcefire, Inc.
 **  Marc Norton <mnorton@sourcefire.com>
 **  Dan Roelker <droelker@sourcefire.com>
 **

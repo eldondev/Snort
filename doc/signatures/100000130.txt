@@ -1,0 +1,60 @@
+Rule: 
+
+--
+Sid: 
+100000130
+
+-- 
+Summary: 
+This event is generated when a request for the file "Filelist.html" is sent to 
+the PY Software Active Webcam Server. 
+
+-- 
+
+Impact: 
+A denial of service will result, and the server will need to be manually 
+restarted.
+
+--
+Detailed Information:
+Requests for the file "Filelist.html" will cause the PY Software Active Webcam 
+Server to crash. This rule looks for such requests on port 8080, the default 
+port for this server.
+
+--
+Affected Systems:
+PY Software Active WebCam 4.3
+PY Software Active WebCam 5.5
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or a script.
+
+-- 
+
+Ease of Attack: 
+Simple, as it can be exploited using a web browser.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Currently, there are no known workarounds or fixes.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

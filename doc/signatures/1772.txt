@@ -6,27 +6,36 @@ Sid:
 
 --
 Summary:
-This event is generated when an attempt is made to access the pbserver.dll component associated with the Microsoft Phone Book Service. 
+This event is generated when an attempt is made to access the
+pbserver.dll component associated with the Microsoft Phone Book Service. 
 
 --
 Impact:
-Remote access.  Malicious access of the pbserver.dll component can allow the execution of arbitrary commands on a vulnerable server.
+Remote access. Malicious access of the pbserver.dll component can allow
+the execution of arbitrary commands on a vulnerable server.
 
 --
 Detailed Information:
-The Microsoft Phone Book Service allows dial-in clients to download phone book updates from the Internet Information Server (IIS) running the Phone Book Service.  The pbserver.dll is the Internet Services Application Programming Interface (ISAPI) that implements the update service.  A buffer overflow exists in pbserver.dll that may permit the execution of arbitrary commands on the server. 
+The Microsoft Phone Book Service allows dial-in clients to download
+phone book updates from the Internet Information Server (IIS) running
+the Phone Book Service.  The pbserver.dll is the Internet Services
+Application Programming Interface (ISAPI) that implements the update
+service.  A buffer overflow exists in pbserver.dll that may permit the
+execution of arbitrary commands on the server. 
 
 --
 Affected Systems:
-Windows NT 4.0 and Windows 2000 Server running the optional Phone Book Service.
+	Windows NT 4.0
+	Windows 2000 Server
 
 --
 Attack Scenarios:
-An attacker can craft an HTTP request for a phone book update to a host running the Phone Book Service.
+An attacker can craft an HTTP request for a phone book update to a host
+running the Phone Book Service.
 
 --
 Ease of Attack:
-Simple.  Exploit code is freely available.
+Simple. Exploit code is available.
 
 --
 False Positives:
@@ -40,21 +49,17 @@ None Known.
 Corrective Action:
 Delete pbserver.dll if the Phone Book Service is unnecessary. 
 
-Download and install the appropriate patch mentioned in the Microsoft bulletin.
+Apply the appropriate vendor supplied patches.
+
+Upgrade to the latest non-affected version of the software.
 
 --
 Contributors:
-Original rule written by Brian Caswell <bmc@sourcefire.com>
 Sourcefire Research Team
+Brian Caswell <bmc@sourcefire.com>
 Judy Novak <judy.novak@sourcefire.com>
 
 --
 Additional References:
-
-CVE
-http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-1089
-
-Microsoft
-http://www.microsoft.com/technet/security/bulletin/ms00-094.asp
 
 --

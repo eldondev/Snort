@@ -6,23 +6,33 @@ Sid:
 
 --
 Summary:
-This event is generated when an attempt is made to craft a URL containing the text 'Translate: f' in an attempt to view file source code.
+This event is generated when an attempt is made to craft a URL
+containing the text 'Translate: f' in an attempt to view file source code.
 
 --
 Impact:
-Intelligence gathering.  This attack may permit disclosure of the source code of files not normally available for viewing.
+Intelligence gathering.  This attack may permit disclosure of the source
+code of files not normally available for viewing.
 
 --
 Detailed Information:
-Microsoft Internet Information Services (IIS) 5.0 contains scripting engines to support various advanced files types such as .ASP and .HTR files.  This permits the execution of server-side processing.  IIS determines which scripting engine is appropriate to use depending on the file extension.  If an attacker crafts a URL request ending in 'Translate: f' and followed by a slash '/', IIS fails to send the file to the appropriate scripting engine for processing.  Instead, it returns the source code of the referenced file to the browser.
+Microsoft Internet Information Services (IIS) 5.0 contains scripting
+engines to support various advanced files types such as .ASP and .HTR
+files.  This permits the execution of server-side processing.  IIS
+determines which scripting engine is appropriate to use depending on the
+file extension.  If an attacker crafts a URL request ending in
+'Translate: f' and followed by a slash '/', IIS fails to send the file
+to the appropriate scripting engine for processing.  Instead, it returns
+the source code of the referenced file to the browser.
 
 --
 Affected Systems:
-Microsoft IIS 5.0
+	Microsoft IIS 5.0
 
 --
 Attack Scenarios:
-An attacker can craft a URL to include the 'Translate: f' and followed by a '/' to disclose source code on the vulnerable server. 
+An attacker can craft a URL to include the 'Translate: f' and followed
+by a '/' to disclose source code on the vulnerable server. 
 
 --
 Ease of Attack:
@@ -53,17 +63,7 @@ False positive information contributed by Javier Fernandez-Sanguino
 --
 Additional References:
 
-CVE
-http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0778
-
 Microsoft
 http://www.microsoft.com/technet/security/bulletin/MS00-058.asp
-
-Arachnids
-http://www.whitehats.com/info/IDS305
-
-Bugtraq
-http://www.securityfocus.com/bid/1578
-
 
 --

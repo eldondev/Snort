@@ -1,0 +1,4 @@
+[type: gettext/rfc822deb] snort.templates
+[type: gettext/rfc822deb] snort-mysql.templates
+[type: gettext/rfc822deb] snort-pgsql.templates
+[type: gettext/rfc822deb] snort-common.templates

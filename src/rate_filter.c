@@ -1,7 +1,7 @@
-/* $Id: rate_filter.c,v 1.7 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2009-2011 Sourcefire, Inc.
+ * Copyright (C) 2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -19,22 +19,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /* @file  rate_filter.c
  * @brief rate filter interface for Snort
- * @ingroup rate_filter
+ * @ingroup rate_filter 
  * @author Dilbagh Chahal
  */
-/* @ingroup rate_filter
+/* @ingroup rate_filter 
  * @{
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "mstring.h"
 #include "util.h"
@@ -66,7 +62,7 @@ RateFilterConfig* RateFilter_ConfigNew(void)
 
     return rf_config;
 }
-
+ 
 /* Free threshold context
  * @param pContext pointer to global threshold context.
  */
@@ -109,14 +105,14 @@ int RateFilter_Create(RateFilterConfig *rf_config, tSFRFConfigNode *thdx)
 #endif
 
     /* Add the object to the table - */
-    error = SFRF_ConfigAdd(rf_config, thdx);
+    error = SFRF_ConfigAdd(rf_config, thdx); 
 
     // enable internal events as required
     if ( !error && EventIsInternal(thdx->gid) )
     {
         EnableInternalEvent(rf_config, thdx->sid);
 
-        if ( thdx->sid == INTERNAL_EVENT_SESSION_ADD )
+        if ( thdx->sid == INTERNAL_EVENT_SESSION_ADD ) 
             EnableInternalEvent(rf_config, INTERNAL_EVENT_SESSION_DEL);
     }
     return error;
@@ -129,7 +125,7 @@ int RateFilter_Create(RateFilterConfig *rf_config, tSFRFConfigNode *thdx)
     returns 1 - rate threshold reached
             0 - rate threshold not reached
 */
-int RateFilter_Test(
+int RateFilter_Test( 
     OptTreeNode* otn,
     Packet* p)
 {
@@ -237,7 +233,7 @@ static int _logConfigNode( tSFRFConfigNode* p)
     }
 
     SnortSnprintfAppend(buf, STD_BUF, " policyId=%-10d", p->policyId );
-
+    
     switch ( p->tracking ) {
         case SFRF_TRACK_BY_SRC : trackBy = "src"; break;
         case SFRF_TRACK_BY_DST : trackBy = "dst"; break;
@@ -247,9 +243,9 @@ static int _logConfigNode( tSFRFConfigNode* p)
     SnortSnprintfAppend(buf, STD_BUF, " tracking=%s", trackBy);
     SnortSnprintfAppend(buf, STD_BUF, " count=%-3d", p->count);
     SnortSnprintfAppend(buf, STD_BUF, " seconds=%-3d", p->seconds);
-
+    
     LogMessage("%s\n", buf);
-
+    
     return 1;
 }
 
@@ -260,7 +256,7 @@ static int _printThresholdContext(RateFilterConfig *config)
 
     if (config == NULL)
         return 0;
-
+    
     for ( gid=0; gid < SFRF_MAX_GENID; gid++ )
     {
         SFGHASH_NODE* item_hash_node;
@@ -270,9 +266,9 @@ static int _printThresholdContext(RateFilterConfig *config)
         {
             continue;
         }
-
+        
         for ( item_hash_node  = sfghash_findfirst( sfrf_hash );
-              item_hash_node != 0;
+              item_hash_node != 0; 
               item_hash_node  = sfghash_findnext( sfrf_hash ) )
         {
             tSFRFSidNode* sfrf_item;
@@ -280,11 +276,11 @@ static int _printThresholdContext(RateFilterConfig *config)
 
             /* Check for any Permanent sid objects for this gid */
             sfrf_item = (tSFRFSidNode*)item_hash_node->data;
-
-            for ( sfrf_node  =
+            
+            for ( sfrf_node  = 
                       (tSFRFConfigNode*)sflist_first(sfrf_item->configNodeList);
                   sfrf_node != 0;
-                  sfrf_node =
+                  sfrf_node = 
                       (tSFRFConfigNode*)sflist_next(sfrf_item->configNodeList) )
             {
                 if ( _logConfigNode( sfrf_node) != 0 )
@@ -292,9 +288,9 @@ static int _printThresholdContext(RateFilterConfig *config)
             }
         }
     }
-
+    
     if ( ! lcnt ) LogMessage("| none\n");
-
+    
     return 0;
 }
 

@@ -1,0 +1,69 @@
+Rule: 
+
+--
+Sid: 
+100000118
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a buffer overflow 
+present in Internet Explorer's urlmon.dll file.
+
+-- 
+
+Impact: 
+An attacker may execute arbitrary commands with the privileges of the user 
+running Internet Explorer.
+
+--
+Detailed Information:
+If a web server sends data with a Content-Type value of 300 or more bytes, a 
+buffer overflow is triggered, and commands may be executed with the privileges 
+of the user running Internet Explorer.
+
+--
+Affected Systems:
+Internet Explorer 5.0.1
+Internet Explorer 5.0.1 SP1
+Internet Explorer 5.0.1 SP2
+Internet Explorer 5.0.1 SP3
+Internet Explorer 5.5
+Internet Explorer 5.5 SP1
+Internet Explorer 5.5 SP2
+Internet Explorer 6.0
+Internet Explorer 6.0 SP1
+
+--
+
+Attack Scenarios: 
+An attacker must entice a user to click on a link to a properly configured 
+server, which will return the necessary data.
+
+-- 
+
+Ease of Attack: 
+Medium. An attacker must control a properly configured web server, and entice 
+users to click on a link to that server.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Apply the latest patches for Internet Explorer from Microsoft.com.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -20,7 +20,22 @@
 #ifndef __PCAP_PKTHDR32_H__
 #define __PCAP_PKTHDR32_H__
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef WIN32
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+
+#include <stdlib.h>
+#include <time.h>
+#include <sys/types.h>
+
 #include "sf_types.h"
+
 
 /* we must use fixed size of 32 bits, because on-disk
  * format of savefiles uses 32-bit tv_sec (and tv_usec)
@@ -37,8 +52,8 @@ struct sf_timeval32
 struct pcap_pkthdr32
 {
     struct sf_timeval32 ts;   /* packet timestamp */
-    uint32_t caplen;          /* packet capture length */
-    uint32_t len;             /* packet "real" length */
+    uint32_t caplen;      /* packet capture length */
+    uint32_t pktlen;      /* packet "real" length */
 };
 
 

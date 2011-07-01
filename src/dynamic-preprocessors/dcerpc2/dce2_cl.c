@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -27,11 +27,6 @@
  *
  ****************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "dce2_cl.h"
 #include "snort_dce2.h"
 #include "dce2_list.h"
@@ -42,7 +37,7 @@
 #include "dce2_event.h"
 #include "dcerpc.h"
 #include "sf_types.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "profiler.h"
 #include "sf_snort_packet.h"
 #include "sf_dynamic_preprocessor.h"
@@ -55,6 +50,7 @@ static uint8_t dce2_cl_rbuf[IP_MAXPKT];
 /********************************************************************
  * Extern variables
  ********************************************************************/
+extern DynamicPreprocessorData _dpd;
 extern DCE2_Stats dce2_stats;
 extern char *dce2_pdu_types[DCERPC_PDU_TYPE__MAX];
 
@@ -125,7 +121,7 @@ static void DCE2_ClHandleFrag(DCE2_SsnData *, DCE2_ClActTracker *,
 static void DCE2_ClFragReassemble(DCE2_SsnData*, DCE2_ClActTracker *, const DceRpcClHdr *);
 static void DCE2_ClResetFragTracker(DCE2_ClFragTracker *);
 
-static inline void DCE2_ClSetRdata(DCE2_ClActTracker *, const DceRpcClHdr *, uint8_t *, uint16_t);
+static INLINE void DCE2_ClSetRdata(DCE2_ClActTracker *, const DceRpcClHdr *, uint8_t *, uint16_t);
 
 /* Callbacks */
 static int DCE2_ClFragCompare(const void *, const void *);
@@ -176,7 +172,7 @@ void DCE2_ClInitRdata(uint8_t *buf)
  * Returns: None
  *
  ********************************************************************/
-static inline void DCE2_ClSetRdata(DCE2_ClActTracker *at, const DceRpcClHdr *pkt_cl_hdr,
+static INLINE void DCE2_ClSetRdata(DCE2_ClActTracker *at, const DceRpcClHdr *pkt_cl_hdr,
                                    uint8_t *cl_ptr, uint16_t stub_len)
 {
     DCE2_ClFragTracker *ft = &at->frag_tracker;
@@ -396,7 +392,7 @@ static DCE2_Ret DCE2_ClHdrChecks(DCE2_SsnData *sd, const DceRpcClHdr *cl_hdr)
  *      Pointer to the connectionless header in the packet.
  *
  * Returns:
- *  DCE2_ClActTracker *
+ *  DCE2_ClActTracker * 
  *      A valid pointer to an activity tracker on success.
  *      NULL on error.
  *
@@ -417,7 +413,7 @@ static DCE2_ClActTracker * DCE2_ClGetActTracker(DCE2_ClTracker *clt, DceRpcClHdr
     {
         /* Create a new activity tracker list */
         clt->act_trackers = DCE2_ListNew(DCE2_LIST_TYPE__SPLAYED, DCE2_UuidCompare,
-                                         DCE2_ClActDataFree, DCE2_ClActKeyFree,
+                                         DCE2_ClActDataFree, DCE2_ClActKeyFree, 
                                          DCE2_LIST_FLAG__NO_DUPS, DCE2_MEM_TYPE__CL_ACT);
         if (clt->act_trackers == NULL)
             return NULL;
@@ -517,7 +513,7 @@ static void DCE2_ClRequest(DCE2_SsnData *sd, DCE2_ClActTracker *at, DceRpcClHdr 
         at->seq_num = seq_num;
         at->seq_num_invalid = 0;
 
-        /* If there are any fragments, the new sequence number invalidates
+        /* If there are any fragments, the new sequence number invalidates 
          * all of the frags that might be currently stored. */
         DCE2_ClResetFragTracker(&at->frag_tracker);
     }
@@ -638,7 +634,7 @@ static void DCE2_ClHandleFrag(DCE2_SsnData *sd, DCE2_ClActTracker *at, DceRpcClH
         /* Create new list if we don't have one already */
         ft->frags = DCE2_ListNew(DCE2_LIST_TYPE__SORTED, DCE2_ClFragCompare, DCE2_ClFragDataFree,
                                  NULL, DCE2_LIST_FLAG__NO_DUPS | DCE2_LIST_FLAG__INS_TAIL,
-                                 DCE2_MEM_TYPE__CL_FRAG);
+                                 DCE2_MEM_TYPE__CL_FRAG); 
 
         if (ft->frags == NULL)
         {
@@ -944,7 +940,7 @@ static void DCE2_ClResetFragTracker(DCE2_ClFragTracker *ft)
 /********************************************************************
  * Function: DCE2_ClCleanTracker()
  *
- * Destroys all the activity tracker list, which cleans out and
+ * Destroys all the activity tracker list, which cleans out and 
  * frees all data associated with each activity tracker in the
  * list.
  *
@@ -981,7 +977,7 @@ void DCE2_ClCleanTracker(DCE2_ClTracker *clt)
 static void DCE2_ClActDataFree(void *data)
 {
     DCE2_ClActTracker *at = (DCE2_ClActTracker *)data;
-
+    
     if (at == NULL)
         return;
 

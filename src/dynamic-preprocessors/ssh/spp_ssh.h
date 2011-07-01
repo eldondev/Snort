@@ -1,7 +1,7 @@
 /* $Id */
 
 /*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 **
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -31,7 +31,6 @@
 
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
-#include "snort_bounds.h"
 
 #define MAX_PORTS 65536
 
@@ -72,7 +71,7 @@
 #define MAX_MAX_SERVER_VERSION_LEN 255
 
 /*
- * One of these structures is kept for each configured
+ * One of these structures is kept for each configured 
  * server port.
  */
 typedef struct _sshPortlistNode
@@ -114,12 +113,12 @@ typedef struct _sshConfig
 /*
  * Per-session data block containing current state
  * of the SSH preprocessor for the session.
- *
- * version:		Version of SSH detected for this session.
+ * 
+ * version:		Version of SSH detected for this session. 
  * num_enc_pkts: 	Number of encrypted packets seen on this session.
- * num_client_bytes:    Number of bytes of encrypted data sent by client,
+ * num_client_bytes:    Number of bytes of encrypted data sent by client, 
  *				without a server response.
- * state_flags:		Bit vector describing the current state of the
+ * state_flags:		Bit vector describing the current state of the 
  * 				session.
  */
 typedef struct _sshData
@@ -143,7 +142,7 @@ typedef struct _sshData
 #define SSH_FLG_SERV_PKEY_SEEN		(0x4)
 #define SSH_FLG_CLIENT_SKEY_SEEN	(0x8)
 #define SSH_FLG_CLIENT_KEXINIT_SEEN	(0x10)
-#define SSH_FLG_SERV_KEXINIT_SEEN	(0x20)
+#define SSH_FLG_SERV_KEXINIT_SEEN	(0x20) 
 #define SSH_FLG_KEXDH_INIT_SEEN		(0x40)
 #define SSH_FLG_KEXDH_REPLY_SEEN	(0x80)
 #define SSH_FLG_GEX_REQ_SEEN		(0x100)
@@ -208,8 +207,8 @@ typedef struct _ssh2Packet
 } SSH2Packet;
 
 
-/*
- * SSH v1 message types (of interest)
+/* 
+ * SSH v1 message types (of interest) 
  */
 #define SSH_MSG_V1_SMSG_PUBLIC_KEY 	2
 #define SSH_MSG_V1_CMSG_SESSION_KEY	3
@@ -217,7 +216,7 @@ typedef struct _ssh2Packet
 /*
  * SSH v2 message types (of interest)
  */
-#define SSH_MSG_KEXINIT		20
+#define SSH_MSG_KEXINIT		20	
 #define SSH_MSG_NEWKEYS		21
 #define SSH_MSG_KEXDH_INIT	30
 #define SSH_MSG_KEXDH_REPLY	31

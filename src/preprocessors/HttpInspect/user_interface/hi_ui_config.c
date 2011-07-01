@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_ui_config.c
 **
@@ -45,15 +45,10 @@
 #include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "hi_return_codes.h"
 #include "hi_util_xmalloc.h"
 #include "hi_ui_server_lookup.h"
 #include "hi_ui_config.h"
-#include "hi_cmd_lookup.h"
 
 /*
 **  NAME
@@ -99,7 +94,7 @@ int hi_ui_config_init_global_conf(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
 **  change this function.
 **
 **  @param GlobalConf pointer to the global configuration structure
-**
+**  
 **  @return integer
 **
 **  @retval HI_INVALID_ARG  Fatal Error.  Undefined pointer to GlobalConf
@@ -121,8 +116,8 @@ int hi_ui_config_default(HTTPINSPECT_CONF *global_server)
     global_server->server_flow_depth = 300;
     global_server->client_flow_depth = 300;
 
-    global_server->post_depth = -1;
-
+    global_server->post_depth = 0;
+    
     global_server->chunk_length = 500000;
 
     global_server->ascii.on = 1;
@@ -171,11 +166,10 @@ int hi_ui_config_reset_global(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
 {
     GlobalConf->inspection_type = 0;
     GlobalConf->iis_unicode_map = 0;
-    http_cmd_lookup_cleanup(&(GlobalConf->global_server->cmd_lookup));
 
     return HI_SUCCESS;
 }
-
+    
 /*
 **  NAME
 **    hi_ui_config_reset_server::
@@ -191,9 +185,7 @@ int hi_ui_config_reset_global(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
 */
 int hi_ui_config_reset_server(HTTPINSPECT_CONF *ServerConf)
 {
-    http_cmd_lookup_cleanup(&ServerConf->cmd_lookup);
     memset(ServerConf, 0x00, sizeof(HTTPINSPECT_CONF));
-    http_cmd_lookup_init(&ServerConf->cmd_lookup);
 
     return HI_SUCCESS;
 }
@@ -226,11 +218,10 @@ int hi_ui_config_set_profile_apache(HTTPINSPECT_CONF *ServerConf)
 
     ServerConf->server_flow_depth = 300;
     ServerConf->client_flow_depth = 300;
-    ServerConf->post_depth = -1;
 
     ServerConf->non_strict = 1;
 
-    ServerConf->chunk_length = 500000;
+    ServerConf->chunk_length = 500000; 
 
     ServerConf->ascii.on = 1;
 
@@ -245,8 +236,6 @@ int hi_ui_config_set_profile_apache(HTTPINSPECT_CONF *ServerConf)
 
     ServerConf->utf_8.on = 1;
 
-    ServerConf->normalize_utf = 1;
-
     ServerConf->whitespace[9] = HI_UI_CONFIG_WS_BEFORE_URI | HI_UI_CONFIG_WS_AFTER_URI;   /* horizontal tab */
     ServerConf->whitespace[11] = HI_UI_CONFIG_WS_BEFORE_URI | HI_UI_CONFIG_WS_AFTER_URI;  /* vertical tab */
     ServerConf->whitespace[12] = HI_UI_CONFIG_WS_BEFORE_URI | HI_UI_CONFIG_WS_AFTER_URI;  /* form feed */
@@ -257,7 +246,7 @@ int hi_ui_config_set_profile_apache(HTTPINSPECT_CONF *ServerConf)
 
     return HI_SUCCESS;
 }
-
+    
 /*
 **  NAME
 **    hi_ui_set_profile_iis::
@@ -292,9 +281,8 @@ int hi_ui_config_set_profile_iis(HTTPINSPECT_CONF *ServerConf,
 
     ServerConf->server_flow_depth = 300;
     ServerConf->client_flow_depth = 300;
-    ServerConf->post_depth = -1;
 
-    ServerConf->chunk_length = 500000;
+    ServerConf->chunk_length = 500000; 
 
     ServerConf->iis_unicode_map = iis_unicode_map;
 
@@ -327,8 +315,6 @@ int hi_ui_config_set_profile_iis(HTTPINSPECT_CONF *ServerConf,
 
     ServerConf->non_strict = 1;
 
-    ServerConf->normalize_utf = 1;
-
     ServerConf->whitespace[9] = HI_UI_CONFIG_WS_BEFORE_URI | HI_UI_CONFIG_WS_AFTER_URI;   /* horizontal tab */
     ServerConf->whitespace[11] = HI_UI_CONFIG_WS_BEFORE_URI;  /* vertical tab */
     ServerConf->whitespace[12] = HI_UI_CONFIG_WS_BEFORE_URI;  /* form feed */
@@ -356,12 +342,12 @@ int hi_ui_config_set_profile_iis_4or5(HTTPINSPECT_CONF *ServerConf,
                                  int *iis_unicode_map)
 {
     int ret;
-
+    
     ret = hi_ui_config_set_profile_iis(ServerConf, iis_unicode_map);
-
+    
     ServerConf->double_decoding.on = 1;
     ServerConf->double_decoding.alert = 1;
-
+    
     return ret;
 }
 
@@ -397,9 +383,8 @@ int hi_ui_config_set_profile_all(HTTPINSPECT_CONF *ServerConf,
 
     ServerConf->server_flow_depth   = 300;
     ServerConf->client_flow_depth   = 300;
-    ServerConf->post_depth = -1;
 
-    ServerConf->chunk_length = 500000;
+    ServerConf->chunk_length = 500000; 
 
     ServerConf->iis_unicode_map = iis_unicode_map;
 
@@ -431,8 +416,6 @@ int hi_ui_config_set_profile_all(HTTPINSPECT_CONF *ServerConf,
     ServerConf->apache_whitespace.on     = 1;
 
     ServerConf->non_strict = 1;
-
-    ServerConf->normalize_utf = 1;
 
     ServerConf->whitespace[9] = HI_UI_CONFIG_WS_BEFORE_URI | HI_UI_CONFIG_WS_AFTER_URI;   /* horizontal tab */
     ServerConf->whitespace[11] = HI_UI_CONFIG_WS_BEFORE_URI;  /* vertical tab */
@@ -484,12 +467,3 @@ int hi_ui_config_add_server(HTTPINSPECT_GLOBAL_CONF *GlobalConf,
     return HI_SUCCESS;
 
 }
-
-
-void HttpInspectCleanupHttpMethodsConf(void *HttpMethods)
-{
-    HTTP_CMD_CONF *HTTPMethods = (HTTP_CMD_CONF *)HttpMethods;
-
-    free(HTTPMethods);
-}
-

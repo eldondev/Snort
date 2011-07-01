@@ -1,0 +1,60 @@
+Rule: 
+
+--
+Sid: 
+100000148
+
+-- 
+Summary: 
+This event is generated when an attempt is made to perform a directory 
+traversal attack against a system running Barracuda Spam Firewall.
+
+-- 
+Impact: 
+Serious. Unauthorized remote command execution possibly leading to remote 
+access.
+
+--
+Detailed Information:
+User supplied data to script parameters are not properly sanitized, this may 
+permit an unauthorized attacker to execute commands of their choosing on an 
+affected system.
+
+Note:
+In order to utilize this rule, port 8000 must be added to the http_inspect 
+configuration in snort.conf.
+
+--
+Affected Systems:
+Barracuda Spam Firewall 3.1.17 and prior.
+
+--
+Attack Scenarios: 
+An attacker can supply commands as parameters to the img.pl script.
+
+-- 
+Ease of Attack: 
+Simple, exploit software exists but is not necessary.
+
+-- 
+False Positives:
+None known.
+
+--
+False Negatives:
+None known
+
+-- 
+Corrective Action: 
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors:
+Sourcefire Vulnerability Research Team
+Judy Novak <judy.novak@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+--

@@ -1,4 +1,4 @@
-# $Id: README.frag3,v 1.14 2011/06/08 00:33:00 jjordan Exp $
+# $Id$
 --------------------------------------------------------------------------------
                                   Frag3
 --------------------------------------------------------------------------------
@@ -7,16 +7,22 @@ Author: Martin Roesch <roesch@sourcefire.com>
 Overview
 --------
 The frag3 preprocessor is a target-based IP defragmentation module for Snort.
-Frag3 is designed with the following goals:
+Frag3 is intended as a replacement for the frag2 defragmentation module and 
+was designed with the following goals:
 
-1) Faster execution with less complex data management.
+1) Faster execution that frag2 with less complex data management.
 
 2) Target-based host modeling anti-evasion techniques.
 
-Frag3 uses the sfxhash data structure and linked lists for data handling
-internally which allows it to have much more predictable and deterministic
-performance in any environment which should aid us in managing heavily
-fragmented environments.
+The frag2 preprocessor used splay trees extensively for managing the data 
+structures associated with defragmenting packets.  Splay trees are excellent 
+data structures to use when you have some assurance of locality of reference
+for the data that you are handling but in high speed, heavily fragmented 
+environments the nature of the splay trees worked against the system and 
+actually hindered performance.  Frag3 uses the sfxhash data structure and 
+linked lists for data handling internally which allows it to have much more
+predictable and deterministic performance in any environment which should 
+aid us in managing heavily fragmented environments.
 
 Target-based analysis is a relatively new concept in network-based intrusion
 detection.  The idea of a target-based system is to model the actual targets
@@ -25,7 +31,7 @@ attacks within them.  When IP stacks are written for different operating
 systems, they are usually implemented by people who read the RFCs and then
 their interpretation of what the RFC outlines into code.  Unfortunately, there
 are ambiguities in the way that the RFCs define some of the edge conditions 
-that may occur and when this happens differnt people implement certain aspects
+that may occurr and when this happens differnt people implement certain aspects
 of their IP stacks differently.  For an IDS this is a big problem.
 
 In an environment where the attacker can determine what style of IP 
@@ -61,10 +67,11 @@ Snort to test this idea.
 Configuration
 -------------
 
-There are at least two preprocessor directives required to activate frag3, a
-global configuration directive and an engine instantiation.  There can be an
-arbitrary number of engines defined at startup with their own configuration,
-but only one global configuration.
+Frag3 configuration is somewhat more complex than frag2.  There are at least
+two preprocessor directives required to activate frag3, a global configuration
+directive and an engine instantiation.  There can be an arbitrary number of
+engines defined at startup with their own configuration, but only one global
+configuration.
 
 Global configuration
  - Preprocessor name: frag3_global
@@ -79,19 +86,6 @@ Global configuration
      prealloc_frags <number> - alternate memory management mode, use
                                preallocated fragment nodes based on a
                                static number (faster in some situations)
-     disabled                - This optional keyword is allowed with any 
-                               policy to avoid packet processing. This 
-                               option disables the preprocessor for this
-                               config, but not for other instances of
-                               multiple configurations.  Use the disable
-                               keyword in the base configuration to specify
-                               values for the options memcap, prealloc_memcap,
-                               and prealloc_frags without having the
-                               preprocessor inspect traffic for traffic
-                               applying to the base configuration.  The other
-                               options are parsed but not used. Any valid
-                               configuration may have "disabled" added to it.
-
 
 Engine Configuration                          
  - Preprocessor name: frag3_engine
@@ -101,20 +95,20 @@ Engine Configuration
                          longer than this period will be automatically dropped.
                          Default is 60 seconds.
      min_ttl <value> - Minimum acceptable TTL value for a fragment packet.  
-                       Default is 1. The accepted range for this option is 1 - 255.
+                       Default is 1.
      detect_anomalies - Detect fragment anomalies 
      bind_to <ip_list> - IP List to bind this engine to.  This engine will only
                          run for packets with destination addresses contained
                          within the IP List.  Default value is "all".
      overlap_limit <number> - Limits the number of overlapping fragments per packet.  The default 
-                     is "0" (unlimited). This config option takes values equal to or greater than zero. This is an 
-                     optional parameter. detect_anomalies option must be configured for this option 
-                     to take effect.
+                       is "0" (unlimited), the minimum is "0", and the maximum is "255". This is an 
+                       optional parameter. detect_anomalies option must be configured for this option 
+                       to take effect.
      min_fragment_length <number> - Defines smallest fragment size (payload size) that should be considered valid.
-                     Fragments smaller than or equal to this limit are considered malicious and an event is raised, 
-                     if detect_anomalies is also configured.  The default is "0" (check is disabled). This config 
-                     option takes values equal to or greater than zero. This is an optional parameter. 
-                     detect_anomalies option must be configured for this option to take effect.
+                    Fragments smaller than or equal to this limit are considered malicious and an event is raised, 
+                    if detect_anomalies is also configured.  The default is "0" (check is disabled), the minimum is "0", 
+                    and the maximum is "255". 
+                    This is an optional parameter. detect_anomalies option must be configured for this option to take effect.
      policy <type> - Select a target-based defragmentation mode.  Available 
                      types are first, last, bsd, bsd-right, linux, windows
                      and solaris.  Default type is bsd.

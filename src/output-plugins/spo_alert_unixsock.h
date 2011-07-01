@@ -1,6 +1,6 @@
-/* $Id: spo_alert_unixsock.h,v 1.18 2011/02/09 23:23:27 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 2000,2001 Andrew R. Baker <andrewb@uab.edu>
 **
@@ -30,15 +30,14 @@
 #define __SPO_ALERT_UNIXSOCK_H__
 
 #include <sys/types.h>
+#include <pcap.h>
 #include "event.h"
-#include "pcap_pkthdr32.h"
 
 /* this struct is for the alert socket code.... */
-// FIXTHIS alert unix sock supports l2-l3-l4 encapsulations
 typedef struct _Alertpkt
 {
     uint8_t alertmsg[ALERTMSG_LENGTH]; /* variable.. */
-    struct pcap_pkthdr32 pkth;
+    struct pcap_pkthdr pkth;
     uint32_t dlthdr;       /* datalink header offset. (ethernet, etc.. ) */
     uint32_t nethdr;       /* network header offset. (ip etc...) */
     uint32_t transhdr;     /* transport header offset (tcp/udp/icmp ..) */
@@ -49,7 +48,7 @@ typedef struct _Alertpkt
 #define NOPACKET_STRUCT 0x1
     /* no transport headers in packet */
 #define NO_TRANSHDR    0x2
-    uint8_t pkt[65535];
+    uint8_t pkt[SNAPLEN];
     Event event;
 } Alertpkt;
 

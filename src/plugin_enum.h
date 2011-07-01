@@ -1,7 +1,7 @@
-/* $Id: plugin_enum.h,v 1.15 2011/02/09 23:22:51 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -47,7 +47,7 @@ enum {
     PLUGIN_PATTERN_MATCH, /* AND match */
     PLUGIN_PATTERN_MATCH_OR, 
     PLUGIN_PATTERN_MATCH_URI,
-    PLUGIN_RESPONSE,
+    PLUGIN_RESPOND,
     PLUGIN_RPC_CHECK,
     PLUGIN_SESSION,
     PLUGIN_TCP_ACK_CHECK,
@@ -60,8 +60,6 @@ enum {
     PLUGIN_URILEN_CHECK,
     PLUGIN_DYNAMIC,
     PLUGIN_FLOWBIT,
-    PLUGIN_FILE_DATA,
-    PLUGIN_BASE64_DECODE,
     PLUGIN_MAX  /* sentinel value */
 };
 

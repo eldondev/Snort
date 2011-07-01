@@ -1,0 +1,90 @@
+Rule: 
+
+--
+Sid: 
+100000106
+
+-- 
+Summary: 
+This event is generated when an SQL injection attempt is made against the 
+Microsoft BizTalk Server DTA Interface.
+
+-- 
+
+Impact: 
+Attackers may retreive or modify sensitive in formation stored in the affected 
+database. Additionally, attackers may use the database's functionality to 
+execute arbitrary commands on the system with the priviliges of the user 
+running the script, typically Administrator.
+
+--
+Detailed Information:
+This rule looks specifically for attacks against the rawdocdata.asp module of 
+the DTA Interface which contain the string "exec", which is required to run 
+commands on the host system. Thus, this rule does not detect generic SQL 
+injection attempts, only command execution attempts.
+
+--
+Affected Systems:
+Microsoft BizTalk Server 2000 Developer Edition SP2
+Microsoft BizTalk Server 2000 Developer Edition SP1a
+Microsoft BizTalk Server 2000 Developer Edition
+Microsoft BizTalk Server 2000 Enterprise Edition SP2
+Microsoft BizTalk Server 2000 Enterprise Edition SP1a
+Microsoft BizTalk Server 2000 Enterprise Edition
+Microsoft BizTalk Server 2000 Standard Edition SP2
+Microsoft BizTalk Server 2000 Standard Edition SP1a
+Microsoft BizTalk Server 2000 Standard Edition
+Microsoft BizTalk Server 2002 Developer Edition
+Microsoft BizTalk Server 2002 Enterprise Edition
+
+--
+
+Attack Scenarios: 
+A web browser or a script may be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as example attacks that can be used with a web browser are publicly 
+available.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Patches which correct this problem are available from Microsoft.com.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+Microsoft BizTalk Server 2000 Enterprise Edition SP2: 
+http://microsoft.com/downloads/details.aspx?FamilyId=001E93E4-0E6E-4289-AEFE-916
+1D2E5AF97&displaylang=en
+Microsoft BizTalk Server 2000 Developer Edition SP2: 
+http://microsoft.com/downloads/details.aspx?FamilyId=001E93E4-0E6E-4289-AEFE-916
+1D2E5AF97&displaylang=en
+Microsoft BizTalk Server 2000 Standard Edition SP2: 
+http://microsoft.com/downloads/details.aspx?FamilyId=001E93E4-0E6E-4289-AEFE-916
+1D2E5AF97&displaylang=en
+
+Microsoft BizTalk Server 2002 Enterprise Edition: 
+http://microsoft.com/downloads/details.aspx?FamilyId=A05344FE-2622-4887-AA45-3DE
+7C4ED3C75&displaylang=en
+
+Microsoft BizTalk Server 2002 Developer Edition: 
+http://microsoft.com/downloads/details.aspx?FamilyId=A05344FE-2622-4887-AA45-3DE
+7C4ED3C75&displaylang=en
+
+-- 

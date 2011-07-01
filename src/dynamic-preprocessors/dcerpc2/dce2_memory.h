@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -22,6 +22,8 @@
 
 #ifndef _DCE2_MEMORY_H_
 #define _DCE2_MEMORY_H_
+
+#include "sf_types.h"
 
 /********************************************************************
  * Enumerations

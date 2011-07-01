@@ -1,0 +1,61 @@
+
+
+Rule:
+
+--
+Sid:
+100000445
+
+--
+Summary:
+Particle Gallery is susceptible to an injection attack due to a lack
+of input validation on the imageid variable used in the viewimage.php
+component.
+
+--
+Impact:
+The injection attack could result in data leakage, or potential remote
+compromise.
+
+--
+Detailed Information:
+Particle Gallery is prone to an SQL-injection vulnerability. This issue is due
+to a failure in the application to properly sanitize user-supplied input 
+before using it in an SQL query. 
+
+A successful exploit could allow an attacker to compromise the application,
+access or modify data, or exploit vulnerabilities in the underlying database
+implementation.
+
+The data type assigned to the column referenced by the variable is int, so
+there should never be any text or characters outside of the int used to
+identify the image.
+
+--
+Attack Scenarios:
+Variable manipulation can be done with any browser.
+
+--
+Ease of Attack:
+Simple.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Edit code and add input validation.
+
+--
+Contributors:
+Dan Ramaswami <danr@sourcefire.com>
+
+-- 
+Additional References:
+
+-- 

@@ -1,0 +1,63 @@
+Rule:
+
+--
+Sid: 
+100000138
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in Microsoft Internet Information Server (IIS).
+
+-- 
+Impact: 
+Serious. Information Disclosure, application source code may be disclosed.
+
+--
+Detailed Information:
+A programming error in an error page for Microsoft IIS may result in the 
+discloure of asp code disclosure on an affected system.
+
+By making a request to a server using a modified SERVER_NAME variable, the 
+underlying asp code is displayed in the error page returned to the requestor if 
+the asp page generates an error.
+
+--
+Affected Systems:
+Microsoft IIS 6.0 and prior
+
+--
+Attack Scenarios: 
+An attacker can make a request to the server and modify the SERVER_NAME 
+variable to be either localhost or 127.0.0.1, if the page returns an error the 
+asp code is revealed.
+
+-- 
+Ease of Attack: 
+Simple. Exploit code exists.
+
+-- 
+False Positives:
+None Known
+
+--
+False Negatives:
+None Known
+
+-- 
+Corrective Action: 
+Apply the appropriate vendor supplied patch
+
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors: 
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+--

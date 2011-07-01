@@ -1,26 +1,3 @@
-/****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License Version 2 as
- * published by the Free Software Foundation.  You may not use, modify or
- * distribute this program under any other version of the GNU General
- * Public License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- *
- ****************************************************************************/
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "stdlib.h"
 #include "stdio.h"
@@ -48,8 +25,8 @@ tSfActionQueueId sfActionQueueInit(
 }
 
 int sfActionQueueAdd(
-        tSfActionQueueId actionQ,
-        void (*callback)(void *),
+        tSfActionQueueId actionQ, 
+        void (*callback)(void *), 
         void *data
         )
 {
@@ -65,6 +42,7 @@ int sfActionQueueAdd(
         return 0;
     }
 
+    ErrorMessage("Could not queue decoder action\n");
     return -1;
 }
 
@@ -94,7 +72,7 @@ void sfActionQueueExec(
     }
 }
 
-/**Destroys action queue. All memory allocated by the actionQueue module is
+/**Destroys action queue. All memory allocated by the actionQueue module is 
  * freed. Since the queued actions are not executed, any memory freed in the action
  * will be lost. User should do a execAll if there is a potential memory leak
  * or the actions must be completed.

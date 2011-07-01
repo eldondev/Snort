@@ -1,4 +1,4 @@
-## $Id: Makefile.am,v 1.3 2006/06/30 18:17:06 ssturges Exp $
+## $Id$
 AUTOMAKE_OPTIONS=foreign no-dependencies
 
 EXTRA_DIST = Makefile.am \

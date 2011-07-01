@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -34,8 +34,5 @@ int Stream5ProcessIcmp(Packet *p);
 void IcmpUpdateDirection(Stream5LWSession *ssn, char dir,
                          snort_ip_p ip, uint16_t port);
 void Stream5IcmpConfigFree(Stream5IcmpConfig *);
-
-uint32_t Stream5GetIcmpPrunes(void);
-void Stream5ResetIcmpPrunes(void);
 
 #endif /* STREAM5_ICMP_H_ */

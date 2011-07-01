@@ -1,7 +1,7 @@
-/* $Id: sp_replace.h,v 1.7 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -31,17 +31,17 @@ extern void Replace_ResetQueue(void);
 extern void Replace_QueueChange(PatternMatchData*);
 extern void Replace_ModifyPacket(Packet*);
 
-static inline void Replace_ResetOffset(PatternMatchData* pmd)
+static INLINE void Replace_ResetOffset(PatternMatchData* pmd)
 {
     pmd->replace_depth = -1;
 }
 
-static inline void Replace_StoreOffset(PatternMatchData* pmd, int detect_depth)
+static INLINE void Replace_StoreOffset(PatternMatchData* pmd, int detect_depth)
 {
     pmd->replace_depth = detect_depth;
 }
 
-static inline int Replace_OffsetStored(PatternMatchData* pmd)
+static INLINE int Replace_OffsetStored(PatternMatchData* pmd)
 {
     return pmd->replace_depth >= 0;
 }

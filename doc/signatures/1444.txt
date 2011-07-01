@@ -41,27 +41,25 @@ event may be generated when an attempt is made to access files on a
 Cisco device using TFTP.
 
 --
-
 Ease of Attack
-Simple: Numerous tools and automated scripts exist for scanning large subnets for improperly configured TFTP servers.
+Simple: Numerous tools and automated scripts exist for scanning large
+subnets for improperly configured TFTP servers.
 
 --
-
 False Positives
-Legitimate TFTP GET requests for polling routers or other network devices may trigger this rule.  
+Legitimate TFTP GET requests for polling routers or other network
+devices may trigger this rule.  
 
 --
-
 False Negatives
 None known
 
 --
-
 Corrective Action
-The TFTP server should be configured to only allow GET requests from trusted locations.
+The TFTP server should be configured to only allow GET requests from
+trusted locations.
 
 --
-
 Contributors
 Original rule writer unknown
 Sourcefire Research Team

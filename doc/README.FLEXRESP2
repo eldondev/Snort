@@ -1,0 +1,246 @@
+$Id$
+
+Snort flexresp2 README.
+(C) 2004 Jeff Nathan <jeff@snort.org>
+
+Warning
+-------
+
+Active response is not guaranteed to sucessfully terminate connections.  Snort
+is a passive system (except when used in 'inline' mode).  In a passive 
+configuration, the process of active response is a race between Snort and the 
+endpoints in network communication.  Depending on the CPU and/or bus speed of 
+a system running Snort, available memory, I/O states, and network latency, 
+Snort may or may not win this race in which case active response will have NO 
+EFFECT.
+
+Active response is a supplementary tool, something deployed in addition to 
+other security technologies.  It should not be relied upon solely to protect 
+systems or services that are known to be vulnerable.
+
+The process of transmitting active response packets will "block" the rest of
+the system, meaning that while Snort is busy sending TCP reset or ICMP 
+unreachable packets, it is unable to capture packets and perform other 
+intrusion detection functions.  The amount of time spent performing active 
+response is extremely small (measured in milliseconds) but can result in a 
+degredation of performance in high-speed environments.
+
+A determined attacker can easily attack from behind a firewall configured to 
+silently block all incoming traffic.  Sending TCP resets to the source of an
+attack is most likely a waste of time.  Only when the source is a system 
+on your own network should you expect TCP resets to reach this system.  Keep
+in mind that Snort has both attack rules and attack-response rules.  Attack
+response rules will trigger when a host has sent traffic indicative of being
+effected by an attack.  I believe the only situation in which you should
+send TCP resets to the sender is in conjunction with attack-response rules.
+
+
+Notice
+------
+
+Please note, flexresp and flexresp2 are *NOT* the same.
+
+The Snort source code distribution includes an older version of flexresp.  This
+version does not operate in the same way as flexresp2.  While the Snort source
+code contains the flexresp code, not every Snort binary is compiled to include
+the older flexresp functionality.
+
+Conversely, flexresp2 is not included within the Snort source code 
+distribution at this time.  If you do not apply a source code patch to your 
+copy of the Snort 2.2.x source code, the --enable-flexresp2 switch will have 
+no effect when you run the configure script.
+
+If you attempt to use the resp keyword in a Snort rule and you receive an
+error message indicating the resp keyword is unknown, your Snort binary
+has not been compiled with either flexresp or flexresp2 functionality.
+
+
+Introduction
+------------
+
+The flexresp2 detection plugin for Snort allows users to configure rules
+that will attempt to actively terminate connection attempts.  The process of
+active response consists of two steps.
+
+First, You must create some Snort rules that use the resp keyword.  The resp
+keyword accepts the following modifiers:
+
+    reset_dest      send TCP reset packets to the destination of an attack
+
+    reset_source    send TCP reset packets to the source of an attack 
+                    this is best used with attack-response rules
+
+    reset_both      send TCP reset packets to both the source and destination 
+                    of an attack (the destination resets are sent first)
+                         
+    icmp_net        send an ICMP network unreachable packet to the attack source
+
+    icmp_host       send an ICMP host unreachable packet to the attack source
+
+    icmp_port       send an ICMP port unrechable packet to the attack source
+
+    icmp_all        send all of the above to the attack source
+
+Second, when a Snort rule specifying a resp keyword is matched, Snort will
+generate one or several packets in an attempt to actively terminate the
+connection.
+
+
+Flexresp2 features
+----------------------------------------------------------
+
+To compensate for the fact that it's unlikely a TCP reset packet will reach
+either the client or server before the host reacts to the attack packet, Snort 
+tries to shutdown the connection with brute-force.  Flexpresp transmits a 
+minimum of 4 TCP reset packets with shifting TCP sequence and ack numbers in 
+an attempt to brute-force the connection into an unusable state.  This 
+brute-forcing is achived using a technique called sequence strafing.  Flexresp2
+ddoes NOT examine TCP flags to determine whether or not a TCP packet should
+be reset.  This is primarily due to inconsistencies in establishing TCP 
+connections.  Reference: 
+http://www.securityfocus.com/archive/1/296122/2002-10-19/2002-10-25/2
+
+Flexresp2 will automatically calculate the original TTL when sending a 
+response packet (to make fingerprinting attempts more difficult).
+
+Flexresp2 will not respond to its own packets! (avoiding a potential DoS).  
+This is achieved using a hash to rate-limit responses.
+
+Flexresp2 can be configured to send responses from a link-layer (Ethernet) 
+interface specified by you, the user.  When an Ethernet interface is 
+specified, the kernel routing table is bypassed and Snort will ALWAYS send TCP 
+resets and ICMP unreachable packets using that interface.
+
+Snort no longer requires root privileges to use active response (flexresp2)
+on Unix-like operating systems.  It's now possible to use the -u and -g command 
+line switches with active response.
+
+
+Configuration
+-------------
+
+Enabling link-layer response in snort.conf on Unix-like systems:
+    config flexresp2_interface: <device name>
+
+Enabling link-layer response in snort.conf on Windows systems:
+    config flexresp2_interface: <device name or device number*>
+
+* Use the -W command line option to list network devices by number.
+
+Configure the number of brute-force TCP resets in snort.conf:
+    config flexresp2_attempts: <number of attempts (5 - 20)>
+
+Configure the memcap of the cache of previous responses in snort.conf:
+    config flexresp2_memcap: <memcap in bytes>
+
+Configure the number of rows in the cache of previous responses in snort.conf:
+    config flexresp2_rows: <rows>
+
+To add a resp action to a Snort rule, the resp keyword must be followed
+by a colon (:) followed by one or several response modified (multiple 
+modifiers are separated by commas).  Here are a few examples:
+
+(A simple TCP example)
+
+alert tcp $EXTERNAL_NET any -> $SMTP_SERVERS 25 (msg:"SMTP HELO overflow attempt"; flow:to_server,established; content:"HELO "; offset:0; depth:5; content:!"|0a|"; within:500; reference:bugtraq,895; reference:cve,CVE-2000-0042; reference:nessus,10324; reference:bugtraq,7726; reference:nessus,11674; classtype:attempted-admin; sid:1549; rev:11; resp:reset_dest;)
+
+
+(A simple TCP attack-response example)
+
+alert tcp $HOME_NET 8002 -> $EXTERNAL_NET any (msg:"ATTACK-RESPONSES oracle one hour install"; flow:from_server,established; content:"Oracle Applications One-Hour Install"; classtype:bad-unknown; sid:1464; rev:3; resp:reset_source;)
+
+
+(A simple UDP example)
+
+alert udp $EXTERNAL_NET any -> $HOME_NET 53 (msg:"DNS named authors attempt"; content:"|07|authors"; nocase; offset:12; content:"|04|bind"; nocase; offset: 12; reference:nessus,10728; reference:arachnids,480; classtype:attempted-recon; sid:256; rev:3; resp:icmp_port;)
+
+
+(A complex TCP example)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"NETBIOS SMB DCERPC ISystemActivator bind attempt"; flow:to_server,established; content:"|FF|SMB|25|"; nocase;offset:4; depth:5; content:"|26 00|"; distance:56; within:2; content:"|5c 00|P|00|I|00|P|00|E|00 5c 00|"; nocase; distance:5; within:12; content:"|05|"; distance:0; within:1; content:"|0b|"; distance:1; within:1; byte_test:1,&,1,0,relative; content:"|A0 01 00 00 00 00 00 00 C0 00 00 00 00 00 00 46|"; distance:29; within:16; reference:cve,CAN-2003-0352; classtype:attempted-admin; sid:2193; rev:1; resp:reset_dest;)
+
+
+(A complex TCP attack-response example)
+
+alert tcp $HOME_NET !21:23 -> $EXTERNAL_NET any (msg:"ATTACK-RESPONSES Microsoft cmd.exe banner"; flow:from_server,established; content:"Microsoft Windows"; content:"(C) Copyright 1985-"; distance:0; content:"Microsoft Corp."; distance:0; reference:nessus,11633; classtype:successful-admin; sid:2123; rev:1; resp:reset_source;)
+
+
+Make sure to read the Snort users guide for a complete explanation of the
+Snort rules language.  The user's guide is in the same directory as this file
+and it's available on the Snort website.
+
+
+Notes for Unix-like systems
+---------------------------
+
+To compile and use flexresp2 on Unix-like systems you must compile and install 
+the libdnet library written by Dug Song.  If your system doesn't have the 
+library installed, download the source code at  http://libdnet.sourceforge.net
+
+Once libdnet has been compiled AND installed (don't forget make install) on a 
+Unix-like system, follow the directions in the section below for building 
+Snort with flexresp2.  
+
+Unix-like systems with multiple network interfaces can avoid routing problems 
+using the instructions in the Configuration section above.
+
+
+Build instructions for Unix-like systems
+----------------------------------------
+
+!!!!! The following instructions require GNU autoconf and GNU automake !!!!!
+
+Anything following a hash character (#) is a command.
+
+a) copy the patch into the top level Snort source distribution directory
+   if your Snort directory uses a different name, this is not a problem
+   just make sure you know which version of Snort you intend to compile
+  # cd snort-2.2.0RC1
+  # cp <path to sp_respond2.diff.gz> .
+
+b) decompress the patch with gzip
+  # gzip -d sp_respond2.diff.gz
+
+c) patch the Snort source code
+  # patch -p0 < sp_respond2.diff
+
+d) regenerate the configure script (this step REQUIRES that GNU autoconf and 
+   GNU automake are installed)
+  # ./autojunk.sh
+
+  NOTE: systems with multiple versions of GNU autoconf should use version 2.5x
+        of autoheader and autoconf.
+
+e) run the configure script with your desired arguments
+  # ./configure --enable-flexresp2
+
+f) compile Snort
+  # make
+
+If Snort is unable to locate either the libdnet header file (dnet.h) or the
+libnet library (either dnet.a or dnet.so) there are two additional 
+configure options that can be used to specify extra directories to search:
+
+--with-dnet-includes=DIR
+     If the configuration script can't find the libdnet include files on its
+     own, the path can be set manually with this switch.
+
+--with-dnet-libraries=DIR
+     If the configuration script can't find the libdnet library files on its
+     own, the path can be set manually with this switch.
+
+
+NOTE: When specifying a directory with either --with-dnet-includes or
+--with-dnet-libraries a trailing / character should *NOT* be specified.
+
+
+Notes for Microsoft Windows
+---------------------------
+
+Coming soon.
+
+
+Build instructions for Windows systems
+--------------------------------------
+
+Coming soon.

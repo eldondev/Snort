@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -81,7 +81,7 @@ typedef struct _DCE2_CoTracker
     DCE2_CoFragTracker frag_tracker;
 
     int max_xmit_frag;    /* The maximum negotiated size of a client request */
-    int data_byte_order;  /* Depending on policy is from bind or request */
+    int data_byte_order;  /* Set in bind or alter context */
     int ctx_id;           /* The current context id of the request */
     int opnum;            /* The current opnum of the request */
     int call_id;          /* The current call id of the request */

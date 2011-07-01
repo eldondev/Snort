@@ -66,10 +66,4 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 --
 Additional References:
 
-Bugtraq
-http://www.securityfocus.com/bid/1163
-
-CVE
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0347
-
 --

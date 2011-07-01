@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: tag.h,v 1.21 2011/02/09 23:22:54 jjordan Exp $ */
+/* $Id$ */
 #ifndef __TAG_H__
 #define __TAG_H__
 
@@ -27,7 +27,6 @@
 #endif
 
 #include "rules.h"
-#include "treenodes.h"
 #include "event.h"
 #include "decode.h"
 

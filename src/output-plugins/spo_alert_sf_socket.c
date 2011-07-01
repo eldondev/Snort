@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2003-2011 Sourcefire, Inc.
+** Copyright (C) 2003-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -17,7 +17,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_sf_socket.c,v 1.20 2011/06/08 00:33:16 jjordan Exp $ */
+/* $Id$ */
 
 /* We use some Linux only socket capabilities */
 
@@ -27,14 +27,12 @@
 
 #ifdef LINUX
 
-#include "sf_types.h"
 #include "spo_plugbase.h"
 #include "plugbase.h"
 
 #include "event.h"
 #include "rules.h"
-#include "treenodes.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "sfPolicy.h"
 #include <sys/socket.h>
@@ -50,6 +48,8 @@
 #define SNORT_EINVAL 1
 #define SNORT_ENOENT 2
 #define SNORT_ENOMEM 3
+
+extern SnortConfig *snort_conf;
 
 static int configured = 0;
 static int connected = 0;
@@ -87,7 +87,7 @@ void AlertSFSocket(Packet *packet, char *msg, void *arg, Event *event);
 
 static int AlertSFSocket_Connect(void);
 static OptTreeNode *OptTreeNode_Search(uint32_t gid, uint32_t sid);
-static int SignatureAddOutputFunc(uint32_t gid, uint32_t sid,
+static int SignatureAddOutputFunc(uint32_t gid, uint32_t sid, 
         void (*outputFunc)(Packet *, char *, void *, Event *),
         void *args);
 int String2ULong(char *string, unsigned long *result);
@@ -121,11 +121,11 @@ static void AlertSFSocket_Init(char *args)
 
     if(strlen(sockname) == 0)
         FatalError("AlertSFSocket: must specify a socket name\n");
-
+    
     if(strlen(sockname) > UNIX_PATH_MAX - 1)
         FatalError("AlertSFSocket: socket name must be less than %i "
                 "characters\n", UNIX_PATH_MAX - 1);
-
+    
     /* create socket */
     if((sock = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1)
     {
@@ -135,7 +135,7 @@ static void AlertSFSocket_Init(char *args)
     memset(&sockAddr, 0, sizeof(sockAddr));
     sockAddr.sun_family = AF_UNIX;
     memcpy(sockAddr.sun_path + 1, sockname, strlen(sockname));
-
+    
     if(AlertSFSocket_Connect() == 0)
         connected = 1;
 
@@ -154,7 +154,7 @@ int GidSid2UInt(char * args, uint32_t * sidValue, uint32_t * gidValue)
 
     *gidValue=GENERATOR_SNORT_ENGINE;
     *sidValue=0;
-
+    
     i=0;
     while( args && *args && (i < 20) )
     {
@@ -164,17 +164,17 @@ int GidSid2UInt(char * args, uint32_t * sidValue, uint32_t * gidValue)
         i++;
     }
     sbuff[i]=0;
-
+    
     if( i >= 20 )
     {
        return SNORT_EINVAL;
     }
 
-    if( *args == ':' )
+    if( *args == ':' ) 
     {
         memcpy(gbuff,sbuff,i);
         gbuff[i]=0;
-
+        
         if(String2ULong(gbuff,&glong))
         {
             return SNORT_EINVAL;
@@ -210,7 +210,7 @@ int GidSid2UInt(char * args, uint32_t * sidValue, uint32_t * gidValue)
         }
         *sidValue=(uint32_t)slong;
     }
-
+    
     return SNORT_SUCCESS;
 }
 
@@ -219,12 +219,12 @@ static void AlertSFSocketSid_Init(char *args)
     uint32_t sidValue;
     uint32_t gidValue;
     AlertSFSocketGidSid *new_sid = NULL;
-
+    
     /* check configured value */
     if(!configured)
         FatalError("AlertSFSocket must be configured before attaching it to a "
                 "sid");
-
+    
     if (GidSid2UInt((char*)args, &sidValue, &gidValue) )
         FatalError("Invalid argument '%s' to alert_sf_socket_sid\n", args);
 
@@ -268,12 +268,12 @@ void AlertSFSocketSid_InitFinalize(int unused, void *also_unused)
                 break;
             case SNORT_EINVAL:
                 DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Invalid argument "
-                            "attempting to attach output for sid %u.\n",
+                            "attempting to attach output for sid %u.\n", 
                             sidValue););
                 break;
             case SNORT_ENOENT:
                 LogMessage("No entry found.  SFSocket output not enabled for "
-                        "sid %u.\n", sidValue);
+                        "sid %lu.\n", sidValue);
                 break;
             case SNORT_ENOMEM:
                 FatalError("Out of memory");
@@ -311,8 +311,8 @@ static int AlertSFSocket_Connect(void)
     }
     return 0;
 }
-
-
+        
+                   
 static SnortActionRequest sar;
 
 void AlertSFSocket(Packet *packet, char *msg, void *arg, Event *event)
@@ -402,16 +402,16 @@ void AlertSFSocket(Packet *packet, char *msg, void *arg, Event *event)
     return;
 }
 
-static int SignatureAddOutputFunc( uint32_t gid, uint32_t sid,
+static int SignatureAddOutputFunc( uint32_t gid, uint32_t sid, 
         void (*outputFunc)(Packet *, char *, void *, Event *),
         void *args)
 {
     OptTreeNode *optTreeNode = NULL;
     OutputFuncNode *outputFuncs = NULL;
-
+    
     if(!outputFunc)
         return SNORT_EINVAL;  /* Invalid argument */
-
+                       
     if(!(optTreeNode = OptTreeNode_Search(gid,sid)))
     {
         LogMessage("Unable to find OptTreeNode for SID %u\n", sid);
@@ -426,11 +426,11 @@ static int SignatureAddOutputFunc( uint32_t gid, uint32_t sid,
 
     outputFuncs->func = outputFunc;
     outputFuncs->arg = args;
-
+    
     outputFuncs->next = optTreeNode->outputFuncs;
 
     optTreeNode->outputFuncs = outputFuncs;
-
+    
     return SNORT_SUCCESS;
 }
 
@@ -444,7 +444,7 @@ static OptTreeNode *OptTreeNode_Search(uint32_t gid, uint32_t sid)
 
     if(sid == 0)
         return NULL;
-
+    
     for (hashNode = sfghash_findfirst(snort_conf->otn_map);
             hashNode;
             hashNode = sfghash_findnext(snort_conf->otn_map))
@@ -454,8 +454,8 @@ static OptTreeNode *OptTreeNode_Search(uint32_t gid, uint32_t sid)
         if (rtn)
         {
             if ((rtn->proto == IPPROTO_TCP) || (rtn->proto == IPPROTO_UDP)
-                    || (rtn->proto == IPPROTO_ICMP) || (rtn->proto == ETHERNET_TYPE_IP))
-            {
+                    || (rtn->proto == IPPROTO_ICMP) || (rtn->proto == ETHERNET_TYPE_IP)) 
+            { 
                 if (otn->sigInfo.id == sid)
                 {
                     return otn;

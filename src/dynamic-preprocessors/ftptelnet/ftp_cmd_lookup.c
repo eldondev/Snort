@@ -1,12 +1,12 @@
 /*
  * ftp_cmd_lookup.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -38,10 +38,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "hi_util_kmap.h"
 #include "ftpp_ui_config.h"
 #include "ftpp_return_codes.h"
@@ -64,7 +60,7 @@
  */
 int ftp_cmd_lookup_init(CMD_LOOKUP **CmdLookup)
 {
-    KMAP *km = KMapNew((KMapUserFreeFunc)FTPTelnetCleanupFTPCMDConf);
+    KMAP *km = KMapNew((KMapUserFreeFunc)FTPTelnetCleanupFTPCMDConf); 
     *CmdLookup = km;
     if(*CmdLookup == NULL)
     {
@@ -108,9 +104,9 @@ int ftp_cmd_lookup_cleanup(CMD_LOOKUP **CmdLookup)
 
 /*
  * Function: ftp_cmd_lookup_add(CMD_LOOKUP *CmdLookup,
- *                                 char *ip, int len,
+ *                                 char *ip, int len, 
  *                                 FTP_CMD_CONF *FTPCmd)
- *
+ * 
  * Purpose: Add a cmd configuration to the list.
  *          We add these keys like you would normally think to add
  *          them, because on low endian machines the least significant
@@ -126,7 +122,7 @@ int ftp_cmd_lookup_cleanup(CMD_LOOKUP **CmdLookup)
  * Returns: int => return code indicating error or success
  *
  */
-int ftp_cmd_lookup_add(CMD_LOOKUP *CmdLookup, char *cmd, int len,
+int ftp_cmd_lookup_add(CMD_LOOKUP *CmdLookup, char *cmd, int len, 
                             FTP_CMD_CONF *FTPCmd)
 {
     int iRet;
@@ -175,7 +171,7 @@ int ftp_cmd_lookup_add(CMD_LOOKUP *CmdLookup, char *cmd, int len,
  *                            matching IP if found, NULL otherwise.
  *
  */
-FTP_CMD_CONF  *ftp_cmd_lookup_find(CMD_LOOKUP *CmdLookup,
+FTP_CMD_CONF  *ftp_cmd_lookup_find(CMD_LOOKUP *CmdLookup, 
                                             const char *cmd, int len, int *iError)
 {
     FTP_CMD_CONF *FTPCmd = NULL;

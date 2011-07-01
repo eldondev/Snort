@@ -1,0 +1,100 @@
+
+ SNORT WITH DATABASE SUPPORT
+------------------------------
+ If you are using snort-pgsql or snort-mysql please notice that you have
+ to create the database structure right after installing the package
+ and start Snort manually.
+
+ In order to create the database structure do:
+
+ - if using PostgreSQL
+   $ cd /usr/share/doc/snort-pgsql/
+   $  zcat create_postgresql.gz | psql -U <user> -h <host> -W <databasename>
+
+ - if using MySQL
+   $ cd /usr/share/doc/snort-mysql/
+   $ zcat create_mysql.gz | mysql -u <user> -h <host> -p <databasename>
+
+ In either case fill in the correct values for the user, host, and 
+ database names. Depending on the user priviledges set on the database
+ you can use the same user that Snort will use to access the
+ database or an admin user. In either case, the user you use should
+ have priviledges to create tables and indexes. Once created you have
+ to grant the user your configured in Debconf so that it has priviledges
+ over the tables created through the schema.
+
+ Once you have setup the database, you will need to start Snort manually
+ since it was left unstarted after the installation. To do this
+ remove the file '/etc/snort/db-pending-config' and then
+ do '/etc/init.d/snort start'. Confirm that snort is working and up
+ by running '/etc/init.d/snort status' and reviewing the messages in
+ the /var/log/daemon.log syslog file.
+
+ CREATING THE DATABASE
+-----------------------
+
+  Notice that in order for the above to work you need to create first
+  a database. 
+
+  Consider that you have defined the following information when asked
+  to in the Debconf dialogs when installing the package:
+
+  Database User: snort
+  Database Password: snort-db
+  Database name: snort
+
+  For Mysql you can do this:
+
+  [ running as an mysql user with admin privileges ]
+  $ mysql
+  mysql> CREATE DATABASE snort
+  mysql> grant CREATE, INSERT, SELECT, UPDATE on snort.* to snort@localhost;
+  mysql> grant CREATE, INSERT, SELECT, UPDATE on snort.* to snort;
+  mysql> SET PASSWORD FOR snort@localhost=PASSWORD('snort-db');
+  mysql> flush privileges;
+  [ you can confirm the changes above running ]
+  mysql> show grants for 'snort'@'localhost';
+
+  And then you can run the command above as:
+
+  $ zcat create_mysql.gz | mysql -u snort -D snort -psnort-db
+
+  For PosgreSQL you can do this:
+
+  [ running as user 'posgres' ]
+  $ psql template1
+  template1=# CREATE DATABASE snort;
+  CREATE DATABASE
+  template1=# \q
+  $ zcat create_postgresql.gz | psql snort
+  [ creates the database ]
+
+  If you are using authentication based on passwords in your Postgres
+  database use this:
+
+  $ psql snort 
+  snort=# CREATE USER snort PASSWORD 'snort-db';
+  CREATE USER
+  snort=# GRANT INSERT, SELECT, UPDATE ON TABLE data,detail,encoding,
+  event,icmphdr,iphdr,opt,reference,reference_system,schema,sensor,
+  sig_class,signature,sig_reference,tcphdr,udphdr TO snort;
+  GRANT
+  [ now you can confirm that it was indeed created ]
+  snort=# SELECT * FROM pg_user WHERE usename='snort';
+  snort=#\q
+
+  You should be able now to connect to the Postgres database with:
+
+  $ psql -U snort --password snort
+
+  Alternatively, if the sensor is running on the same server as the database
+  you could use 'ident' authentication, since the Snort sensor will be running
+  as user 'snort'. Use this line in /etc/postgresql/pg_hba.conf:
+
+------------------------------------------------------------------------------
+host   all        all        127.0.0.1        255.255.255.255   ident sameuser
+------------------------------------------------------------------------------
+
+
+ -- Javier Fernandez-Sanguino Pen~a <jfs@debian.org>
+    Thu, 25 Aug 2005 16:44:46 +0200

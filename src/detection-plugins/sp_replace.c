@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_replace.c,v 1.10 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -28,46 +28,40 @@
 #include <strings.h>
 #endif
 
-#include "sf_types.h"
-#include "snort_bounds.h"
-#include "snort_debug.h"
+#include "bounds.h"
+#include "checksum.h"
+#include "debug.h"
 #include "decode.h"
+#include "inline.h"
 #include "parser.h"
 #include "sp_replace.h"
 #include "snort.h"
-#include "sfdaq.h"
 
+//#define REPLACE_TEST
 #define MAX_PATTERN_SIZE 2048
 extern int lastType;
 
 static PatternMatchData* Replace_Parse(char*, OptTreeNode*);
+static void Replace_UpdateIP4Checksums(Packet*);
+#ifdef SUP_IP6
+static void Replace_UpdateIP6Checksums(Packet*);
+#endif
 
 void PayloadReplaceInit(char *data, OptTreeNode * otn, int protocol)
 {
-    static int warned = 0;
     PatternMatchData *idx;
     PatternMatchData *test_idx;
 
-    if( !ScInlineMode() )
+#ifndef REPLACE_TEST
+    if(!ScInlineMode())
         return;
-
-    if ( !DAQ_CanReplace() )
-    {
-        if ( !warned )
-        {
-            LogMessage("Warning: payload replacements disabled because DAQ "
-                " can't replace packets.\n");
-            warned = 1;
-        }
-        return;
-    }
+#endif
     if ( lastType ==  PLUGIN_PATTERN_MATCH_URI )
     {
         FatalError("%s(%d) => \"replace\" option is not supported "
-                "with uricontent, nor in conjunction with http_uri, "
-                "http_header, http_method http_cookie,"
-                "http_raw_uri, http_raw_header, or "
-                "http_raw_cookie modifiers.\n",
+                "with uricontent, nor in conjunction with http_uri, " 
+                "http_header, http_method http_cookie or "
+                "http_client_body modifiers.\n",
                 file_name, file_line);
     }
     idx = (PatternMatchData *) otn->ds_list[PLUGIN_PATTERN_MATCH];
@@ -81,6 +75,12 @@ void PayloadReplaceInit(char *data, OptTreeNode * otn, int protocol)
 
     test_idx = Replace_Parse(data, otn);
 
+    if (test_idx && test_idx->pattern_size != test_idx->replace_size)
+    {
+        FatalError("%s(%d) => The length of the replacement "
+                   "string must be the same length as the content string.\n",
+                   file_name, file_line);
+    }
 }
 
 static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
@@ -182,28 +182,28 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
         switch(*idx)
         {
             case '|':
-
+            
                 DEBUG_WRAP(DebugMessage(DEBUG_PARSER, "Got bar... "););
-
+        
                 if(!literal)
                 {
-
+            
                     DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
                         "not in literal mode... "););
-
+            
                     if(!hexmode)
                     {
-                        DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                        DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                         "Entering hexmode\n"););
 
                         hexmode = 1;
                     }
                     else
                     {
-
-                        DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                
+                        DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                         "Exiting hexmode\n"););
-
+            
                         hexmode = 0;
                         pending = 0;
                     }
@@ -214,7 +214,7 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
                 else
                 {
 
-                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                         "literal set, Clearing\n"););
 
                     literal = 0;
@@ -225,21 +225,21 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
                 break;
 
             case '\\':
-
+        
                 DEBUG_WRAP(DebugMessage(DEBUG_PARSER, "Got literal char... "););
 
                 if(!literal)
                 {
-                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                         "Setting literal\n"););
-
+            
                     literal = 1;
                 }
                 else
                 {
-                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                    DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                         "Clearing literal\n"););
-
+            
                     tmp_buf[dummy_size] = start_ptr[cnt];
                     literal = 0;
                     dummy_size++;
@@ -317,10 +317,10 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
                         {
                             tmp_buf[dummy_size] = start_ptr[cnt];
                             dummy_size++;
-
-                            DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+                
+                            DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                             "Clearing literal\n"););
-
+                
                             literal = 0;
                         }
                         else
@@ -365,7 +365,7 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
             file_name, file_line);
     }
 
-    ret = SafeMemcpy(ds_idx->replace_buf, tmp_buf, dummy_size,
+    ret = SafeMemcpy(ds_idx->replace_buf, tmp_buf, dummy_size, 
                      ds_idx->replace_buf, (ds_idx->replace_buf+dummy_size));
 
     if (ret == SAFEMEM_ERROR)
@@ -375,7 +375,7 @@ static PatternMatchData * Replace_Parse(char *rule, OptTreeNode * otn)
 
     ds_idx->replace_size = dummy_size;
 
-    DEBUG_WRAP(DebugMessage(DEBUG_PARSER,
+    DEBUG_WRAP(DebugMessage(DEBUG_PARSER, 
                 "ds_idx (%p) replace_size(%d) replace_buf(%s)\n", ds_idx,
                 ds_idx->replace_size, ds_idx->replace_buf););
 
@@ -411,26 +411,22 @@ void Replace_QueueChange(PatternMatchData* pmd)
     r->depth = pmd->replace_depth;
 }
 
-static inline void Replace_ApplyChange(Packet *p, Replacement* r)
+static INLINE void Replace_ApplyChange(Packet *p, Replacement* r)
 {
-    int err;
-    int rsize;
-
-    if( (p->data + r->depth + r->size) >= (p->data + p->dsize))
-        rsize = (p->dsize - r->depth);
-    else
-        rsize = r->size;
-
-    err = SafeMemcpy(
+    int err = SafeMemcpy(
         (void *)(p->data + r->depth), r->data,
-        rsize, p->data, (p->data + p->dsize) );
+        r->size, p->data, (p->data + p->dsize) );
 
     if ( err == SAFEMEM_ERROR )
     {
-        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH,
+        DEBUG_WRAP(DebugMessage(DEBUG_PATTERN_MATCH, 
                 "Replace_Apply() => SafeMemcpy() failed\n"););
         return;
     }
+
+#ifdef REPLACE_TEST
+    printf("replaced: %s\n", r->data);
+#endif
 }
 
 void Replace_ModifyPacket(Packet *p)
@@ -444,7 +440,140 @@ void Replace_ModifyPacket(Packet *p)
     {
         Replace_ApplyChange(p, rpl+n);
     }
-    p->packet_flags |= PKT_MODIFIED;
     num_rpl = 0;
+
+    if(IS_IP4(p)) 
+    {
+        Replace_UpdateIP4Checksums(p);
+    }
+#ifdef SUP_IP6
+    else
+    {
+        Replace_UpdateIP6Checksums(p);
+    }
+#endif
+
+#ifdef GIDS
+    InlineReplace();
+#endif
 }
+
+static void Replace_UpdateIP4Checksums(Packet* p)
+{
+    struct pseudoheader
+    {
+        uint32_t sip, dip;
+        uint8_t zero;
+        uint8_t protocol;
+        uint16_t len;
+    };
+
+    struct pseudoheader ph;
+    unsigned int ip_len;
+    unsigned int hlen;
+
+#ifdef SUP_IP6
+    sfip_t *tmp;
+
+    p->ip4h->ip_csum=0;
+    hlen = GET_IPH_HLEN(p) << 2;
+    ip_len=ntohs(p->ip4h->ip_len);
+    ip_len -= hlen;
+    p->ip4h->ip_csum = in_chksum_ip((u_short *)p->iph, hlen);
+
+    tmp = GET_SRC_IP(p);
+    ph.sip = tmp->ip32[0];
+    tmp = GET_DST_IP(p);
+    ph.dip = tmp->ip32[0];
+#else
+    /* calculate new checksum */
+    ((IPHdr *)p->iph)->ip_csum=0;
+    hlen = IP_HLEN(p->iph) << 2;
+    ip_len=ntohs(p->iph->ip_len);
+    ip_len -= hlen;
+    ((IPHdr *)p->iph)->ip_csum = in_chksum_ip((u_short *)p->iph, hlen);
+    ph.sip = (uint32_t)(p->iph->ip_src.s_addr);
+    ph.dip = (uint32_t)(p->iph->ip_dst.s_addr);
+#endif
+
+    if (p->tcph)
+    {
+        ((TCPHdr *)p->tcph)->th_sum = 0;
+        ph.zero = 0;
+        ph.protocol = GET_IPH_PROTO(p);
+        ph.len = htons((u_short)ip_len);
+        ((TCPHdr *)p->tcph)->th_sum =
+            in_chksum_tcp((u_short *)&ph, (u_short *)(p->tcph), ip_len);
+    }
+    else if (p->udph)
+    {
+        ((UDPHdr *)p->udph)->uh_chk = 0;
+        ph.zero = 0;
+        ph.protocol = GET_IPH_PROTO(p);
+        ph.len = htons((u_short)ip_len);
+        ((UDPHdr *)p->udph)->uh_chk =
+            in_chksum_udp((u_short *)&ph, (u_short *)(p->udph), ip_len);
+    }
+    else if (p->icmph)
+    {
+        ((ICMPHdr *)p->icmph)->csum = 0;
+        ph.zero = 0;
+        ph.protocol = GET_IPH_PROTO(p);
+        ph.len = htons((u_short)ip_len);
+        ((ICMPHdr *)p->icmph)->csum =
+            in_chksum_icmp((uint16_t *)(p->icmph), ip_len);
+    }
+}
+
+#ifdef SUP_IP6
+static void Replace_UpdateIP6Checksums(Packet* p)
+{
+    struct pseudoheader6
+    {
+        struct in6_addr sip, dip;
+        uint8_t zero;
+        uint8_t protocol;
+        uint16_t len;
+    };
+    struct pseudoheader6 ph6;
+    unsigned int ip_len;
+    unsigned int hlen;
+    sfip_t *tmp;
+
+    hlen = GET_IPH_HLEN(p) << 2;
+    ip_len=ntohs(p->ip6h->len);
+    ip_len -= hlen;
+
+    tmp = GET_SRC_IP(p);
+    memcpy(&ph6.sip, tmp->ip8, sizeof(struct in6_addr));
+    tmp = GET_DST_IP(p);
+    memcpy(&ph6.dip, tmp->ip8, sizeof(struct in6_addr));
+
+    ph6.zero = 0;
+    ph6.protocol = GET_IPH_PROTO(p);
+    ph6.len = htons((u_short)ip_len);
+
+    if (p->tcph)
+    {
+        ph6.protocol = IPPROTO_TCP;
+        ((TCPHdr *)p->tcph)->th_sum = 0;
+        ((TCPHdr *)p->tcph)->th_sum =
+            in_chksum_tcp6((u_short *)&ph6, (u_short *)(p->tcph), ip_len);
+    }
+    else if (p->udph)
+    {
+        ph6.protocol = IPPROTO_UDP;
+        ((UDPHdr *)p->udph)->uh_chk = 0;
+        ((UDPHdr *)p->udph)->uh_chk =
+            in_chksum_udp6((u_short *)&ph6, (u_short *)(p->udph), ip_len);
+    }
+    else if (p->icmph)
+    {
+        ph6.protocol = IPPROTO_ICMP;
+        ((ICMPHdr *)p->icmph)->csum = 0;
+        ((ICMPHdr *)p->icmph)->csum =
+            in_chksum_icmp6((uint16_t *)(p->icmph), ip_len);
+    }
+}
+#endif
 

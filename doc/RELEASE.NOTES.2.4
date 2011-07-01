@@ -1,0 +1,138 @@
+2006-06-05 - Snort 2.4.5 Released
+    * Fixed potential evasion in URI content buffers
+    * Fixed potential evasion in Stream4
+
+2006-03-08 - Snort 2.4.4 Released
+[*] Improvements
+    * Fixed ip options handling in Frag3.
+    * Fixed bug in Wu-Manbher implementation regarding multiple
+      recurring patterns.
+    * Fixed a config file parsing bug which required DNS resolution
+      in certain circumstances.
+    * Updated perfmonitor to properly handle wraps on 64 bit platforms.
+    * Fixed crash in portscan related to bogus data in sfxhash.
+    * Fixed memory leak in Frag3.
+    * Allow use of 0 as a value to -G.
+
+2005-10-17 - Snort 2.4.3 Released
+[*] Improvements
+    * Fixed possible buffer overflow in  back orifice preprocessor.
+    * Added snort.conf options to bo preprocessor for finer control of 
+      alerting and dropping of bo traffic.
+    * Added alert to detect the bo buffer overflow attack against snort.
+
+2005-09-28 - Snort 2.4.2 Released
+[*] Improvements
+    * Fixed crash bug with -T and default logging setup first reported by 
+      Zultan.
+    * Corrected Win32 directory setup for new WinPCAP.
+
+2005-09-16 - Snort 2.4.1 Released
+[*] New additions
+    * Added a -K command line option to manually select the logging mode using
+      a single switch.  The -b and -N switches will be deprecated in version 
+      2.7.  Pcap logging is now the default for Snort at startup, use "-K ascii"
+      to revert to old behavior.
+
+[*] Improvements
+    * Win32 version now supports winpcap 3.1 and MySQL client 4.13.
+    * Added event on zero-length RPC fragments.
+    * Fixed TCP SACK processing for text based outputs that could result in a 
+      DoS.
+    * General improvements to frag3 including Teardrop detection fix.
+    * Fixed a bug in the PPPoE decoder.
+    * Added patch for time stats from Bill Parker.  Enable with configure 
+      --enable-timestats.
+    * Fixed IDS mode bailing at startup if logdir is specified in snort.conf
+      and /var/log/snort doesn't exist.
+    * Added decoder for IPEnc for OpenBSD.  Thanks Jason Ish for the patch 
+      (long time ago) and Chris Kuethe for reraising the issue.
+    * Allow snort to use usernames (-u) and groupnames (-g) that include 
+      numbers.  Thanks to Shaick for the patch.
+    * Fixed broken -T option.
+    * Change ip_proto to ip for portscan configuration.  Thanks David Bianco
+      for pointing this out.
+    * Fix for prelude initialization.  Thanks Yoann Vandoorselaere for the
+      update.
+    * For content matches, when subsequent rule options fail, start searching
+      again in correct location.
+    * Updated Win32 to handle pflog patch.
+    * Added support for new OpenBSD pflog format.  Older pflog format,
+      OpenBSD 3.3 and earlier is still supported.  Thanks Breno Leitao
+      and Christian Reis for the patch.
+    * Added statistics counter for ETH_LOOPBACK packets.  Thanks rmkml
+      for the patch.
+
+2005-07-22 - Snort 2.4.0 Released
+
+[*] Distribution Change
+    * Rules are no longer distributed as part of the Snort releases, they are
+      available as a separate download from snort.org.  This was done for 
+      three reasons: 
+        1) To better manage the new rules licensing.
+        2) To reduce the size of the engine download.
+        3) To move the thousands of documentation files for the rules into
+           the rules tarballs.  If you've ever checked Snort out of CVS you'll
+           know why this is a Good Thing.
+
+[*] New additions
+    * Added new IP defragmentation preprocessor, Frag3. The frag3 preprocessor 
+      is a target-based IP defragmentation module, and is intended as a 
+      replacement for the frag2 module.  Check out the README.frag3 for full
+      info on this new preprocessor.
+
+    * Libprelude support has been added (enable with --enable-prelude).
+      Thanks Yoann Vandoorselaere!
+
+    * An "ftpbounce" rule detection plugin was added for easier detection of
+      FTP bounce attacks.
+
+    * Added a new Snort config option, "ignore_ports," to ignore packets
+      based on port number.  This is similar to bpf filters, but done within
+      snort.conf.
+
+[*] Improvements
+    * Snort startup messages printed in syslog now contain a PID before each
+      entry. Thanks Sekure for initially bringing this up.
+
+    * Stream4: Performance improvements.
+    
+    * Stream4: Added 'max_session_limit' option which limits number of 
+      concurrent sessions tracked.  Added favor_old/favor_new options that 
+      affect order in which packets are put together for reassembly.  
+
+    * Stream4: New configuration options to manage flushpoints for improved
+      anti-evasion.  The flush_behavior option selects flushpoint management 
+      mode.  New flush_base, flush_range, and flush_seed manage randomized 
+      flushing.  Check out the snort.conf file for full config data on the 
+      new flush options. 
+
+    * Added two more alerts for BackOrifice client and server packets. This
+      allows specific alerts to be suppressed.
+
+    * PerfMon preprocessor updated to include more detailed stats for rebuilt
+      packets (applayer, wire, fragmented & TCP). Also added 'atexitonly'
+      option that dumps stats at exit of snort, and command line -Z flag to
+      specify the file to which stats are logged.
+
+    * Added new Http Inspect config item, "tab_uri_delimiter," which if
+      specified, lets a tab character (0x09) act as the delimiter for a URI.
+
+    * Added a '-G' command line flag to snort that specifies the Snort
+      instance log identifier. It takes a single argument that can be either
+      hex (prefaced with 0x) or decimal. The unified log files will include
+      the instance ID when the -G flag is used.
+
+    * "Same SRC/DST" (sid 527) and "Loopback Traffic" (sid 528) are now
+      handled in the IP decoder. Those sids are now considered obsolete.
+
+    * Http_Inspect "flow_depth" option now accepts a -1 value which tells
+      Snort to ignore all server-side traffic.
+
+    * RPMs have been updated to be more portable, and also now include a
+      "--with inline" option for those wanting to build Inline RPMs. Thanks
+      Daniel Wittenberg and JP Vossen for your help!
+
+    * Many, many bug fixes have also gone into this release, please see the
+      ChangeLog for details.
+

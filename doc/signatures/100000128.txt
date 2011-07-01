@@ -1,0 +1,66 @@
+Rule: 
+
+--
+Sid: 
+100000128
+
+-- 
+Summary: 
+This event is generated when an attempt is made to link to an external script 
+as part of the Stadtaus.com PHP Form Mail program.
+
+-- 
+
+Impact: 
+The script being included will be run in the same security context as the 
+vulnerable program, enabling a variety of web-based attacks.
+
+--
+Detailed Information:
+The Stadtaus.com PHP Form Mail system's download_center_lite.inc.php module, 
+when including other scripts by way of its script_root parameter, fails to 
+validate the location of these scripts, and thus allows attackers to include 
+any malicious script anywhere on the web. The included script will be executed 
+with the same permissions and in the same security context at the vulnerable 
+program itself, thus allowing a range of attacks.
+
+--
+Affected Systems:
+Stadtaus.com PHP Form Mail Script 2.3
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or a script.
+
+-- 
+
+Ease of Attack: 
+Simple, as it can be exploited using a web browser.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Currently, there are no vendor-supplied patches or workarounds. However, if it 
+is possible to globally disable PHP's 'allow_url_fopen' and 'register_globals' 
+directives in your environment, doing so may disable this vulnerability. 
+However, turning off these directives should be tested in a non-production 
+environment, in case doing so breaks other scripts on your system.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

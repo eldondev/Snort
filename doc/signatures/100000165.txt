@@ -1,0 +1,58 @@
+Rule: 
+
+--
+Sid: 
+100000165
+
+-- 
+Summary: 
+This event is generated when an overly large UDP packet is sent to port 5093, 
+where the Sentinel License Manager service typically listens.
+
+--
+Impact:
+A denial of service will occur, and arbitrary code may be executed with the 
+privileges of the user running the service.
+
+--
+Detailed Information:
+A stack-based buffer overflow exists within the Sentinel License Manager, which 
+will be triggered if 2048 or more characters are received by the service. 
+Authentication is not required, and no specific characters need be present in 
+malicious packets in order to trigger the vulnerability.
+
+--
+Affected Systems:
+SafeNet Sentinel License Manager 7.2.0.2
+
+--
+Attack Scenarios:
+An attacker could use one of the publicly available exploit scripts, or create 
+a script which simply sends 2048 or more random characters to a vulnerable 
+server.
+
+--
+Ease of Attack:
+Simple, as public exploits exist.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Upgrade to version 8.0 or above.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+
+--

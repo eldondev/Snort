@@ -1,0 +1,65 @@
+Rule:
+
+--
+Sid: 
+100000134
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in Tcpdump. In particular, this event indicates that the exploit 
+was attempted via a malformed Resource Reservation Protocol (RSVP) packet.
+
+-- 
+Impact: 
+Serious. Denial of Service (DoS). Code execution may be possible.
+
+--
+Detailed Information:
+Tcpdump is a packet capture utility used on various BSD, Linux and UNIX style 
+operating systems.
+
+An error in the processing of the payload length in an RSVP packet may prevent 
+an attacker with the opportunity to overflow a fixed length buffer and execute 
+code of their choosing in the context of the user running tcpdump. This is 
+normally the super-user or administrator when tcpdump is used to sniff data 
+directly from a network interface.
+
+--
+Affected Systems:
+Tcpdump 3.9.1 and prior
+Ethereal 0.10.10 and prior
+
+--
+Attack Scenarios: 
+An attacker need to craft an RSVP packet with a packet payload length of 0 to 
+cause the overflow to manifest itself.
+
+-- 
+Ease of Attack: 
+Simple. Exploit code exists.
+
+-- 
+False Positives:
+None Known
+
+--
+False Negatives:
+None Known
+
+-- 
+Corrective Action: 
+Apply the appropriate vendor supplied patch
+
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors: 
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+--

@@ -1,7 +1,7 @@
-/* $Id: snort_stream5_session.c,v 1.28 2011/06/08 00:33:19 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 ** AUTHOR: Steven Sturges <ssturges@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -21,12 +21,12 @@
 */
 
 /* snort_stream5_session.c
- *
+ * 
  * Purpose: Hash Table implementation of session management functions for
  *          Stream5 preprocessor.
  *
  * Arguments:
- *
+ *   
  * Effect:
  *
  * Comments:
@@ -35,16 +35,11 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "decode.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "log.h"
 #include "util.h"
 #include "snort_stream5_session.h"
-#include "stream5_common.h"
 #include "sf_types.h"
 #include "sfhashfcn.h"
 #include "bitop_funcs.h"
@@ -55,10 +50,18 @@
 # include <arpa/inet.h>
 #endif
 
-#include "snort.h"
+#ifdef MPLS
+# include "snort.h"
+#endif
 
-#if 0
-// if you want to use this, print ip_l,h for proper ip4,6 support
+extern const unsigned int giFlowbitSize;
+extern uint32_t mem_in_use;
+extern Stream5GlobalConfig *s5_global_eval_config;
+extern Stream5TcpConfig *s5_tcp_eval_config;
+extern Stream5UdpConfig *s5_udp_eval_config;
+extern Stream5IcmpConfig *s5_icmp_eval_config;
+extern tSfPolicyUserContextId s5_config;
+
 void PrintSessionKey(SessionKey *skey)
 {
     LogMessage("SessionKey:\n");
@@ -66,12 +69,11 @@ void PrintSessionKey(SessionKey *skey)
     LogMessage("    ip_h     = 0x%08X\n", skey->ip_h);
     LogMessage("    prt_l    = %d\n", skey->port_l);
     LogMessage("    prt_h    = %d\n", skey->port_h);
-    LogMessage("    vlan_tag = %d\n", skey->vlan_tag);
+    LogMessage("    vlan_tag = %d\n", skey->vlan_tag); 
 #ifdef MPLS
     LogMessage("  mpls label = 0x%08X\n", skey->mplsLabel);
 #endif
 }
-#endif
 
 int GetLWSessionCount(Stream5SessionCache *sessionCache)
 {
@@ -95,8 +97,8 @@ int GetLWSessionKey(Packet *p, SessionKey *key)
     if (!key)
         return 0;
 
-#ifdef SUP_IP6
-    if (IS_IP4(p))
+#ifdef SUP_IP6 
+    if (IS_IP4(p)) 
     {
         uint32_t *src;
         uint32_t *dst;
@@ -160,8 +162,8 @@ int GetLWSessionKey(Packet *p, SessionKey *key)
         	key->mplsLabel = 0;
         }
 # endif
-    }
-    else
+    } 
+    else 
     {
         /* IPv6 */
         sfip_t *src;
@@ -226,7 +228,7 @@ int GetLWSessionKey(Packet *p, SessionKey *key)
 # endif
     }
 #else
-    proto = GET_IPH_PROTO(p);
+    proto = p->iph->ip_proto;
 
     switch (proto)
     {
@@ -286,7 +288,7 @@ int GetLWSessionKey(Packet *p, SessionKey *key)
 
     key->protocol = proto;
 
-    if (p->vh && !ScVlanAgnostic())
+    if (p->vh)
         key->vlan_tag = (uint16_t)VTH_VLAN(p->vh);
     else
         key->vlan_tag = 0;
@@ -303,7 +305,7 @@ void GetLWPacketDirection(Packet *p, Stream5LWSession *ssn)
 #ifndef SUP_IP6
     if (p->iph->ip_src.s_addr == ssn->client_ip)
     {
-        if ( IsTCP(p) )
+        if (p->iph->ip_proto == IPPROTO_TCP)
         {
             if (p->tcph->th_sport == ssn->client_port)
             {
@@ -314,7 +316,7 @@ void GetLWPacketDirection(Packet *p, Stream5LWSession *ssn)
                 p->packet_flags |= PKT_FROM_SERVER;
             }
         }
-        else if ( IsUDP(p) )
+        else if (p->iph->ip_proto == IPPROTO_UDP)
         {
             if (p->udph->uh_sport == ssn->client_port)
             {
@@ -325,14 +327,14 @@ void GetLWPacketDirection(Packet *p, Stream5LWSession *ssn)
                 p->packet_flags |= PKT_FROM_SERVER;
             }
         }
-        else if ( IsICMP(p) )
+        else if (p->iph->ip_proto == IPPROTO_ICMP)
         {
             p->packet_flags |= PKT_FROM_CLIENT;
         }
     }
     else if (p->iph->ip_dst.s_addr == ssn->client_ip)
     {
-        if ( IsTCP(p) )
+        if  (p->iph->ip_proto == IPPROTO_TCP)
         {
             if (p->tcph->th_dport == ssn->client_port)
             {
@@ -343,7 +345,7 @@ void GetLWPacketDirection(Packet *p, Stream5LWSession *ssn)
                 p->packet_flags |= PKT_FROM_CLIENT;
             }
         }
-        else if ( IsUDP(p) )
+        else if (p->iph->ip_proto == IPPROTO_UDP)
         {
             if (p->udph->uh_dport == ssn->client_port)
             {
@@ -354,7 +356,7 @@ void GetLWPacketDirection(Packet *p, Stream5LWSession *ssn)
                 p->packet_flags |= PKT_FROM_CLIENT;
             }
         }
-        else if ( IsICMP(p) )
+        else if (p->iph->ip_proto == IPPROTO_ICMP)
         {
             p->packet_flags |= PKT_FROM_CLIENT;
         }
@@ -498,7 +500,7 @@ Stream5LWSession *GetLWSession(Stream5SessionCache *sessionCache, Packet *p, Ses
     if (!sessionCache)
         return NULL;
 
-    if (!GetLWSessionKey(p, key))
+    if (!GetLWSessionKey(p, key)) 
     {
         return NULL;
     }
@@ -565,7 +567,7 @@ int RemoveLWSession(Stream5SessionCache *sessionCache, Stream5LWSession *ssn)
     ssn->flowdata = NULL;
 
     pPolicyConfig = (Stream5Config *)sfPolicyUserDataGet(ssn->config, policy_id);
-
+    
     if (pPolicyConfig != NULL)
     {
         pPolicyConfig->ref_count--;
@@ -585,15 +587,6 @@ int RemoveLWSession(Stream5SessionCache *sessionCache, Stream5LWSession *ssn)
 int DeleteLWSession(Stream5SessionCache *sessionCache,
                     Stream5LWSession *ssn, char *delete_reason)
 {
-    /* Need to save the current configurations being used since this function
-     * may cause a packet reassembly on this deleted session when flushing
-     * (via sessionCache->cleanup_fcn) and a preprocessor may call an API
-     * function changing the configurations to this one to be deleted */
-    Stream5GlobalConfig *save_global_eval_config = s5_global_eval_config;
-    Stream5TcpConfig *save_tcp_eval_config = s5_tcp_eval_config;
-    Stream5UdpConfig *save_udp_eval_config = s5_udp_eval_config;
-    Stream5IcmpConfig *save_icmp_eval_config = s5_icmp_eval_config;
-
     int ret;
     uint32_t prune_log_max;
 
@@ -624,7 +617,7 @@ int DeleteLWSession(Stream5SessionCache *sessionCache,
     server_ip.s_addr = ssn->server_ip;
 #endif
 
-    /*
+    /* 
      * Call callback to cleanup the protocol (TCP/UDP/ICMP)
      * specific session details
      */
@@ -670,11 +663,6 @@ int DeleteLWSession(Stream5SessionCache *sessionCache,
         free(client_ip_str);
         free(server_ip_str);
     }
-
-    s5_global_eval_config = save_global_eval_config;
-    s5_tcp_eval_config = save_tcp_eval_config;
-    s5_udp_eval_config = save_udp_eval_config;
-    s5_icmp_eval_config = save_icmp_eval_config;
 
     return ret;
 }
@@ -746,7 +734,7 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
 
         do
         {
-            got_one = 0;
+            got_one = 0;            
             if(idx == save_me)
             {
                 SFXHASH_NODE *lastNode = sfxhash_lru_node(sessionCache->hashTable);
@@ -759,7 +747,6 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
                 }
                 else
                 {
-                    sessionCache->prunes += pruned;
                     return pruned;
                 }
             }
@@ -783,13 +770,11 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
                     savidx->session_flags |= SSNFLAG_TIMEDOUT;
                     DeleteLWSession(sessionCache, savidx, "stale/timeout/last ssn");
                     pruned++;
-                    sessionCache->prunes += pruned;
                     return pruned;
                 }
             }
             else
             {
-                sessionCache->prunes += pruned;
                 return pruned;
             }
 
@@ -800,7 +785,6 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
             }
         } while ((idx != NULL) && (got_one == 1));
 
-        sessionCache->prunes += pruned;
         return pruned;
     }
     else
@@ -829,12 +813,12 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
                     "S5: Pruning session cache by %d ssns for %s: %d/%d\n",
                     sessionCache->cleanup_sessions,
                     memCheck ? "memcap" : "hash limit",
-                    mem_in_use,
+                    mem_in_use, 
                     s5_global_eval_config->memcap););
-
+            
             idx = (Stream5LWSession *) sfxhash_lru(sessionCache->hashTable);
 
-            for (i=0;i<sessionCache->cleanup_sessions &&
+            for (i=0;i<sessionCache->cleanup_sessions && 
                      (sfxhash_count(sessionCache->hashTable) >= 1); i++)
             {
                 if(idx != save_me)
@@ -859,7 +843,7 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
                 }
             }
 
-            /* Nothing (or the one we're working with) in table, couldn't
+            /* Nothing (or the one we're working with) in table, couldn't 
              * kill it */
             if (!memCheck && (pruned == 0))
             {
@@ -871,7 +855,7 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
     {
         LogMessage("S5: Pruned %d sessions from cache for memcap. %d ssns remain.  memcap: %d/%d\n",
             pruned, sfxhash_count(sessionCache->hashTable),
-            mem_in_use,
+            mem_in_use, 
             s5_global_eval_config->memcap);
         DEBUG_WRAP(
             if (sfxhash_count(sessionCache->hashTable) == 1)
@@ -880,7 +864,6 @@ int PruneLWSessionCache(Stream5SessionCache *sessionCache,
             }
         );
     }
-    sessionCache->prunes += pruned;
     return pruned;
 }
 
@@ -903,7 +886,7 @@ Stream5LWSession *NewLWSession(Stream5SessionCache *sessionCache, Packet *p,
 
         /* Should have some freed nodes now */
         hnode = sfxhash_get_node(sessionCache->hashTable, key);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         if (!hnode)
         {
             DEBUG_WRAP(DebugMessage(DEBUG_STREAM, "Problem, no freed nodes\n"););
@@ -919,7 +902,7 @@ Stream5LWSession *NewLWSession(Stream5SessionCache *sessionCache, Packet *p,
 
         /* Save the session key for future use */
         memcpy(&(retSsn->key), key, sizeof(SessionKey));
-
+        
         retSsn->protocol = key->protocol;
         retSsn->last_data_seen = p->pkth->ts.tv_sec;
         retSsn->flowdata = mempool_alloc(&s5FlowMempool);
@@ -936,13 +919,13 @@ Stream5LWSession *NewLWSession(Stream5SessionCache *sessionCache, Packet *p,
     return retSsn;
 }
 
-uint32_t HashFunc(SFHASHFCN *p, unsigned char *d, int n)
+uint32_t HashFunc(SFHASHFCN *p, unsigned char *d, int n) 
 {
     uint32_t a,b,c;
 #ifdef MPLS
     uint32_t tmp = 0;
 #endif
-
+    
 #ifdef SUP_IP6
     a = *(uint32_t*)d;         /* IPv6 lo[0] */
     b = *(uint32_t*)(d+4);     /* IPv6 lo[1] */
@@ -993,10 +976,9 @@ uint32_t HashFunc(SFHASHFCN *p, unsigned char *d, int n)
 
     return c;
 }
-
-int HashKeyCmp(const void *s1, const void *s2, size_t n)
+    
+int HashKeyCmp(const void *s1, const void *s2, size_t n) 
 {
-#ifndef SPARCV9 /* ie, everything else, use 64bit comparisons */
     uint64_t *a,*b;
 
     a = (uint64_t*)s1;
@@ -1026,57 +1008,9 @@ int HashKeyCmp(const void *s1, const void *s2, size_t n)
 #ifdef MPLS
     a++;
     b++;
-    {
-        uint32_t *x, *y;
-        x = (uint32_t *)a;
-        y = (uint32_t *)b;
-        //x++;
-        //y++;
-        if (*x - *y) return 1;  /* Compares mpls label */
-    }
+    if(*a - *b) return 1;       /* mpls label and pad */                               
 #endif
-
-#else /* SPARCV9 */
-    uint32_t *a,*b;
-
-    a = (uint32_t*)s1;
-    b = (uint32_t*)s2;
-    if ((*a - *b) || (*(a+1) - *(b+1))) return 1;       /* Compares IPv4 lo/hi */
-                                /* SUP_IP6 Compares IPv6 low[0,1] */
-
-    a+=2;
-    b+=2;
-    if ((*a - *b) || (*(a+1) - *(b+1))) return 1;       /* Compares port lo/hi, vlan, protocol, pad */
-                                /* SUP_IP6 Compares IPv6 low[2,3] */
-
-#ifdef SUP_IP6
-    a+=2;
-    b+=2;
-    if ((*a - *b) || (*(a+1) - *(b+1))) return 1;       /* SUP_IP6 Compares IPv6 hi[0,1] */
-
-    a+=2;
-    b+=2;
-    if ((*a - *b) || (*(a+1) - *(b+1))) return 1;       /* SUP_IP6 Compares IPv6 hi[2,3] */
-
-    a+=2;
-    b+=2;
-    if ((*a - *b) || (*(a+1) - *(b+1))) return 1;       /* SUP_IP6 Compares port lo/hi, vlan, protocol, pad */
-#endif
-
-#ifdef MPLS
-    a+=2;
-    b+=2;
-    {
-        uint32_t *x, *y;
-        x = (uint32_t *)a;
-        y = (uint32_t *)b;
-        //x++;
-        //y++;
-        if (*x - *y) return 1;  /* Compares mpls label */
-    }
-#endif
-#endif /* SPARCV9 */
-
+    
     return 0;
 }
 
@@ -1143,7 +1077,7 @@ Stream5SessionCache *InitLWSessionCache(int max_sessions,
 
 void PrintLWSessionCache(Stream5SessionCache *sessionCache)
 {
-    DEBUG_WRAP(DebugMessage(DEBUG_STREAM, "%lu sessions active\n",
+    DEBUG_WRAP(DebugMessage(DEBUG_STREAM, "%lu sessions active\n", 
                             sfxhash_count(sessionCache->hashTable)););
 }
 

@@ -1,0 +1,9 @@
+etc/cron.daily
+etc/init.d
+etc/logrotate.d
+etc/default
+etc/snort
+usr/sbin
+usr/share/doc/snort
+usr/share/man/man8
+var/log/snort

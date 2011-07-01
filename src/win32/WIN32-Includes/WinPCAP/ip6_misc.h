@@ -18,7 +18,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * @(#) $Header: /cvsroot/snort/src/win32/WIN32-Includes/WinPCAP/ip6_misc.h,v 1.2 2010/01/23 20:55:24 jjordan Exp $ (LBL)
+ * @(#) $Header$ (LBL)
  */
 
 /*
@@ -27,17 +27,17 @@
 
 #include <winsock2.h>
 
-#include <ws2tcpip.h>
-
 #ifndef __MINGW32__
+#include <ws2tcpip.h>
+#endif /* __MINGW32__ */
+
 #define	IN_MULTICAST(a)		IN_CLASSD(a)
-#endif
 
 #define	IN_EXPERIMENTAL(a)	((((u_int32_t) (a)) & 0xf0000000) == 0xf0000000)
 
 #define	IN_LOOPBACKNET		127
 
-#if defined(__MINGW32__) && defined(DEFINE_ADDITIONAL_IPV6_STUFF)
+#ifdef __MINGW32__
 /* IPv6 address */
 struct in6_addr
   {
@@ -58,12 +58,12 @@ struct in6_addr
 #endif /* __MINGW32__ */
 
 
-#if (defined _MSC_VER) || (defined(__MINGW32__) && defined(DEFINE_ADDITIONAL_IPV6_STUFF))
+#if (defined WIN32) || (defined __MINGW32__)
 typedef unsigned short	sa_family_t;
 #endif
 
 
-#if defined(__MINGW32__) && defined(DEFINE_ADDITIONAL_IPV6_STUFF)
+#ifdef __MINGW32__
 
 #define	__SOCKADDR_COMMON(sa_prefix) \
   sa_family_t sa_prefix##family
@@ -147,7 +147,7 @@ struct sockaddr_in6
 #define IP6OPT_MUTABLE		0x20
 
 
-#if defined(__MINGW32__) && defined(DEFINE_ADDITIONAL_IPV6_STUFF)
+#ifdef __MINGW32__
 #ifndef EAI_ADDRFAMILY
 struct addrinfo {
 	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */

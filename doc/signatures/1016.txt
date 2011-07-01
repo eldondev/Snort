@@ -50,14 +50,7 @@ Judy Novak <judy.novak@sourcefire.com>
 --
 Additional References:
 
-Nessus
-http://cgi.nessus.org/plugins/dump.php3?id=10491
-
-CVE
-http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0778
-
 Microsoft
 http://www.microsoft.com/technet/security/bulletin/MS00-058.asp
-
 
 --

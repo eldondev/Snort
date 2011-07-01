@@ -1,9 +1,9 @@
 /*
-** $Id: bitop.h,v 1.12 2011/02/09 23:23:35 jjordan Exp $
+** $Id$
 ** 
 ** bitopt.c
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Dan Roelker <droelker@sourcefire.com>
 ** Marc Norton <mnorton@sourcefire.com>
 **

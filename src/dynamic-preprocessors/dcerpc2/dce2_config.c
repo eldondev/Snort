@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  *
  ****************************************************************************
  * Parses and processes configuration set in snort.conf.
- *
+ * 
  * 8/17/2008 - Initial implementation ... Todd Wease <twease@sourcefire.com>
  *
  ****************************************************************************/
@@ -27,7 +27,6 @@
 #include "config.h"
 #endif
 
-#include "sf_types.h"
 #include "dce2_config.h"
 #include "dce2_utils.h"
 #include "dce2_list.h"
@@ -65,10 +64,15 @@ tSfPolicyUserContextId dce2_swap_config = NULL;
 static const uint16_t DCE2_PORTS_SMB__DEFAULT[] = {139, 445};
 static const uint16_t DCE2_PORTS_TCP__DEFAULT[] = {135};
 static const uint16_t DCE2_PORTS_UDP__DEFAULT[] = {135};
-//static const uint16_t DCE2_PORTS_HTTP_PROXY__DEFAULT[] = {80};
+static const uint16_t DCE2_PORTS_HTTP_PROXY__DEFAULT[] = {80};
 static const uint16_t DCE2_PORTS_HTTP_SERVER__DEFAULT[] = {593};
 
 static char dce2_config_error[1024];
+
+/********************************************************************
+ * Extern variables
+ ********************************************************************/
+extern DynamicPreprocessorData _dpd;
 
 /********************************************************************
  * Macros
@@ -77,7 +81,6 @@ static char dce2_config_error[1024];
 #define DCE2_GOPT__DISABLE_DEFRAG  "disable_defrag"
 #define DCE2_GOPT__MAX_FRAG_LEN    "max_frag_len"
 #define DCE2_GOPT__REASSEMBLE_THRESHOLD  "reassemble_threshold"
-#define DCE2_GOPT__DISABLED        "disabled"
 
 #define DCE2_GOPT__EVENTS         "events"
 #define DCE2_GARG__EVENTS_NONE    "none"
@@ -95,17 +98,14 @@ static char dce2_config_error[1024];
 #define DCE2_SARG__POLICY_WINXP         "WinXP"
 #define DCE2_SARG__POLICY_WINVISTA      "WinVista"
 #define DCE2_SARG__POLICY_WIN2003       "Win2003"
-#define DCE2_SARG__POLICY_WIN2008       "Win2008"
-#define DCE2_SARG__POLICY_WIN7          "Win7"
 #define DCE2_SARG__POLICY_SAMBA         "Samba"
-#define DCE2_SARG__POLICY_SAMBA_3_0_37  "Samba-3.0.37"  /* Samba version 3.0.37 and previous */
 #define DCE2_SARG__POLICY_SAMBA_3_0_22  "Samba-3.0.22"  /* Samba version 3.0.22 and previous */
 #define DCE2_SARG__POLICY_SAMBA_3_0_20  "Samba-3.0.20"  /* Samba version 3.0.20 and previous */
 
 #define DCE2_SOPT__DETECT              "detect"
 #define DCE2_SOPT__AUTODETECT          "autodetect"
 #define DCE2_SARG__DETECT_NONE         "none"
-#define DCE2_SARG__DETECT_SMB          "smb"
+#define DCE2_SARG__DETECT_SMB          "smb" 
 #define DCE2_SARG__DETECT_TCP          "tcp"
 #define DCE2_SARG__DETECT_UDP          "udp"
 #define DCE2_SARG__DETECT_HTTP_PROXY   "rpc-over-http-proxy"
@@ -118,15 +118,6 @@ static char dce2_config_error[1024];
 #define DCE2_SOPT__SMB_MAX_CHAIN    "smb_max_chain"
 #define DCE2_SMB_MAX_CHAIN__DEFAULT    3
 #define DCE2_SMB_MAX_CHAIN__MAX      255   /* uint8_t is used to store value */
-
-#define DCE2_SOPT__VALID_SMB_VERSIONS        "valid_smb_versions"
-#define DCE2_SARG__VALID_SMB_VERSIONS_V1     "v1"
-#define DCE2_SARG__VALID_SMB_VERSIONS_V2     "v2"
-#define DCE2_SARG__VALID_SMB_VERSIONS_ALL    "all"
-
-#define DCE2_SOPT__SMB2_MAX_COMPOUND    "smb2_max_compound"
-#define DCE2_SMB2_MAX_COMPOUND__DEFAULT    3
-#define DCE2_SMB2_MAX_COMPOUND__MAX      255   /* uint8_t is used to store value */
 
 /*** Don't increase max memcap number or it will overflow ***/
 #define DCE2_MEMCAP__MIN      1024    /* 1 MB min */
@@ -157,8 +148,7 @@ typedef enum _DCE2_GcOptFlag
     DCE2_GC_OPT_FLAG__DISABLE_DEFRAG = 0x0004,
     DCE2_GC_OPT_FLAG__MAX_FRAG_LEN = 0x0008,
     DCE2_GC_OPT_FLAG__EVENTS = 0x0010,
-    DCE2_GC_OPT_FLAG__REASSEMBLE_THRESHOLD = 0x0020,
-    DCE2_GC_OPT_FLAG__DISABLED = 0x0040
+    DCE2_GC_OPT_FLAG__REASSEMBLE_THRESHOLD = 0x0020
 
 } DCE2_GcOptFlag;
 
@@ -183,9 +173,7 @@ typedef enum _DCE2_ScOptFlag
     DCE2_SC_OPT_FLAG__AUTODETECT = 0x0010,
     DCE2_SC_OPT_FLAG__NO_AUTODETECT_HTTP_PROXY_PORTS = 0x0020,
     DCE2_SC_OPT_FLAG__SMB_INVALID_SHARES = 0x0040,
-    DCE2_SC_OPT_FLAG__SMB_MAX_CHAIN = 0x0080,
-    DCE2_SC_OPT_FLAG__VALID_SMB_VERSIONS = 0x0100,
-    DCE2_SC_OPT_FLAG__SMB2_MAX_COMPOUND = 0x0200
+    DCE2_SC_OPT_FLAG__SMB_MAX_CHAIN = 0x0080
 
 } DCE2_ScOptFlag;
 
@@ -218,14 +206,14 @@ typedef struct _DCE2_PrintPortsStruct
  ********************************************************************/
 static void DCE2_GcInitConfig(DCE2_GlobalConfig *gc);
 static DCE2_Ret DCE2_GcParseConfig(DCE2_GlobalConfig *, char *);
-static inline DCE2_GcOptFlag DCE2_GcParseOption(char *, char *, int *);
+static INLINE DCE2_GcOptFlag DCE2_GcParseOption(char *, char *, int *);
 static DCE2_Ret DCE2_GcParseMemcap(DCE2_GlobalConfig *, char **, char *);
 static DCE2_Ret DCE2_GcParseMaxFrag(DCE2_GlobalConfig *, char **, char *);
 static DCE2_Ret DCE2_GcParseEvents(DCE2_GlobalConfig *, char **, char *);
-static inline void DCE2_GcSetEvent(DCE2_GlobalConfig *, DCE2_EventFlag);
-static inline void DCE2_GcClearEvent(DCE2_GlobalConfig *, DCE2_EventFlag);
-static inline void DCE2_GcClearAllEvents(DCE2_GlobalConfig *);
-static inline DCE2_EventFlag DCE2_GcParseEvent(char *, char *, int *);
+static INLINE void DCE2_GcSetEvent(DCE2_GlobalConfig *, DCE2_EventFlag);
+static INLINE void DCE2_GcClearEvent(DCE2_GlobalConfig *, DCE2_EventFlag);
+static INLINE void DCE2_GcClearAllEvents(DCE2_GlobalConfig *);
+static INLINE DCE2_EventFlag DCE2_GcParseEvent(char *, char *, int *);
 static DCE2_Ret DCE2_GcParseReassembleThreshold(DCE2_GlobalConfig *, char **, char *);
 static void DCE2_GcPrintConfig(const DCE2_GlobalConfig *);
 static void DCE2_GcError(const char *, ...);
@@ -233,19 +221,13 @@ static void DCE2_GcError(const char *, ...);
 static DCE2_Ret DCE2_ScInitConfig(DCE2_ServerConfig *);
 static DCE2_Ret DCE2_ScInitPortArray(DCE2_ServerConfig *, DCE2_DetectFlag, int);
 static DCE2_Ret DCE2_ScParseConfig(DCE2_Config *, DCE2_ServerConfig *, char *, DCE2_Queue *);
-static inline DCE2_ScOptFlag DCE2_ScParseOption(char *, char *, int *);
+static INLINE DCE2_ScOptFlag DCE2_ScParseOption(char *, char *, int *);
 static DCE2_Ret DCE2_ScParsePolicy(DCE2_ServerConfig *, char **, char *);
 static DCE2_Ret DCE2_ScParseDetect(DCE2_ServerConfig *, char **, char *, int);
-static inline DCE2_DetectFlag DCE2_ScParseDetectType(char *, char *, int *);
-static inline void DCE2_ScResetPortsArrays(DCE2_ServerConfig *, int);
+static INLINE DCE2_DetectFlag DCE2_ScParseDetectType(char *, char *, int *);
+static INLINE void DCE2_ScResetPortsArrays(DCE2_ServerConfig *, int);
 static DCE2_Ret DCE2_ScParseSmbShares(DCE2_ServerConfig *, char **, char *);
 static DCE2_Ret DCE2_ScParseSmbMaxChain(DCE2_ServerConfig *, char **, char *);
-static DCE2_Ret DCE2_ScParseSmb2MaxCompound(DCE2_ServerConfig *, char **, char *);
-static DCE2_Ret DCE2_ScParseValidSmbVersions(DCE2_ServerConfig *, char **, char *);
-static inline DCE2_ValidSmbVersionFlag DCE2_ScParseValidSmbVersion(char *, char *, int *);
-static inline void DCE2_ScSetValidSmbVersion(DCE2_ServerConfig *, DCE2_ValidSmbVersionFlag);
-static inline void DCE2_ScClearValidSmbVersion(DCE2_ServerConfig *, DCE2_ValidSmbVersionFlag);
-static inline void DCE2_ScClearAllValidSmbVersionFlags(DCE2_ServerConfig *);
 static DCE2_Ret DCE2_ScAddToRoutingTable(DCE2_Config *, DCE2_ServerConfig *, DCE2_Queue *);
 static int DCE2_ScSmbShareCompare(const void *, const void *);
 static void DCE2_ScSmbShareFree(void *);
@@ -419,10 +401,6 @@ static DCE2_Ret DCE2_GcParseConfig(DCE2_GlobalConfig *gc, char *args)
                                 return DCE2_RET__ERROR;
                             break;
 
-                        case DCE2_GC_OPT_FLAG__DISABLED:
-                            gc->disabled = 1;
-                            break;
-
                         default:
                             return DCE2_RET__ERROR;
                     }
@@ -487,7 +465,7 @@ static DCE2_Ret DCE2_GcParseConfig(DCE2_GlobalConfig *gc, char *args)
  *          been configured.
  *
  ********************************************************************/
-static inline DCE2_GcOptFlag DCE2_GcParseOption(char *opt_start, char *opt_end, int *opt_mask)
+static INLINE DCE2_GcOptFlag DCE2_GcParseOption(char *opt_start, char *opt_end, int *opt_mask)
 {
     DCE2_GcOptFlag opt_flag = DCE2_GC_OPT_FLAG__NULL;
     size_t opt_len = opt_end - opt_start;
@@ -516,11 +494,6 @@ static inline DCE2_GcOptFlag DCE2_GcParseOption(char *opt_start, char *opt_end, 
              strncasecmp(DCE2_GOPT__REASSEMBLE_THRESHOLD, opt_start, opt_len) == 0)
     {
         opt_flag = DCE2_GC_OPT_FLAG__REASSEMBLE_THRESHOLD;
-    }
-    else if (opt_len == strlen(DCE2_GOPT__DISABLED) &&
-             strncasecmp(DCE2_GOPT__DISABLED, opt_start, opt_len) == 0)
-    {
-        opt_flag = DCE2_GC_OPT_FLAG__DISABLED;
     }
     else
     {
@@ -805,7 +778,7 @@ static DCE2_Ret DCE2_GcParseEvents(DCE2_GlobalConfig *gc, char **ptr, char *end)
  * Function: DCE2_GcParseEvent()
  *
  * Parses event type and returns flag indication the type of event.
- * Checks and sets a bit in a mask to prevent multiple
+ * Checks and sets a bit in a mask to prevent multiple 
  * configurations of the same event type.
  *
  * Arguments:
@@ -826,9 +799,9 @@ static DCE2_Ret DCE2_GcParseEvents(DCE2_GlobalConfig *gc, char **ptr, char *end)
  *          configuration of event type.
  *
  ********************************************************************/
-static inline DCE2_EventFlag DCE2_GcParseEvent(char *start, char *end, int *emask)
+static INLINE DCE2_EventFlag DCE2_GcParseEvent(char *start, char *end, int *emask)
 {
-    DCE2_EventFlag eflag = DCE2_EVENT_FLAG__NULL;
+    int eflag = DCE2_EVENT_FLAG__NULL;
     size_t event_len = end - start;
 
     if (event_len == strlen(DCE2_GARG__EVENTS_NONE) &&
@@ -868,7 +841,7 @@ static inline DCE2_EventFlag DCE2_GcParseEvent(char *start, char *end, int *emas
         return DCE2_EVENT_FLAG__NULL;
     }
 
-    if (DCE2_CheckAndSetMask((int)eflag, emask) != DCE2_RET__SUCCESS)
+    if (DCE2_CheckAndSetMask(eflag, emask) != DCE2_RET__SUCCESS)
     {
         DCE2_GcError("Event type \"%.*s\" cannot be specified more than once",
                      event_len, start);
@@ -893,7 +866,7 @@ static inline DCE2_EventFlag DCE2_GcParseEvent(char *start, char *end, int *emas
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_GcSetEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag)
+static INLINE void DCE2_GcSetEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag)
 {
     gc->event_mask |= eflag;
 }
@@ -913,7 +886,7 @@ static inline void DCE2_GcSetEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag)
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_GcClearEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag)
+static INLINE void DCE2_GcClearEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag)
 {
     gc->event_mask &= ~eflag;
 }
@@ -930,7 +903,7 @@ static inline void DCE2_GcClearEvent(DCE2_GlobalConfig *gc, DCE2_EventFlag eflag
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_GcClearAllEvents(DCE2_GlobalConfig *gc)
+static INLINE void DCE2_GcClearAllEvents(DCE2_GlobalConfig *gc)
 {
     gc->event_mask = DCE2_EVENT_FLAG__NULL;
 }
@@ -998,8 +971,6 @@ static DCE2_Ret DCE2_ScInitConfig(DCE2_ServerConfig *sc)
     /* Set defaults */
     sc->policy = DCE2_POLICY__WINXP;
     sc->smb_max_chain = DCE2_SMB_MAX_CHAIN__DEFAULT;
-    sc->smb2_max_compound = DCE2_SMB2_MAX_COMPOUND__DEFAULT;
-    sc->valid_smb_versions_mask = DCE2_VALID_SMB_VERSION_FLAG__ALL;
     sc->autodetect_http_proxy_ports = DCE2_CS__ENABLED;
 
     /* Add default detect ports */
@@ -1480,16 +1451,6 @@ static DCE2_Ret DCE2_ScParseConfig(DCE2_Config *config, DCE2_ServerConfig *sc,
                                 return DCE2_RET__ERROR;
                             break;
 
-                        case DCE2_SC_OPT_FLAG__SMB2_MAX_COMPOUND:
-                            if (DCE2_ScParseSmb2MaxCompound(sc, &ptr, end) != DCE2_RET__SUCCESS)
-                                return DCE2_RET__ERROR;
-                            break;
-
-                        case DCE2_SC_OPT_FLAG__VALID_SMB_VERSIONS:
-                            if (DCE2_ScParseValidSmbVersions(sc, &ptr, end) != DCE2_RET__SUCCESS)
-                                return DCE2_RET__ERROR;
-                            break;
-
                         case DCE2_SC_OPT_FLAG__DEFAULT:
                         case DCE2_SC_OPT_FLAG__NET:
                             DCE2_ScError("\"%s\" or \"%s\" must be the first "
@@ -1561,7 +1522,7 @@ static DCE2_Ret DCE2_ScParseConfig(DCE2_Config *config, DCE2_ServerConfig *sc,
  *          been configured.
  *
  ********************************************************************/
-static inline DCE2_ScOptFlag DCE2_ScParseOption(char *opt_start, char *opt_end, int *opt_mask)
+static INLINE DCE2_ScOptFlag DCE2_ScParseOption(char *opt_start, char *opt_end, int *opt_mask)
 {
     DCE2_ScOptFlag opt_flag = DCE2_SC_OPT_FLAG__NULL;
     size_t opt_len = opt_end - opt_start;
@@ -1605,11 +1566,6 @@ static inline DCE2_ScOptFlag DCE2_ScParseOption(char *opt_start, char *opt_end, 
              strncasecmp(DCE2_SOPT__SMB_MAX_CHAIN, opt_start, opt_len) == 0)
     {
         opt_flag = DCE2_SC_OPT_FLAG__SMB_MAX_CHAIN;
-    }
-    else if (opt_len == strlen(DCE2_SOPT__SMB2_MAX_COMPOUND) &&
-             strncasecmp(DCE2_SOPT__SMB2_MAX_COMPOUND, opt_start, opt_len) == 0)
-    {
-        opt_flag = DCE2_SC_OPT_FLAG__SMB2_MAX_COMPOUND;
     }
     else
     {
@@ -1709,25 +1665,10 @@ static DCE2_Ret DCE2_ScParsePolicy(DCE2_ServerConfig *sc, char **ptr, char *end)
                     {
                         sc->policy = DCE2_POLICY__WIN2003;
                     }
-                    else if (policy_len == strlen(DCE2_SARG__POLICY_WIN2008) &&
-                             strncasecmp(DCE2_SARG__POLICY_WIN2008, policy_start, policy_len) == 0)
-                    {
-                        sc->policy = DCE2_POLICY__WIN2008;
-                    }
-                    else if (policy_len == strlen(DCE2_SARG__POLICY_WIN7) &&
-                             strncasecmp(DCE2_SARG__POLICY_WIN7, policy_start, policy_len) == 0)
-                    {
-                        sc->policy = DCE2_POLICY__WIN7;
-                    }
                     else if (policy_len == strlen(DCE2_SARG__POLICY_SAMBA) &&
                              strncasecmp(DCE2_SARG__POLICY_SAMBA, policy_start, policy_len) == 0)
                     {
                         sc->policy = DCE2_POLICY__SAMBA;
-                    }
-                    else if (policy_len == strlen(DCE2_SARG__POLICY_SAMBA_3_0_37) &&
-                             strncasecmp(DCE2_SARG__POLICY_SAMBA_3_0_37, policy_start, policy_len) == 0)
-                    {
-                        sc->policy = DCE2_POLICY__SAMBA_3_0_37;
                     }
                     else if (policy_len == strlen(DCE2_SARG__POLICY_SAMBA_3_0_22) &&
                              strncasecmp(DCE2_SARG__POLICY_SAMBA_3_0_22, policy_start, policy_len) == 0)
@@ -2040,7 +1981,7 @@ static DCE2_Ret DCE2_ScParseDetect(DCE2_ServerConfig *sc, char **ptr, char *end,
 /********************************************************************
  * Function: DCE2_ScResetPortArrays()
  *
- * Clears all of the port bits in the specified port array masks
+ * Clears all of the port bits in the specified port array masks 
  * for the passed in server configuration.
  *
  * Arguments:
@@ -2053,7 +1994,7 @@ static DCE2_Ret DCE2_ScParseDetect(DCE2_ServerConfig *sc, char **ptr, char *end,
  * Returns: None
  *
  ********************************************************************/
-static inline void DCE2_ScResetPortsArrays(DCE2_ServerConfig *sc, int autodetect)
+static INLINE void DCE2_ScResetPortsArrays(DCE2_ServerConfig *sc, int autodetect)
 {
     if (!autodetect)
     {
@@ -2097,7 +2038,7 @@ static inline void DCE2_ScResetPortsArrays(DCE2_ServerConfig *sc, int autodetect
  *          already been configured.
  *
  ********************************************************************/
-static inline DCE2_DetectFlag DCE2_ScParseDetectType(char *start, char *end, int *dmask)
+static INLINE DCE2_DetectFlag DCE2_ScParseDetectType(char *start, char *end, int *dmask)
 {
     DCE2_DetectFlag dflag = DCE2_DETECT_FLAG__NULL;
     size_t dtype_len = end - start;
@@ -2174,6 +2115,7 @@ static DCE2_Ret DCE2_ScParseSmbShares(DCE2_ServerConfig *sc, char **ptr, char *e
 {
     DCE2_WordListState state = DCE2_WORD_LIST_STATE__START;
     char *share_start = *ptr;
+    char last_char = 0;
     int one_share = 0;
     int quote = 0;
 
@@ -2200,7 +2142,7 @@ static DCE2_Ret DCE2_ScParseSmbShares(DCE2_ServerConfig *sc, char **ptr, char *e
                 }
                 else if (DCE2_IsGraphChar(c))
                 {
-                    /* Only one share */
+                    /* Only one event */
                     share_start = *ptr;
                     one_share = 1;
                     state = DCE2_WORD_LIST_STATE__WORD;
@@ -2387,6 +2329,7 @@ static DCE2_Ret DCE2_ScParseSmbShares(DCE2_ServerConfig *sc, char **ptr, char *e
                 return DCE2_RET__ERROR;
         }
 
+        last_char = c;
         (*ptr)++;
     }
 
@@ -2440,331 +2383,6 @@ static DCE2_Ret DCE2_ScParseSmbMaxChain(DCE2_ServerConfig *sc, char **ptr, char 
 
     return DCE2_RET__SUCCESS;
 
-}
-
-/********************************************************************
- * Function: DCE2_ScParseSmb2MaxCompound()
- *
- * Parses the argument to the smb2 max compound option.
- *
- * Arguments:
- *  DCE2_ServerConfig *
- *      Pointer to a server configuration structure.
- *  char **
- *      Pointer to the pointer to the current position in the
- *      configuration line.  This is updated to the current position
- *      after parsing the smb max chain argument.
- *  char *
- *      Pointer to the end of the configuration line.
- *
- * Returns:
- *  DCE2_Ret
- *      DCE2_RET__SUCCESS if we were able to successfully parse the
- *          argument to the smb2 max compound option.
- *      DCE2_RET__ERROR if an error occured in parsing the smb2 max
- *          compound argument.
- *
- ********************************************************************/
-static DCE2_Ret DCE2_ScParseSmb2MaxCompound(DCE2_ServerConfig *sc, char **ptr, char *end)
-{
-    DCE2_Ret status;
-    uint8_t compound_len;
-
-    status = DCE2_ParseValue(ptr, end, &compound_len, DCE2_INT_TYPE__UINT8);
-    if (status != DCE2_RET__SUCCESS)
-    {
-        DCE2_ScError("Error parsing \"%s\".  Value must be between 0 and %u inclusive",
-                     DCE2_SOPT__SMB2_MAX_COMPOUND, UINT8_MAX);
-        return DCE2_RET__ERROR;
-    }
-
-    sc->smb2_max_compound = compound_len;
-
-    return DCE2_RET__SUCCESS;
-}
-
-/********************************************************************
- * Function: DCE2_ScParseValidSmbVersions()
- *
- * Parses the version types for the valid smb versions option and
- * adds to server configuration.
- *
- * Arguments:
- *  DCE2_GlobalConfig *
- *      Pointer to the global configuration structure.
- *  char **
- *      Pointer to the pointer to the current position in the
- *      configuration line.  This is updated to the current position
- *      after parsing.
- *  char *
- *      Pointer to the end of the configuration line.
- *
- * Returns:
- *  DCE2_Ret
- *      DCE2_RET__SUCCESS if we were able to successfully parse the
- *          valid smb versions
- *      DCE2_RET__ERROR if an error occured in parsing.
- *
- ********************************************************************/
-static DCE2_Ret DCE2_ScParseValidSmbVersions(DCE2_ServerConfig *sc, char **ptr, char *end)
-{
-    DCE2_WordListState state = DCE2_WORD_LIST_STATE__START;
-    char *version_start = *ptr;
-    char last_char = 0;
-    int one_version = 0;
-    int version_mask = 0;
-
-    DCE2_ScClearAllValidSmbVersionFlags(sc);
-
-    while (*ptr < end)
-    {
-        char c = **ptr;
-
-        if (state == DCE2_WORD_LIST_STATE__END)
-            break;
-
-        switch (state)
-        {
-            case DCE2_WORD_LIST_STATE__START:
-                if (DCE2_IsWordChar(c, DCE2_WORD_CHAR_POSITION__START))
-                {
-                    /* Only one valid smb version */
-                    version_start = *ptr;
-                    one_version = 1;
-                    state = DCE2_WORD_LIST_STATE__WORD;
-                }
-                else if (DCE2_IsListStartChar(c))
-                {
-                    state = DCE2_WORD_LIST_STATE__WORD_START;
-                }
-                else if (!DCE2_IsSpaceChar(c))
-                {
-                    DCE2_ScError("Invalid \"%s\" syntax: \"%s\"",
-                            DCE2_SOPT__VALID_SMB_VERSIONS, *ptr);
-                    return DCE2_RET__ERROR;
-                }
-
-                break;
-
-            case DCE2_WORD_LIST_STATE__WORD_START:
-                if (DCE2_IsWordChar(c, DCE2_WORD_CHAR_POSITION__START))
-                {
-                    version_start = *ptr;
-                    state = DCE2_WORD_LIST_STATE__WORD;
-                }
-                else if (!DCE2_IsSpaceChar(c))
-                {
-                    DCE2_ScError("Invalid \"%s\" syntax: \"%s\"",
-                            DCE2_SOPT__VALID_SMB_VERSIONS, *ptr);
-                    return DCE2_RET__ERROR;
-                }
-
-                break;
-
-            case DCE2_WORD_LIST_STATE__WORD:
-                if (!DCE2_IsWordChar(c, DCE2_WORD_CHAR_POSITION__MIDDLE))
-                {
-                    DCE2_ValidSmbVersionFlag vflag;
-
-                    if (!DCE2_IsWordChar(last_char, DCE2_WORD_CHAR_POSITION__END))
-                    {
-                        DCE2_ScError("Invalid \"%s\" argument: \"%.*s\"",
-                                     DCE2_SOPT__VALID_SMB_VERSIONS,
-                                     *ptr - version_start, version_start);
-                        return DCE2_RET__ERROR;
-                    }
-
-
-                    vflag = DCE2_ScParseValidSmbVersion(version_start, *ptr, &version_mask);
-                    switch (vflag)
-                    {
-                        case DCE2_VALID_SMB_VERSION_FLAG__NULL:
-                            return DCE2_RET__ERROR;
-
-                        case DCE2_VALID_SMB_VERSION_FLAG__ALL:
-                            if (!one_version)
-                            {
-                                DCE2_ScError("Valid smb version \"%s\" cannot be "
-                                             "configured in a list", DCE2_SARG__VALID_SMB_VERSIONS_ALL);
-                                return DCE2_RET__ERROR;
-                            }
-
-                            DCE2_ScSetValidSmbVersion(sc, vflag);
-                            break;
-
-                        default:
-                            DCE2_ScSetValidSmbVersion(sc, vflag);
-                            break;
-                    }
-
-                    if (one_version)
-                        return DCE2_RET__SUCCESS;
-
-                    state = DCE2_WORD_LIST_STATE__WORD_END;
-                    continue;
-                }
-
-                break;
-
-            case DCE2_WORD_LIST_STATE__WORD_END:
-                if (DCE2_IsListEndChar(c))
-                {
-                    state = DCE2_WORD_LIST_STATE__END;
-                }
-                else if (DCE2_IsListSepChar(c))
-                {
-                    state = DCE2_WORD_LIST_STATE__WORD_START;
-                }
-                else if (!DCE2_IsSpaceChar(c))
-                {
-                    DCE2_ScError("Invalid \"%s\" syntax: \"%s\"",
-                            DCE2_SOPT__VALID_SMB_VERSIONS, *ptr);
-                    return DCE2_RET__ERROR;
-                }
-
-                break;
-
-            default:
-                DCE2_Log(DCE2_LOG_TYPE__ERROR, "%s(%d) Invalid valid "
-                        "smb versions state: %d", __FILE__, __LINE__, state);
-                return DCE2_RET__ERROR;
-        }
-
-        last_char = c;
-        (*ptr)++;
-    }
-
-    if (state != DCE2_WORD_LIST_STATE__END)
-    {
-        DCE2_ScError("Invalid \"%s\" syntax: \"%s\"",
-                DCE2_SOPT__VALID_SMB_VERSIONS, *ptr);
-        return DCE2_RET__ERROR;
-    }
-
-    return DCE2_RET__SUCCESS;
-}
-
-/********************************************************************
- * Function: DCE2_ScParseValidSmbVersion()
- *
- * Parses smb version and returns flag indication the smb version.
- * Checks and sets a bit in a mask to prevent multiple
- * configurations of the same event type.
- *
- * Arguments:
- *  char *
- *      Pointer to the first character of the smb version name.
- *  char *
- *      Pointer to the byte after the last character of
- *      the smb version name.
- *  int
- *      Pointer to the current valid smb versions mask.  Contains
- *      bits set for each smb version that has already been
- *      configured.  Mask is checked and updated for new version.
- *
- * Returns:
- *  DCE2_ValidSmbVersionFlag
- *      Flag indicating the smb version.
- *      DCE2_VALID_SMB_VERSION_FLAG__NULL if no version or multiple
- *          configuration of smb version.
- *
- ********************************************************************/
-static inline DCE2_ValidSmbVersionFlag DCE2_ScParseValidSmbVersion(
-        char *start, char *end, int *vmask)
-{
-    DCE2_ValidSmbVersionFlag vflag = DCE2_VALID_SMB_VERSION_FLAG__NULL;
-    size_t version_len = end - start;
-
-    if (version_len == strlen(DCE2_SARG__VALID_SMB_VERSIONS_V1) &&
-             strncasecmp(DCE2_SARG__VALID_SMB_VERSIONS_V1, start, version_len) == 0)
-    {
-        vflag = DCE2_VALID_SMB_VERSION_FLAG__V1;
-    }
-    else if (version_len == strlen(DCE2_SARG__VALID_SMB_VERSIONS_V2) &&
-             strncasecmp(DCE2_SARG__VALID_SMB_VERSIONS_V2, start, version_len) == 0)
-    {
-        vflag = DCE2_VALID_SMB_VERSION_FLAG__V2;
-    }
-    else if (version_len == strlen(DCE2_SARG__VALID_SMB_VERSIONS_ALL) &&
-             strncasecmp(DCE2_SARG__VALID_SMB_VERSIONS_ALL, start, version_len) == 0)
-    {
-        vflag = DCE2_VALID_SMB_VERSION_FLAG__ALL;
-    }
-    else
-    {
-        DCE2_ScError("Invalid \"%s\" argument: \"%.*s\"",
-                     DCE2_SOPT__VALID_SMB_VERSIONS, version_len, start);
-        return DCE2_VALID_SMB_VERSION_FLAG__NULL;
-    }
-
-    if (DCE2_CheckAndSetMask((int)vflag, vmask) != DCE2_RET__SUCCESS)
-    {
-        DCE2_ScError("Valid smb version \"%.*s\" cannot be specified more than once",
-                     version_len, start);
-        return DCE2_VALID_SMB_VERSION_FLAG__NULL;
-    }
-
-    return vflag;
-}
-
-/*********************************************************************
- * Function: DCE2_ScSetValidSmbVersion()
- *
- * Sets the valid smb version the user will allow during processing
- * in the server configuration valid smb versions mask.
- *
- * Arguments:
- *  DCE2_ServerConfig *
- *      Pointer to server config structure.
- *  DCE2_ValidSmbVersionFlag
- *      The smb version flag to set.
- *
- * Returns: None
- *
- *********************************************************************/
-static inline void DCE2_ScSetValidSmbVersion(DCE2_ServerConfig *sc,
-        DCE2_ValidSmbVersionFlag vflag)
-{
-    sc->valid_smb_versions_mask |= vflag;
-}
-
-/*********************************************************************
- * Function: DCE2_ScClearValidSmbVersion()
- *
- * Sets the bit associated with the smb version flag passed in for
- * the server configuration valid smb versions mask.
- *
- * Arguments:
- *  DCE2_ServerConfig *
- *      Pointer to server config structure.
- *  DCE2_ValidSmbVersionFlag
- *      The smb version flag to clear.
- *
- * Returns: None
- *
- *********************************************************************/
-static inline void DCE2_ScClearValidSmbVersion(DCE2_ServerConfig *sc,
-        DCE2_ValidSmbVersionFlag vflag)
-{
-    sc->valid_smb_versions_mask &= ~vflag;
-}
-
-/*********************************************************************
- * Function: DCE2_ScClearAllValidSmbVersionFlags()
- *
- * Clears all of the bits in the server configuration smb
- * valid versions mask.
- *
- * Arguments:
- *  DCE2_ServerConfig *
- *      Pointer to server config structure.
- *
- * Returns: None
- *
- *********************************************************************/
-static inline void DCE2_ScClearAllValidSmbVersionFlags(DCE2_ServerConfig *sc)
-{
-    sc->valid_smb_versions_mask = DCE2_VALID_SMB_VERSION_FLAG__NULL;
 }
 
 /********************************************************************
@@ -2881,7 +2499,7 @@ static DCE2_Ret DCE2_ScAddToRoutingTable(DCE2_Config *config,
             return DCE2_RET__ERROR;
         }
 
-        /* This is a count of the number of pointers or references to this
+        /* This is a count of the number of pointers or references to this 
          * server configuration in the routing tables. */
         sc->ref_count++;
     }
@@ -3018,7 +2636,7 @@ static int DCE2_ScSmbShareCompare(const void *a, const void *b)
 /*********************************************************************
  * Function: DCE2_ScSmbShareFree()
  *
- * Callback to the list used to hold the invalid smb shares for
+ * Callback to the list used to hold the invalid smb shares for 
  * freeing the shares.
  *
  * Arguments:
@@ -3063,10 +2681,6 @@ static void DCE2_GcPrintConfig(const DCE2_GlobalConfig *gc)
 
     _dpd.logMsg("DCE/RPC 2 Preprocessor Configuration\n");
     _dpd.logMsg("  Global Configuration\n");
-    if(gc->disabled)
-    {
-        _dpd.logMsg("    DCE/RPC 2 Preprocessor: INACTIVE\n");
-    }
     _dpd.logMsg("    DCE/RPC Defragmentation: %s\n",
                 gc->dce_defrag == DCE2_CS__ENABLED ? "Enabled" : "Disabled");
     if ((gc->dce_defrag == DCE2_CS__ENABLED) && (gc->max_frag_len != DCE2_SENTINEL))
@@ -3159,7 +2773,7 @@ static void DCE2_ScPrintConfig(const DCE2_ServerConfig *sc, DCE2_Queue *net_queu
             snprintf(tmp_net, sizeof(tmp_net), "%s/%u ", ip_addr, prefix);
             tmp_net[sizeof(tmp_net) - 1] = '\0';
 
-            if ((strlen(nets) + strlen(tmp_net)) >= sizeof(nets))
+            if (strlen(nets) + strlen(tmp_net) >= sizeof(nets))
             {
                 _dpd.logMsg("%s\n", nets);
                 snprintf(nets, sizeof(nets), "         %s", tmp_net);
@@ -3192,17 +2806,8 @@ static void DCE2_ScPrintConfig(const DCE2_ServerConfig *sc, DCE2_Queue *net_queu
         case DCE2_POLICY__WIN2003:
             policy = DCE2_SARG__POLICY_WIN2003;
             break;
-        case DCE2_POLICY__WIN2008:
-            policy = DCE2_SARG__POLICY_WIN2008;
-            break;
-        case DCE2_POLICY__WIN7:
-            policy = DCE2_SARG__POLICY_WIN7;
-            break;
         case DCE2_POLICY__SAMBA:
             policy = DCE2_SARG__POLICY_SAMBA;
-            break;
-        case DCE2_POLICY__SAMBA_3_0_37:
-            policy = DCE2_SARG__POLICY_SAMBA_3_0_37;
             break;
         case DCE2_POLICY__SAMBA_3_0_22:
             policy = DCE2_SARG__POLICY_SAMBA_3_0_22;
@@ -3258,7 +2863,7 @@ static void DCE2_ScPrintConfig(const DCE2_ServerConfig *sc, DCE2_Queue *net_queu
 
             /* Ascii string will be NULL terminated.  Also alloc enough for space.
              * Note that if share is longer than the size of the buffer it will be
-             * put into, it will be truncated */
+             * put into, it will be truncated */ 
             tmp_share_len = strlen(share->ascii_str) + 2;
             tmp_share = (char *)DCE2_Alloc(tmp_share_len, DCE2_MEM_TYPE__CONFIG);
             if (tmp_share == NULL)
@@ -3271,7 +2876,7 @@ static void DCE2_ScPrintConfig(const DCE2_ServerConfig *sc, DCE2_Queue *net_queu
             snprintf(tmp_share, tmp_share_len, "%s ", share->ascii_str);
             tmp_share[tmp_share_len - 1] = '\0';
 
-            if ((strlen(share_str) + strlen(tmp_share)) >= sizeof(share_str))
+            if (strlen(share_str) + strlen(tmp_share) >= sizeof(share_str))
             {
                 _dpd.logMsg("%s\n", share_str);
                 snprintf(share_str, sizeof(share_str), "                        %s", tmp_share);
@@ -3400,7 +3005,7 @@ static void DCE2_ScPrintPorts(const DCE2_ServerConfig *sc, int autodetect)
                         tmp_port[sizeof(tmp_port) - 1] = '\0';
                     }
 
-                    if ((strlen(ports) + strlen(tmp_port)) >= sizeof(ports))
+                    if (strlen(ports) + strlen(tmp_port) >= sizeof(ports))
                     {
                         _dpd.logMsg("%s\n", ports);
                         snprintf(ports, sizeof(ports), "           %s", tmp_port);
@@ -3672,7 +3277,7 @@ DCE2_Ret DCE2_ParseIpList(char **ptr, char *end, DCE2_Queue *ip_queue)
                                  "%s(%d) Failed to allocate memory for IP structure.",
                                  __FILE__, __LINE__);
                         return DCE2_RET__ERROR;
-                    }
+                    } 
 
                     memcpy((void *)ip_copy, (void *)&ip, sizeof(sfip_t));
 
@@ -3716,7 +3321,7 @@ DCE2_Ret DCE2_ParseIpList(char **ptr, char *end, DCE2_Queue *ip_queue)
                                  "%s(%d) Failed to allocate memory for IP structure.",
                                  __FILE__, __LINE__);
                         return DCE2_RET__ERROR;
-                    }
+                    } 
 
                     memcpy((void *)ip_copy, (void *)&ip, sizeof(sfip_t));
 
@@ -3891,7 +3496,7 @@ DCE2_Ret DCE2_ParseIp(char **ptr, char *end, sfip_t *ip)
 /********************************************************************
  * Function: DCE2_ParsePortList()
  *
- * Parses a port list and adds bits associated with the ports
+ * Parses a port list and adds bits associated with the ports 
  * parsed to a bit array.
  *
  * Arguments:
@@ -4087,7 +3692,7 @@ DCE2_Ret DCE2_ParsePortList(char **ptr, char *end, uint8_t *port_array)
  * Function: DCE2_ParseValue()
  *
  * Parses what should be an integer value and stores in memory
- * passed in as an argument.  This function will parse positive
+ * passed in as an argument.  This function will parse positive 
  * and negative values and decimal, octal or hexidecimal.  The
  * positive and negative modifiers can only be used with
  * decimal values.
@@ -4389,7 +3994,7 @@ DCE2_Ret DCE2_GetValue(char *start, char *end, void *int_value, int negate,
 /********************************************************************
  * Function: DCE2_GcError()
  *
- * Formats errors related to global configuration and puts in
+ * Formats errors related to global configuration and puts in 
  * global error buffer.
  *
  * Arguments:
@@ -4507,7 +4112,7 @@ void DCE2_FreeConfig(DCE2_Config *config)
  ********************************************************************/
 static int DCE2_FreeConfigsPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -4542,10 +4147,10 @@ void DCE2_FreeConfigs(tSfPolicyUserContextId config)
  * Arguments:
  *  void *
  *      Pointer to server configuration.
- *
+ *       
  * Returns: None
  *
- ******************************************************************/
+ ******************************************************************/ 
 static void DCE2_ServerConfigCleanup(void *data)
 {
     DCE2_ServerConfig *sc = (DCE2_ServerConfig *)data;

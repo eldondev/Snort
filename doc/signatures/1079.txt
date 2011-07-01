@@ -71,7 +71,5 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 
 --
 Additional References:
-CVE:  CVE-2000-0869
-Bugtraq:  BID 1656
 
 --

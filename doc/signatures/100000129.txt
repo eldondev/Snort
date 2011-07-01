@@ -1,0 +1,89 @@
+Rule: 
+
+--
+Sid: 
+100000129
+
+-- 
+Summary: 
+This event is generated when a malformed URL is sent to a Cisco IOS HTTP 
+Router, which may cause a denial of service.
+
+-- 
+
+Impact: 
+If a router running a vulnerable version of the IOS HTTP server receives this 
+request, it will fall into an infinite loop, causing a denial of service. The 
+router will restart after two minutes, when the system's watchdog timer 
+realizes that the router has become unresponsive.
+
+--
+Detailed Information:
+If a "?" character immediately follows a "/" character in a URI, vulnerable 
+versions of the Cisco IOS HTTP Router will fall into an infinite loop, causing 
+a denial of service. The router will restart after two minutes, when the 
+system's watchdog timer realizes that the router has become unresponsive.
+
+
+--
+Affected Systems:
+Cisco IOS 12.0 XJ
+Cisco IOS 12.0 XH
+Cisco IOS 12.0 XE
+Cisco IOS 12.0 XA
+Cisco IOS 12.0 W5
+Cisco IOS 12.0 T
+Cisco IOS 12.1 XP
+Cisco IOS 12.1 XL
+Cisco IOS 12.1 XJ
+Cisco IOS 12.1 XI
+Cisco IOS 12.1 XH
+Cisco IOS 12.1 XG
+Cisco IOS 12.1 XF
+Cisco IOS 12.1 XE
+Cisco IOS 12.1 XD
+Cisco IOS 12.1 XC
+Cisco IOS 12.1 XB
+Cisco IOS 12.1 XA
+Cisco IOS 12.1 T
+Cisco IOS 12.1 EC
+Cisco IOS 12.1 E
+Cisco IOS 12.1 DC
+Cisco IOS 12.1 DB
+Cisco IOS 12.1 DA
+Cisco IOS 12.1 AA
+Cisco IOS 12.1
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or a script.
+
+-- 
+
+Ease of Attack: 
+Simple, as it can be exploited using a web browser.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Apply the vendor-supplied patch, available at Cisco.com. As a workaround, the 
+IOS HTTP server may be disabled by using the command "no ip http server".
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

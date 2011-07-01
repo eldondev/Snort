@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
-/**************************************************************************
+  
+/************************************************************************** 
  *
  * smtp_log.c
  *
@@ -39,17 +39,14 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "snort_debug.h"
+#include "debug.h"
 #include "smtp_config.h"
 #include "smtp_log.h"
 #include "snort_smtp.h"
 #include "sf_dynamic_preprocessor.h"
 
 extern SMTPConfig *smtp_eval_config;
+extern DynamicPreprocessorData _dpd;
 extern SMTP *smtp_ssn;
 
 char smtp_event[SMTP_EVENT_MAX][EVENT_STR_LEN];
@@ -62,7 +59,7 @@ void SMTP_GenerateAlert(int event, char *format, ...)
     /* Only log a specific alert once per session */
     if (smtp_ssn->alert_mask & (1 << event))
     {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         DEBUG_WRAP(DebugMessage(DEBUG_SMTP, "Already alerted on: %s - "
                                 "ignoring event.\n", smtp_event[event]););
 #endif
@@ -75,7 +72,7 @@ void SMTP_GenerateAlert(int event, char *format, ...)
 
     if (smtp_eval_config->no_alerts)
     {
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         va_start(ap, format);
 
         smtp_event[event][0] = '\0';
@@ -101,27 +98,5 @@ void SMTP_GenerateAlert(int event, char *format, ...)
     DEBUG_WRAP(DebugMessage(DEBUG_SMTP, "SMTP Alert generated: %s\n", smtp_event[event]););
 
     va_end(ap);
-}
-
-void SMTP_DecodeAlert(void)
-{
-    switch( smtp_ssn->decode_state->decode_type )
-    {
-        case DECODE_B64:
-                SMTP_GenerateAlert(SMTP_B64_DECODING_FAILED, "%s", SMTP_B64_DECODING_FAILED_STR);
-                break;
-        case DECODE_QP:
-                SMTP_GenerateAlert(SMTP_QP_DECODING_FAILED, "%s", SMTP_QP_DECODING_FAILED_STR);
-                break;
-        case DECODE_UU:
-                SMTP_GenerateAlert(SMTP_UU_DECODING_FAILED, "%s", SMTP_UU_DECODING_FAILED_STR);
-                break;
-        case DECODE_BITENC:
-                SMTP_GenerateAlert(SMTP_BITENC_DECODING_FAILED, "%s", SMTP_BITENC_DECODING_FAILED_STR);
-                break;
-
-        default:
-                break;
-    }
 }
 

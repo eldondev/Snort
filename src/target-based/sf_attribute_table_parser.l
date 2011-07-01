@@ -52,7 +52,7 @@ extern ServiceClient sfat_client_or_service;
 static int sfat_linenumber = 0;
 static char* sfat_filename;
 void sfat_error(char *err);
-int sfat_parse(void);
+int sfat_parse();
 
 /* Change flex buffer size from default 8K to STD_BUF bytes */
 #ifdef YY_BUF_SIZE
@@ -69,7 +69,6 @@ int sfat_parse(void);
 
 /* Not using this functionality */
 %option nounput
-%option noinput
 
 /* Optimise lexer for interactive use */
 %option never-interactive
@@ -87,7 +86,7 @@ whitespace     [ \t]*
 comma          ,
 digit          [0-9]
 numericValue   [+-]?{digit}{1,16}
-stringValue    [ \t_/\-a-zA-Z0-9,\.;:()#"'~`!@#$%^&*()=+\[\]|\{\}\?\\]{1,4096}
+stringValue    [ \t_/\-a-zA-Z0-9,\.;:()#"'`!@#$%^&*()=+\[\]|\{\}\?\\]{1,4096}
 commentStart   \<!
 commentEnd     \>
 comment        {commentStart}.*{commentEnd}
@@ -153,7 +152,7 @@ comment        {commentStart}.*{commentEnd}
 
 {numericValue}          {
                             sfat_lval.numericValue = strtol( yytext, NULL, 10 );
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                             DebugMessage(DEBUG_ATTRIBUTE,
                                 "Number Value: [%d]\n", sfat_lval.numericValue);
 #endif
@@ -168,7 +167,7 @@ comment        {commentStart}.*{commentEnd}
                                 sfat_lval.stringValue[i] = yytext[i];
                             }
                             sfat_lval.stringValue[i] = '\0';
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                             DebugMessage(DEBUG_ATTRIBUTE,
                                 "String Value: [%s]\n", sfat_lval.stringValue);
 #endif
@@ -257,13 +256,6 @@ int ParseTargetMap(char *filename)
     sfat_saved_file_set = 1;
 
     return ret;
-}
-
-void DestroyBufferStack(void)
-{
-#ifdef HAVE_YYLEX_DESTROY
-    sfatlex_destroy();
-#endif
 }
 
 void sfat_error(char *err)

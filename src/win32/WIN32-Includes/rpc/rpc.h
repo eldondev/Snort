@@ -1,4 +1,4 @@
-/*  $Id: rpc.h,v 1.4 2003/10/20 15:03:45 chrisgreen Exp $ */
+/*  $Id$ */
 /*	$OpenBSD: rpc.h,v 1.7 1998/12/20 23:43:18 millert Exp $	*/
 /*	$NetBSD: rpc.h,v 1.5 1994/12/04 01:15:30 cgd Exp $	*/
 

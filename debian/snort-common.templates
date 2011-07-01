@@ -1,0 +1,11 @@
+Template: snort/deprecated_config
+Type: note
+_Description: Deprecated configuration file
+ The Snort configuration file (/etc/snort/snort.conf) uses deprecated
+ options no longer available for this Snort release. Snort will not be able to
+ start unless you provide a correct configuration file. Either allow the
+ configuration file to be replaced with the one provided in this package or fix
+ it manually by removing deprecated options.
+ .
+ The following deprecated options were found in the configuration file:
+ ${DEP_CONFIG}

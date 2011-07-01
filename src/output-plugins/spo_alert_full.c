@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 2000,2001 Andrew R. Baker <andrewb@uab.edu>
 **
@@ -19,14 +19,14 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_full.c,v 1.31 2011/06/08 00:33:15 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_alert_full
- *
+ * 
  * Purpose:  output plugin for full alerting
  *
  * Arguments:  alert file (eventually)
- *
+ *   
  * Effect:
  *
  * Alerts are written to a file in the snort full alert format
@@ -39,20 +39,11 @@
 #include "config.h"
 #endif
 
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "sf_types.h"
-#include "spo_alert_full.h"
 #include "event.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "parser.h"
 #include "util.h"
 #include "log.h"
@@ -60,7 +51,16 @@
 #include "snort.h"
 #include "sfutil/sf_textlog.h"
 #include "log_text.h"
-#include "sfdaq.h"
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
+extern char *pcap_interface;
+extern SnortConfig *snort_conf_for_parsing;
 
 typedef struct _SpoAlertFullData
 {
@@ -84,7 +84,7 @@ static void AlertFullRestart(int, void *);
 /*
  * Function: SetupAlertFull()
  *
- * Purpose: Registers the output plugin keyword and initialization
+ * Purpose: Registers the output plugin keyword and initialization 
  *          function into the output plugin list.  This is the function that
  *          gets called from InitOutputPlugins() in plugbase.c.
  *
@@ -95,7 +95,7 @@ static void AlertFullRestart(int, void *);
  */
 void AlertFullSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("alert_full", OUTPUT_TYPE_FLAG__ALERT, AlertFullInit);
 
@@ -118,7 +118,7 @@ static void AlertFullInit(char *args)
 {
     SpoAlertFullData *data;
     DEBUG_WRAP(DebugMessage(DEBUG_INIT, "Output: AlertFull Initialized\n"););
-
+    
     /* parse the argument list from the rules file */
     data = ParseAlertFullArgs(args);
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Linking AlertFull functions to call lists...\n"););
@@ -147,8 +147,7 @@ static void AlertFull(Packet *p, char *msg, void *arg, Event *event)
 
         if (ScAlertInterface())
         {
-            const char* iface = PRINT_INTERFACE(DAQ_GetInterfaceSpec());
-            TextLog_Print(data->log, " <%s> ", iface);
+            TextLog_Print(data->log, " <%s> ", PRINT_INTERFACE(pcap_interface));
             TextLog_Puts(data->log, msg);
             TextLog_Puts(data->log, " [**]\n");
         }
@@ -181,7 +180,7 @@ static void AlertFull(Packet *p, char *msg, void *arg, Event *event)
             Log2ndHeader(data->log, p);
         }
 
-        LogIPHeader(data->log, p);
+      LogIPHeader(data->log, p);
 
         /* if this isn't a fragment, print the other header info */
         if(!p->frag_flag)
@@ -203,8 +202,9 @@ static void AlertFull(Packet *p, char *msg, void *arg, Event *event)
                 default:
                     break;
             }
+
+           LogXrefs(data->log, 1);
         }
-        LogXrefs(data->log, 1);
 
         TextLog_Putc(data->log, '\n');
     } /* End of if(p) */
@@ -255,6 +255,7 @@ static SpoAlertFullData *ParseAlertFullArgs(char *args)
             case 0:
                 if ( !strcasecmp(tok, "stdout") )
                     filename = SnortStrdup(tok);
+
                 else
                     filename = ProcessFileOption(snort_conf_for_parsing, tok);
                 break;
@@ -292,14 +293,8 @@ static SpoAlertFullData *ParseAlertFullArgs(char *args)
         DEBUG_INIT, "alert_full: '%s' %ld\n",
         filename ? filename : "alert", limit
     ););
-
-    if ((filename == NULL) && (snort_conf->alert_file != NULL))
-        filename = SnortStrdup(snort_conf->alert_file);
-
     data->log = TextLog_Init(filename, LOG_BUFFER, limit);
-
-    if (filename != NULL)
-        free(filename);
+    if ( filename ) free(filename);
 
     return data;
 }

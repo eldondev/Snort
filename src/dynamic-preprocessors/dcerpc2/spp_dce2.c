@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,16 +17,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "spp_dce2.h"
-#include "sf_preproc_info.h"
 #include "dce2_memory.h"
 #include "dce2_list.h"
 #include "dce2_utils.h"
@@ -81,19 +75,9 @@ extern tSfPolicyUserContextId dce2_swap_config;
 extern DCE2_Stats dce2_stats;
 extern DCE2_Memory dce2_memory;
 extern char **dce2_trans_strs;
+extern DynamicPreprocessorData _dpd;
 extern DCE2_CStack *dce2_pkt_stack;
 extern DCE2_ProtoIds dce2_proto_ids;
-
-const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 0;
-const int BUILD_VERSION = 3;
-#ifdef SUP_IP6
-const char *PREPROC_NAME = "SF_DCERPC2 (IPV6)";
-#else
-const char *PREPROC_NAME = "SF_DCERPC2";
-#endif
-
-#define DCE2_RegisterPreprocessor DYNAMIC_PREPROC_SETUP
 
 /********************************************************************
  * Macros
@@ -192,8 +176,15 @@ static void DCE2_InitGlobal(char *args)
         DCE2_StatsInit();
         DCE2_EventsInit();
 
+        if ((_dpd.streamAPI == NULL) || (_dpd.streamAPI->version != STREAM_API_VERSION5))
+        {
+            DCE2_Die("%s(%d) \"%s\" configuration: Stream5 must be enabled with "
+                     "TCP and UDP tracking.",
+                     *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
+        }
+        
         /* Initialize reassembly packet */
-        DCE2_InitRpkts();
+        DCE2_InitRpkts();   
 
         _dpd.addPreprocConfCheck(DCE2_CheckConfig);
         _dpd.registerPreprocStats(DCE2_GNAME, DCE2_PrintStats);
@@ -260,22 +251,8 @@ static void DCE2_InitGlobal(char *args)
     /* Parse configuration args */
     DCE2_GlobalConfigure(pCurrentPolicyConfig, args);
 
-    if (policy_id != 0)
-        pCurrentPolicyConfig->gconfig->memcap = pDefaultPolicyConfig->gconfig->memcap;
-
-    if ( pCurrentPolicyConfig->gconfig->disabled )
-        return;
-
-    if ((_dpd.streamAPI == NULL) || (_dpd.streamAPI->version != STREAM_API_VERSION5))
-    {
-        DCE2_Die("%s(%d) \"%s\" configuration: "
-            "Stream5 must be enabled with TCP and UDP tracking.",
-            *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
-    }
-
     /* Register callbacks */
-    _dpd.addPreproc(DCE2_Main, PRIORITY_APPLICATION,
-        PP_DCE2, PROTO_BIT__TCP | PROTO_BIT__UDP);
+    _dpd.addPreproc(DCE2_Main, PRIORITY_APPLICATION, PP_DCE2, PROTO_BIT__TCP | PROTO_BIT__UDP);
 
 #ifdef TARGET_BASED
     _dpd.streamAPI->set_service_filter_status
@@ -284,6 +261,9 @@ static void DCE2_InitGlobal(char *args)
     _dpd.streamAPI->set_service_filter_status
         (dce2_proto_ids.nbss, PORT_MONITOR_SESSION, policy_id, 1);
 #endif
+
+    if (policy_id != 0)
+        pCurrentPolicyConfig->gconfig->memcap = pDefaultPolicyConfig->gconfig->memcap;
 }
 
 /*********************************************************************
@@ -318,21 +298,26 @@ static void DCE2_InitServer(char *args)
 
 static int DCE2_CheckConfigPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
     DCE2_Config *pPolicyConfig = (DCE2_Config *)pData;
     DCE2_ServerConfig *dconfig;
 
-    if ( pPolicyConfig->gconfig->disabled )
-        return 0;
-
     _dpd.setParserPolicy(policyId);
-    // config_file/config_line are not set here
     if (!_dpd.isPreprocEnabled(PP_STREAM5))
     {
-        DCE2_Die("Stream5 must be enabled with TCP and UDP tracking.");
+        DCE2_Die("%s(%d) \"%s\" configuration: Stream5 must be enabled with "
+                "TCP and UDP tracking.",
+                *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
+    }
+
+    if (_dpd.isPreprocEnabled(PP_DCERPC))
+    {
+        DCE2_Die("%s(%d) \"%s\" configuration: Only one DCE/RPC preprocessor "
+                "can be configured.",
+                *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
     }
 
     dconfig = pPolicyConfig->dconfig;
@@ -376,21 +361,21 @@ static void DCE2_CheckConfig(void)
  *
  * Arguments:
  *  void * - pointer to packet structure
- *  void * - pointer to context
+ *  void * - pointer to context 
  *
  * Returns: None
  *
  *********************************************************************/
 static void DCE2_Main(void *pkt, void *context)
 {
-    SFSnortPacket *p = (SFSnortPacket *)pkt;
+	SFSnortPacket *p = (SFSnortPacket *)pkt;
     PROFILE_VARS;
 
     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ALL, "%s\n", DCE2_DEBUG__START_MSG));
 
     sfPolicyUserPolicySet (dce2_config, _dpd.getRuntimePolicy());
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     if (DCE2_SsnFromServer(p))
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Packet from server.\n"));
@@ -454,10 +439,10 @@ static void DCE2_Main(void *pkt, void *context)
  *
  * Arguments:
  *  int - whether Snort is exiting or not
- *
+ *       
  * Returns: None
  *
- ******************************************************************/
+ ******************************************************************/ 
 static void DCE2_PrintStats(int exiting)
 {
     _dpd.logMsg("dcerpc2 Preprocessor Statistics\n");
@@ -992,7 +977,7 @@ static void DCE2_PrintStats(int exiting)
                 _dpd.logMsg("        SMB other command responses: "STDu64"\n", dce2_stats.smb_other_resp);
             }
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             _dpd.logMsg("      Memory stats (bytes)\n");
             _dpd.logMsg("        Current total: %u\n", dce2_memory.smb_total);
             _dpd.logMsg("        Maximum total: %u\n", dce2_memory.smb_total_max);
@@ -1019,7 +1004,7 @@ static void DCE2_PrintStats(int exiting)
             _dpd.logMsg("      Total sessions: "STDu64"\n", dce2_stats.tcp_sessions);
             _dpd.logMsg("      Packet stats\n");
             _dpd.logMsg("        Packets: "STDu64"\n", dce2_stats.tcp_pkts);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             _dpd.logMsg("      Memory stats (bytes)\n");
             _dpd.logMsg("        Current total: %u\n", dce2_memory.tcp_total);
             _dpd.logMsg("        Maximum total: %u\n", dce2_memory.tcp_total_max);
@@ -1034,7 +1019,7 @@ static void DCE2_PrintStats(int exiting)
             _dpd.logMsg("      Total sessions: "STDu64"\n", dce2_stats.udp_sessions);
             _dpd.logMsg("      Packet stats\n");
             _dpd.logMsg("        Packets: "STDu64"\n", dce2_stats.udp_pkts);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             _dpd.logMsg("      Memory stats (bytes)\n");
             _dpd.logMsg("        Current total: %u\n", dce2_memory.udp_total);
             _dpd.logMsg("        Maximum total: %u\n", dce2_memory.udp_total_max);
@@ -1055,7 +1040,7 @@ static void DCE2_PrintStats(int exiting)
                 _dpd.logMsg("        Server packets: "STDu64"\n", dce2_stats.http_server_pkts);
             if (dce2_stats.http_proxy_sessions > 0)
                 _dpd.logMsg("        Proxy packets: "STDu64"\n", dce2_stats.http_proxy_pkts);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             _dpd.logMsg("      Memory stats (bytes)\n");
             _dpd.logMsg("        Current total: %u\n", dce2_memory.http_total);
             _dpd.logMsg("        Maximum total: %u\n", dce2_memory.http_total_max);
@@ -1124,7 +1109,7 @@ static void DCE2_PrintStats(int exiting)
                 }
                 _dpd.logMsg("        Client seg reassembled: "STDu64"\n", dce2_stats.co_cli_seg_reassembled);
                 _dpd.logMsg("        Server seg reassembled: "STDu64"\n", dce2_stats.co_srv_seg_reassembled);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                 _dpd.logMsg("      Memory stats (bytes)\n");
                 _dpd.logMsg("        Current segmentation buffering: %u\n", dce2_memory.co_seg);
                 _dpd.logMsg("        Maximum segmentation buffering: %u\n", dce2_memory.co_seg_max);
@@ -1174,7 +1159,7 @@ static void DCE2_PrintStats(int exiting)
                 _dpd.logMsg("        Reassembled: "STDu64"\n", dce2_stats.cl_frag_reassembled);
                 if (dce2_stats.cl_max_seqnum > 0)
                     _dpd.logMsg("        Max seq num: "STDu64"\n", dce2_stats.cl_max_seqnum);
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                 _dpd.logMsg("      Memory stats (bytes)\n");
                 _dpd.logMsg("        Current activity tracker: %u\n", dce2_memory.cl_act);
                 _dpd.logMsg("        Maximum activity tracker: %u\n", dce2_memory.cl_act_max);
@@ -1190,7 +1175,7 @@ static void DCE2_PrintStats(int exiting)
     if (exiting)
         DCE2_StatsFree();
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     _dpd.logMsg("\n");
     _dpd.logMsg("  Memory stats (bytes)\n");
     _dpd.logMsg("    Current total: %u\n", dce2_memory.total);
@@ -1216,10 +1201,10 @@ static void DCE2_PrintStats(int exiting)
  * Arguments:
  *  int - signal that caused the reset
  *  void * - pointer to data
- *
+ *       
  * Returns: None
  *
- ******************************************************************/
+ ******************************************************************/ 
 static void DCE2_Reset(int signal, void *data)
 {
     if (!DCE2_CStackIsEmpty(dce2_pkt_stack))
@@ -1240,10 +1225,10 @@ static void DCE2_Reset(int signal, void *data)
  * Arguments:
  *  int - signal that caused function to be called
  *  void * - pointer to data
- *
+ *       
  * Returns: None
  *
- ******************************************************************/
+ ******************************************************************/ 
 static void DCE2_ResetStats(int signal, void *data)
 {
     DCE2_StatsInit();
@@ -1257,12 +1242,12 @@ static void DCE2_ResetStats(int signal, void *data)
  * Arguments:
  *  int - signal that caused Snort to exit
  *  void * - pointer to data
- *
+ *       
  * Returns: None
  *
- ******************************************************************/
+ ******************************************************************/ 
 static void DCE2_CleanExit(int signal, void *data)
-{
+{    
     DCE2_FreeConfigs(dce2_config);
     dce2_config = NULL;
 
@@ -1290,13 +1275,21 @@ static void DCE2_ReloadGlobal(char *args)
     {
         //create a context
         dce2_swap_config = sfPolicyConfigCreate();
-
+        
         if (dce2_swap_config == NULL)
         {
             DCE2_Die("%s(%d) \"%s\" configuration: Could not allocate memory "
                      "configuration.\n",
                      *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
         }
+
+        if ((_dpd.streamAPI == NULL) || (_dpd.streamAPI->version != STREAM_API_VERSION5))
+        {
+            DCE2_Die("%s(%d) \"%s\" configuration: Stream5 must be enabled with "
+                     "TCP and UDP tracking.",
+                     *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
+        }
+
         _dpd.addPreprocReloadVerify(DCE2_ReloadVerify);
     }
 
@@ -1320,25 +1313,13 @@ static void DCE2_ReloadGlobal(char *args)
 
     DCE2_RegRuleOptions();
 
-    pCurrentPolicyConfig = (DCE2_Config *)DCE2_Alloc(sizeof(DCE2_Config),
-        DCE2_MEM_TYPE__CONFIG);
-
+    pCurrentPolicyConfig = (DCE2_Config *)DCE2_Alloc(sizeof(DCE2_Config), DCE2_MEM_TYPE__CONFIG);
     sfPolicyUserDataSetCurrent(dce2_swap_config, pCurrentPolicyConfig);
 
     /* Parse configuration args */
     DCE2_GlobalConfigure(pCurrentPolicyConfig, args);
 
-    if ( pCurrentPolicyConfig->gconfig->disabled )
-        return;
-
-    if ((_dpd.streamAPI == NULL) || (_dpd.streamAPI->version != STREAM_API_VERSION5))
-    {
-        DCE2_Die("%s(%d) \"%s\" configuration: "
-            "Stream5 must be enabled with TCP and UDP tracking.",
-            *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
-    }
-    _dpd.addPreproc(DCE2_Main, PRIORITY_APPLICATION, PP_DCE2,
-        PROTO_BIT__TCP | PROTO_BIT__UDP);
+	_dpd.addPreproc(DCE2_Main, PRIORITY_APPLICATION, PP_DCE2, PROTO_BIT__TCP | PROTO_BIT__UDP);
 
 #ifdef TARGET_BASED
     _dpd.streamAPI->set_service_filter_status
@@ -1384,7 +1365,7 @@ static void DCE2_ReloadServer(char *args)
 
 static int DCE2_ReloadVerifyPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -1394,15 +1375,8 @@ static int DCE2_ReloadVerifyPolicy(
 
     //do any housekeeping before freeing DCE2_Config
 
-    if ( swap_config == NULL || swap_config->gconfig->disabled )
+    if (swap_config == NULL)
         return 0;
-
-    if (!_dpd.isPreprocEnabled(PP_STREAM5))
-    {
-        DCE2_Die("%s(%d) \"%s\" configuration: "
-            "Stream5 must be enabled with TCP and UDP tracking.",
-            *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
-    }
 
     dconfig = swap_config->dconfig;
 
@@ -1451,6 +1425,20 @@ static int DCE2_ReloadVerify(void)
     if ((dce2_swap_config == NULL) || (dce2_config == NULL))
         return 0;
 
+    if (!_dpd.isPreprocEnabled(PP_STREAM5))
+    {
+        DCE2_Die("%s(%d) \"%s\" configuration: Stream5 must be enabled with "
+                 "TCP and UDP tracking.",
+                 *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
+    }
+
+    if (_dpd.isPreprocEnabled(PP_DCERPC))
+    {
+        DCE2_Die("%s(%d) \"%s\" configuration: Only one DCE/RPC preprocessor "
+                 "can be configured.",
+                 *_dpd.config_file, *_dpd.config_line, DCE2_GNAME);
+    }
+
     if (sfPolicyUserDataIterate(dce2_swap_config, DCE2_ReloadVerifyPolicy) != 0)
         return -1;
 
@@ -1459,7 +1447,7 @@ static int DCE2_ReloadVerify(void)
 
 static int DCE2_ReloadSwapPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {

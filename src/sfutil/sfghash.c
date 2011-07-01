@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -30,9 +30,9 @@
 *  Features:
 *    1) Keys may be ascii strings of variable size, or
 *       fixed length (per table) binary byte sequences.  This
-*       allows use as a Mapping for String+Data pairs, or a
+*       allows use as a Mapping for String+Data pairs, or a 
 *       generic hashing.
-*    2) User can allocate keys, or pass copies and we can
+*    2) User can allocate keys, or pass copies and we can 
 *       allocate space and save keys.
 *    3) User can pass a free function to free up user data
 *       when the table is deleted.
@@ -41,7 +41,7 @@
 *
 *  6/10/03 - man - Upgraded the hash function to a Hardened hash function,
 *      it has no predictable cycles, and each hash table gets a different
-*      randomized hashing function. So even with the source code, you cannot predict
+*      randomized hashing function. So even with the source code, you cannot predict 
 *      anything with this function.  If an attacker can setup a feedback
 *      loop he might gain some knowledge of how to muck with us, but even in that case
 *      his odds are astronomically skinny.  This is actually the same problem as solved
@@ -49,7 +49,7 @@
 *      produce very long bucket chains.
 *
 *  8/31/06 - man - Added prime tables to speed up prime number lookup.
-*
+* 
 * Author: Marc Norton
 *
 */
@@ -58,17 +58,13 @@
 #include <string.h>
 #include <time.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "sfghash.h"
 
 #include "sfprimetable.h"
 /*
 *  Private Malloc
 */
-static
+static 
 void * s_alloc( int n )
 {
      return calloc( 1,n );
@@ -77,7 +73,7 @@ void * s_alloc( int n )
 /*
 *  Private Free
 */
-static
+static 
 void s_free( void * p )
 {
    if( p )free( p );
@@ -92,14 +88,14 @@ void s_free( void * p )
 *               < 0  => we use the magnitude as nrows.
 *    keysize  : > 0 => bytes in each key, keys are binary bytes,
 *               all keys are the same size.
-*               ==0 => keys are strings and are null terminated,
-*               allowing random key lengths.
+*               ==0 => keys are strings and are null terminated, 
+*               allowing random key lengths. 
 *    userkeys : > 0 => indicates user owns the key data
 *               and we should not allocate or free space for it,
 *               nor should we attempt to free the user key. We just
-*               save the pointer to the key.
+*               save the pointer to the key. 
 *               ==0 => we should copy the keys and manage them internally
-*    userfree : routine to free users data, null if we should not
+*    userfree : routine to free users data, null if we should not 
 *               free user data in sfghash_delete(). The routine
 *               should be of the form 'void userfree(void * userdata)',
 *               'free' works for simple allocations.
@@ -114,25 +110,25 @@ SFGHASH * sfghash_new( int nrows, int keysize, int userkeys, void (*userfree)(vo
       nrows = sf_nearest_prime( nrows );
    }
    else   /* use the magnitude or nrows as is */
-   {
+   { 
       nrows = -nrows;
    }
 
    h = (SFGHASH*)s_alloc( sizeof(SFGHASH) );
-   if( !h )
+   if( !h ) 
 	   return 0;
 
    memset( h, 0, sizeof(SFGHASH) );
 
    h->sfhashfcn = sfhashfcn_new( nrows );
-   if( !h->sfhashfcn )
+   if( !h->sfhashfcn ) 
    {
        free(h);
 	   return 0;
    }
 
    h->table = (SFGHASH_NODE**) s_alloc( sizeof(SFGHASH_NODE*) * nrows );
-   if( !h->table )
+   if( !h->table ) 
    {
        free(h->sfhashfcn);
        free(h);
@@ -170,10 +166,10 @@ void sfghash_splaymode( SFGHASH * t, int n )
 }
 
 /*
-*  Delete the hash Table
+*  Delete the hash Table 
 *
 *  free key's, free node's, and free the users data, if they
-*  supply a free function
+*  supply a free function 
 */
 void sfghash_delete( SFGHASH * h )
 {
@@ -181,11 +177,11 @@ void sfghash_delete( SFGHASH * h )
   SFGHASH_NODE * node, * onode;
 
   if( !h ) return;
-
+ 
   sfhashfcn_free( h->sfhashfcn );
 
   if( h->table )
-  {
+  {  
     for(i=0;i<h->nrows;i++)
     {
       for( node=h->table[i]; node;  )
@@ -193,7 +189,7 @@ void sfghash_delete( SFGHASH * h )
         onode = node;
         node  = node->next;
 
-        if( !h->userkey && onode->key )
+        if( !h->userkey && onode->key ) 
             s_free( onode->key );
 
         if( h->userfree && onode->data )
@@ -236,7 +232,7 @@ int sfghash_count( SFGHASH * t )
 *
 *  Notes:
 *  If the key node already exists, then t->cnode points to it on return,
-*  this allows you to do something with the node - like add the data to a
+*  this allows you to do something with the node - like add the data to a 
 *  linked list of data items held by the node, or track a counter, or whatever.
 *
 */
@@ -252,7 +248,7 @@ int sfghash_add( SFGHASH * t, void * key, void * data )
 
     /*
     *   Get proper Key Size
-    */
+    */  
     if( t->keysize > 0  )
     {
         klen = t->keysize;
@@ -262,13 +258,13 @@ int sfghash_add( SFGHASH * t, void * key, void * data )
 	     /* need the null byte for strcmp() in sfghash_find() */
         klen = strlen( (char*)key ) + 1;
     }
-
+    
     hashkey = t->sfhashfcn->hash_fcn(  t->sfhashfcn, (unsigned char*) key, klen );
-
+    
     index = hashkey % t->nrows;
 
     /*
-    *  Uniqueness:
+    *  Uniqueness: 
     *  Check 1st to see if the key is already in the table
     *  Just bail if it is.
     */
@@ -292,13 +288,13 @@ int sfghash_add( SFGHASH * t, void * key, void * data )
        }
     }
 
-    /*
-    *  Create new node
+    /* 
+    *  Create new node 
     */
     hnode = (SFGHASH_NODE*)s_alloc(sizeof(SFGHASH_NODE));
     if( !hnode )
          return SFGHASH_NOMEM;
-
+    
     /* Add the Key */
     if( t->userkey )
     {
@@ -318,7 +314,7 @@ int sfghash_add( SFGHASH * t, void * key, void * data )
       /* Copy key  */
       memcpy(hnode->key,key,klen);
     }
-
+    
     /* Add The Node */
     if( t->table[index] ) /* add the node to the existing list */
     {
@@ -351,7 +347,7 @@ static void movetofront( SFGHASH *t , int index, SFGHASH_NODE * n )
       /* Unlink the node */
       if( n->prev ) n->prev->next = n->next;
       if( n->next ) n->next->prev = n->prev;
-
+      
       /* Link at front of list */
       n->prev=0;
       n->next=t->table[index];
@@ -378,9 +374,9 @@ static SFGHASH_NODE * sfghash_find_node( SFGHASH * t, void * key)
     }
 
     hashkey = t->sfhashfcn->hash_fcn(  t->sfhashfcn, (unsigned char*) key, klen );
-
+    
     index = hashkey % t->nrows;
-
+   
     for( hnode=t->table[index]; hnode; hnode=hnode->next )
     {
         if( t->keysize == 0 )
@@ -428,7 +424,7 @@ void * sfghash_find( SFGHASH * t, void * key)
 /* Returns whether or not the there is an entry in the table with key
  * Sets argument data to data in hash node which could be NULL.
  * This function is used to both make sure there is an entry in the
- * table and get potential data associated with entry */
+ * table and get potential data associated with entry */ 
 int sfghash_find2(SFGHASH *t, void *key, void **data)
 {
     SFGHASH_NODE * hnode;
@@ -452,7 +448,7 @@ int sfghash_find2(SFGHASH *t, void *key, void **data)
 */
 static int sfghash_free_node( SFGHASH * t, unsigned index, SFGHASH_NODE * hnode )
 {
-    if( !t->userkey && hnode->key )
+    if( !t->userkey && hnode->key ) 
         s_free( hnode->key );
     hnode->key = 0;
 
@@ -499,7 +495,7 @@ int sfghash_remove( SFGHASH * t, void * key)
     }
 
     hashkey = t->sfhashfcn->hash_fcn(  t->sfhashfcn, (unsigned char*) key, klen );
-
+    
     index = hashkey % t->nrows;
 
     for( hnode=t->table[index]; hnode; hnode=hnode->next )
@@ -520,7 +516,7 @@ int sfghash_remove( SFGHASH * t, void * key)
        }
     }
 
-   return SFGHASH_ERR;
+   return SFGHASH_ERR;  
 }
 
 
@@ -529,7 +525,7 @@ static void sfghash_next( SFGHASH * t )
 {
     if( !t->cnode )
         return ;
-
+ 
     /* Next node in current node list */
     t->cnode = t->cnode->next;
     if( t->cnode )
@@ -537,12 +533,12 @@ static void sfghash_next( SFGHASH * t )
         return;
     }
 
-    /* Next row */
+    /* Next row */ 
     /* Get 1st node in next non-emtoy row/node list */
     for( t->crow++; t->crow < t->nrows; t->crow++ )
-    {
+    {    
        t->cnode = t->table[ t->crow ];
-       if( t->cnode )
+       if( t->cnode ) 
        {
            return;
        }
@@ -557,7 +553,7 @@ SFGHASH_NODE * sfghash_findfirst( SFGHASH * t )
 
     /* Start with 1st row */
     for( t->crow=0; t->crow < t->nrows; t->crow++ )
-    {
+    {    
        /* Get 1st Non-Null node in row list */
        t->cnode = t->table[ t->crow ];
 
@@ -588,15 +584,15 @@ SFGHASH_NODE * sfghash_findnext( SFGHASH * t )
     }
 
     /*
-       Preload next node into current node
+       Preload next node into current node 
     */
-    sfghash_next( t );
+    sfghash_next( t ); 
 
     return  n;
 }
 
 
-/**
+/** 
  * Make sfhashfcn use a separate set of operators for the backend.
  *
  * @param h sfhashfcn ptr
@@ -624,10 +620,10 @@ int sfghash_set_keyops( SFGHASH *h ,
 /*
 *
 *   Test Driver for Hashing
-*
+*  
 */
 
-#ifdef SFGHASH_MAIN
+#ifdef SFGHASH_MAIN 
 
 void myfree ( void * p )
 {
@@ -636,7 +632,7 @@ void myfree ( void * p )
 }
 
 /*
-*       Hash test program
+*       Hash test program  
 */
 int main ( int argc, char ** argv )
 {
@@ -655,19 +651,19 @@ int main ( int argc, char ** argv )
    t = sfghash_new( 1000, 0 , GH_COPYKEYS , myfree  );
 
    /* Add Nodes to the Hash Table */
-   for(i=0;i<num;i++)
+   for(i=0;i<num;i++) 
    {
        snprintf(str, sizeof(str), "KeyWord%d",i+1);
        str[sizeof(str) - 1] = '\0';
        sfghash_add( t, str,  strupr(strdup(str)) );
 
        sfatom_add( str,  strupr(strdup(str)) );
-   }
+   }  
 
    /* Find and Display Nodes in the Hash Table */
    printf("\n** FIND KEY TEST\n");
 
-   for(i=0;i<num;i++)
+   for(i=0;i<num;i++) 
    {
       snprintf(str, sizeof(str), "KeyWord%d",i+1);
       str[sizeof(str) - 1] = '\0';
@@ -679,7 +675,7 @@ int main ( int argc, char ** argv )
       p = (char*) sfatom_find( str );
 
       printf("Atom-key=%*s, data=%*s\n", strlen(str),str, strlen(str), p );
-   }
+   }  
 
    /* Display All Nodes in the Hash Table */
    printf("\n** FINDFIRST / FINDNEXT TEST\n");
@@ -689,9 +685,9 @@ int main ( int argc, char ** argv )
       printf("hash-findfirst/next: key=%s, data=%s\n", n->key, n->data );
 
       // hashing code frees user data using 'myfree' above ....
-      if( sfghash_remove(t,n->key) )
+      if( sfghash_remove(t,n->key) ) 
             printf("Could not remove the key node\n");
-      else
+      else  
             printf("key node removed\n");
    }
 

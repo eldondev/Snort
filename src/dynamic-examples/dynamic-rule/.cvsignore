@@ -1,8 +1,0 @@
-Makefile
-Makefile.in
-*.o
-*.lo
-.libs
-*.la
-sfsnort_dynamic_detection_lib.c
-sfsnort_dynamic_detection_lib.h

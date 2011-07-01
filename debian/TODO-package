@@ -1,0 +1,31 @@
+
+TODO
+
+- Make it easier to do changes in maintainer's config files. Currently snort,
+  snort-pgsql and snort-mysql config files share a lot of code which makes it
+  unmaintainable and leads to bugs like #502084 which was fixed in Snort
+  (non-DB package) but not in the DB packages.
+
+- Share information between package installations. If a user installs
+  'snort' (no DB support) and later on snort-pgsql (with DB support) he
+  will be asked the same questions (interface, IP range) twice. Maybe
+  use snort-common as a placeholder for shared information. Also simplifies
+  code sharing between config files
+
+- Consider the use of dbconfig-common to make database creation and update a
+  breeze. Asking users to follow manual steps to configure the database before
+  the package installation is rather painful.
+
+- Sync the versions provided in the archive with the source code @Alioth
+
+- Make it possible for admins to provide more than one interface Snort will
+  listen to when configuring the package
+
+- When configuring the package it could try to check if the database defined
+  is, indeeded, properly setup so that Snort can use it as a logging database.
+
+----
+
+Javier Fernandez-Sanguino
+Mon, 04 May 2009 00:34:15 +0200
+

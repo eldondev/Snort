@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -16,27 +16,20 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- ****************************************************************************
+ **************************************************************************** 
  * Provides functions for debugging the preprocessor.
  *
  * 8/17/2008 - Initial implementation ... Todd Wease <twease@sourcefire.com>
  *
  ****************************************************************************/
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif  /* HAVE_CONFIG_H */
 
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif  /* HAVE_CONFIG_H */
-
+#include "dce2_debug.h"
+#include "dce2_utils.h"
+#include "sf_types.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <errno.h>
-
-#include "dce2_debug.h"
-#include "dce2_utils.h"
 
 /********************************************************************
  * Function: DCE2_GetDebugLevel()
@@ -67,7 +60,7 @@ static uint32_t DCE2_GetDebugLevel(void)
     {
         char *endptr;
 
-        debug_level = _dpd.SnortStrtoul(value, &endptr, 0);
+        debug_level = strtoul(value, &endptr, 0);
         if ((errno == ERANGE) || (*endptr != '\0'))
         {
             DCE2_Log(DCE2_LOG_TYPE__WARN,

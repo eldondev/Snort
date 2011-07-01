@@ -1,4 +1,4 @@
-# $Id: snort.spec,v 1.37 2011/06/08 03:06:25 jjordan Exp $
+# $Id$
 # Snort.org's SPEC file for Snort
 
 ################################################################
@@ -91,14 +91,14 @@
 
 Name: %{realname}%{inlinetext}
 %{?_with_inline:%define Name: %{realname}-inline }
-Version: 2.9.1_beta
+Version: 2.8.5.2
 Epoch: 1
 Release: %{release}
 Summary: An open source Network Intrusion Detection System (NIDS)
 Group: Applications/Internet
 License: GPL
 Url: http://www.snort.org/
-Source0: http://www.snort.org/snort-downloads/2.9.1/%{realname}-%{version}.tar.gz
+Source0: http://www.snort.org/dl/2.8.5.2/%{realname}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Packager: Official Snort.org %{for_distro}
@@ -356,17 +356,17 @@ InstallSnort() {
 	%__ln_s -f %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssh_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssh_preproc.so
 	%__install -p -m 0755 plain/src/dynamic-preprocessors/build/%{_prefix}/lib/snort_dynamicpreprocessor/libsf_ssl_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor
 	%__ln_s -f %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssl_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssl_preproc.so
+	%__install -p -m 0755 plain/src/dynamic-preprocessors/build/%{_prefix}/lib/snort_dynamicpreprocessor/libsf_dcerpc_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor
+	%__ln_s -f %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dcerpc_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dcerpc_preproc.so
 	%__install -p -m 0755 plain/src/dynamic-preprocessors/build/%{_prefix}/lib/snort_dynamicpreprocessor/libsf_dce2_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor
 	%__ln_s -f %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dce2_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dce2_preproc.so
-	%__install -p -m 0755 plain/src/dynamic-preprocessors/build/%{_prefix}/lib/snort_dynamicpreprocessor/libsf_sdf_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor
-	%__ln_s -f %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_sdf_preproc.so.0 $RPM_BUILD_ROOT%{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_sdf_preproc.so
 	%__install -p -m 0644 snort.8 $RPM_BUILD_ROOT%{_mandir}/man8
 	%__gzip $RPM_BUILD_ROOT%{_mandir}/man8/snort.8
 	%__install -p -m 0755 rpm/snortd $RPM_BUILD_ROOT%{_initrddir}
 	%__install -p -m 0644 rpm/snort.sysconfig $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/%{realname}
 	%__install -p -m 0644 rpm/snort.logrotate $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/snort
 	%__install -p -m 0644 etc/reference.config etc/classification.config \
-		etc/unicode.map etc/gen-msg.map \
+		etc/unicode.map etc/gen-msg.map etc/sid-msg.map \
 		etc/threshold.conf etc/snort.conf \
 		$RPM_BUILD_ROOT/%{_sysconfdir}/snort
 	find doc -maxdepth 1 -type f -not -name 'Makefile*' -exec %__install -p -m 0644 {} $RPM_BUILD_ROOT%{_docdir}/%{realname}-%{version} \;
@@ -534,8 +534,8 @@ fi
 %attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dns_preproc.*
 %attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssh_preproc.*
 %attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_ssl_preproc.*
+%attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dcerpc_preproc.*
 %attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_dce2_preproc.*
-%attr(0755,root,root) %{_libdir}/%{realname}-%{version}_dynamicpreprocessor/libsf_sdf_preproc.*
 %dir %{_docdir}/%{realname}-%{version}
 %docdir %{_docdir}/%{realname}-%{version}
 

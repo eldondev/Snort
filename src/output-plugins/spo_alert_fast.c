@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 2000,2001 Andrew R. Baker <andrewb@uab.edu>
 **
@@ -19,14 +19,14 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_fast.c,v 1.38 2011/06/08 00:33:15 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_alert_fast
- *
+ * 
  * Purpose:  output plugin for fast alerting
  *
  * Arguments:  alert file
- *
+ *   
  * Effect:
  *
  * Alerts are written to a file in the snort fast alert format
@@ -39,6 +39,17 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include "event.h"
+#include "decode.h"
+#include "debug.h"
+#include "plugbase.h"
+#include "spo_plugbase.h"
+#include "parser.h"
+#include "util.h"
+#include "log.h"
+#include "mstring.h"
+#include "snort.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,22 +67,9 @@
 
 #include <sys/types.h>
 
-#include "spo_alert_fast.h"
-#include "event.h"
-#include "decode.h"
-#include "snort_debug.h"
-#include "plugbase.h"
-#include "spo_plugbase.h"
-#include "parser.h"
-#include "util.h"
-#include "log.h"
-#include "mstring.h"
-#include "active.h"
 #include "sfutil/sf_textlog.h"
 #include "log_text.h"
 #include "sf_textlog.h"
-#include "snort.h"
-#include "sfdaq.h"
 
 /* full buf was chosen to allow printing max size packets
  * in hex/ascii mode:
@@ -86,6 +84,9 @@
 #define DEFAULT_FILE  "alert.fast"
  */
 #define DEFAULT_LIMIT (128*M_BYTES)
+
+extern char *pcap_interface;
+extern SnortConfig *snort_conf_for_parsing;
 
 typedef struct _SpoAlertFastData
 {
@@ -102,7 +103,7 @@ static void AlertFast(Packet *, char *, void *, Event *);
 /*
  * Function: SetupAlertFast()
  *
- * Purpose: Registers the output plugin keyword and initialization
+ * Purpose: Registers the output plugin keyword and initialization 
  *          function into the output plugin list.  This is the function that
  *          gets called from InitOutputPlugins() in plugbase.c.
  *
@@ -113,7 +114,7 @@ static void AlertFast(Packet *, char *, void *, Event *);
  */
 void AlertFastSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("alert_fast", OUTPUT_TYPE_FLAG__ALERT, AlertFastInit);
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Output plugin: AlertFast is setup...\n"););
@@ -141,7 +142,7 @@ static void AlertFastInit(char *args)
     data = ParseAlertFastArgs(args);
 
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Linking AlertFast functions to call lists...\n"););
-
+    
     /* Set the preprocessor function into the function list */
     AddFuncToOutputList(AlertFast, OUTPUT_TYPE__ALERT, data);
     AddFuncToCleanExitList(AlertFastCleanExitFunc, data);
@@ -154,15 +155,8 @@ static void AlertFast(Packet *p, char *msg, void *arg, Event *event)
 
     LogTimeStamp(data->log, p);
 
-    if( p != NULL && Active_PacketWasDropped() )
-    {
+    if( p != NULL && p->packet_flags & PKT_INLINE_DROP )
         TextLog_Puts(data->log, " [Drop]");
-    }
-    else if( p != NULL && Active_PacketWouldBeDropped() )
-    {
-        TextLog_Puts(data->log, " [WDrop]");
-    }
-
 
     if(msg != NULL)
     {
@@ -187,7 +181,7 @@ static void AlertFast(Packet *p, char *msg, void *arg, Event *event)
 
         if (ScAlertInterface())
         {
-            TextLog_Print(data->log, " <%s> ", PRINT_INTERFACE(DAQ_GetInterfaceSpec()));
+            TextLog_Print(data->log, " <%s> ", PRINT_INTERFACE(pcap_interface));
             TextLog_Puts(data->log, msg);
         }
         else
@@ -199,12 +193,40 @@ static void AlertFast(Packet *p, char *msg, void *arg, Event *event)
     }
 
     /* print the packet header to the alert file */
-    if ((p != NULL) && IPH_IS_VALID(p))
+    if(p && IPH_IS_VALID(p))
     {
         LogPriorityData(data->log, 0);
+
         TextLog_Print(data->log, "{%s} ", protocol_names[GET_IPH_PROTO(p)]);
-        LogIpAddrs(data->log, p);
-    }
+
+        if(p->frag_flag)
+        {
+            /* just print the straight IP header */
+            TextLog_Puts(data->log, inet_ntoa(GET_SRC_ADDR(p)));
+            TextLog_Puts(data->log, " -> ");
+            TextLog_Puts(data->log, inet_ntoa(GET_DST_ADDR(p)));
+        }
+        else
+        {
+            switch(GET_IPH_PROTO(p))
+            {
+                case IPPROTO_UDP:
+                case IPPROTO_TCP:
+                    /* print the header complete with port information */
+                    TextLog_Puts(data->log, inet_ntoa(GET_SRC_ADDR(p)));
+                    TextLog_Print(data->log, ":%d -> ", p->sp);
+                    TextLog_Puts(data->log, inet_ntoa(GET_DST_ADDR(p)));
+                    TextLog_Print(data->log, ":%d", p->dp);
+                    break;
+                case IPPROTO_ICMP:
+                default:
+                    /* just print the straight IP header */
+                    TextLog_Puts(data->log, inet_ntoa(GET_SRC_ADDR(p)));
+                    TextLog_Puts(data->log, " -> ");
+                    TextLog_Puts(data->log, inet_ntoa(GET_DST_ADDR(p)));
+            }
+        }
+    }               /* end of if (p) */
 
     if(p && data->packet_flag)
     {
@@ -212,20 +234,27 @@ static void AlertFast(Packet *p, char *msg, void *arg, Event *event)
          * if we're actually going to show any of the payload */
         if (ScOutputAppData() && (p->dsize > 0))
         {
+            if (p->packet_flags &
+                (PKT_DCE_RPKT | PKT_REBUILT_STREAM | PKT_REBUILT_FRAG |
+                 PKT_SMB_SEG | PKT_DCE_SEG | PKT_DCE_FRAG | PKT_SMB_TRANS))
+            {
+                TextLog_NewLine(data->log);
+            }
+
             if (p->packet_flags & PKT_SMB_SEG)
-                TextLog_Print(data->log, "\n%s", "SMB desegmented packet");
+                TextLog_Print(data->log, "%s", "SMB desegmented packet");
             else if (p->packet_flags & PKT_DCE_SEG)
-                TextLog_Print(data->log, "\n%s", "DCE/RPC desegmented packet");
+                TextLog_Print(data->log, "%s", "DCE/RPC desegmented packet");
             else if (p->packet_flags & PKT_DCE_FRAG)
-                TextLog_Print(data->log, "\n%s", "DCE/RPC defragmented packet");
+                TextLog_Print(data->log, "%s", "DCE/RPC defragmented packet");
             else if (p->packet_flags & PKT_SMB_TRANS)
-                TextLog_Print(data->log, "\n%s", "SMB Transact reassembled packet");
+                TextLog_Print(data->log, "%s", "SMB Transact reassembled packet");
             else if (p->packet_flags & PKT_DCE_RPKT)
-                TextLog_Print(data->log, "\n%s", "DCE/RPC reassembled packet");
+                TextLog_Print(data->log, "%s", "DCE/RPC reassembled packet");
             else if (p->packet_flags & PKT_REBUILT_STREAM)
-                TextLog_Print(data->log, "\n%s", "Stream reassembled packet");
+                TextLog_Print(data->log, "%s", "Stream reassembled packet");
             else if (p->packet_flags & PKT_REBUILT_FRAG)
-                TextLog_Print(data->log, "\n%s", "Frag reassembled packet");
+                TextLog_Print(data->log, "%s", "Frag reassembled packet");
         }
 
         TextLog_NewLine(data->log);
@@ -332,14 +361,8 @@ static SpoAlertFastData *ParseAlertFastArgs(char *args)
         DEBUG_INIT, "alert_fast: '%s' %d %ld\n",
         filename?filename:"alert", data->packet_flag, limit
     ););
-
-    if ((filename == NULL) && (snort_conf->alert_file != NULL))
-        filename = SnortStrdup(snort_conf->alert_file);
-
     data->log = TextLog_Init(filename, bufSize, limit);
-
-    if (filename != NULL)
-        free(filename);
+    if ( filename ) free(filename);
 
     return data;
 }

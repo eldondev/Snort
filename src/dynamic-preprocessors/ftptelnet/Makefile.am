@@ -1,23 +1,27 @@
 ## $Id
 AUTOMAKE_OPTIONS=foreign no-dependencies
 
-INCLUDES = -I../include -I${srcdir}/../libs -I$(srcdir)/includes
+INCLUDES = -I../include -I./includes
 
 libdir = ${exec_prefix}/lib/snort_dynamicpreprocessor
 
 lib_LTLIBRARIES = libsf_ftptelnet_preproc.la
 
-libsf_ftptelnet_preproc_la_LDFLAGS = -shared -export-dynamic -module @XCCFLAGS@
-if SO_WITH_STATIC_LIB
-libsf_ftptelnet_preproc_la_LIBADD = ../libsf_dynamic_preproc.la
-else
+libsf_ftptelnet_preproc_la_LDFLAGS = -module
+
+BUILT_SOURCES = \
+sf_dynamic_preproc_lib.c \
+sf_ip.c \
+sfrt.c \
+sfrt_dir.c \
+sfPolicyUserData.c 
+
 nodist_libsf_ftptelnet_preproc_la_SOURCES = \
-../include/sf_dynamic_preproc_lib.c \
-../include/sf_ip.c \
-../include/sfrt.c \
-../include/sfrt_dir.c \
-../include/sfPolicyUserData.c
-endif
+sf_dynamic_preproc_lib.c \
+sf_ip.c \
+sfrt.c \
+sfrt_dir.c \
+sfPolicyUserData.c 
 
 libsf_ftptelnet_preproc_la_SOURCES = \
 ftp_bounce_lookup.c \
@@ -51,11 +55,32 @@ pp_telnet.h \
 snort_ftptelnet.c \
 snort_ftptelnet.h \
 spp_ftptelnet.c \
-spp_ftptelnet.h
+spp_ftptelnet.h \
+sf_preproc_info.h
 
 EXTRA_DIST = \
 sf_ftptelnet.dsp
 
+sf_dynamic_preproc_lib.c: ../include/sf_dynamic_preproc_lib.c
+	cp $? $@
+
+sf_ip.c: ../include/sf_ip.c
+	cp $? $@
+
+sfrt.c: ../include/sfrt.c
+	cp $? $@
+
+sfrt_dir.c: ../include/sfrt_dir.c
+	cp $? $@
+
+sfPolicyUserData.c: ../include/sfPolicyUserData.c
+	cp $? $@
+
 all-local:
 	$(MAKE) DESTDIR=`pwd`/../build install-libLTLIBRARIES
+
+clean-local:
+	rm -f sf_dynamic_preproc_lib.c sf_ip.c sfrt.c sfrt_dir.c sfPolicyUserData.c 
+
+DIST_SUBDIRS = .
 

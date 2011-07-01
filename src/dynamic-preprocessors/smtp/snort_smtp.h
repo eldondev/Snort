@@ -1,6 +1,6 @@
 /****************************************************************************
- *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * 
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -45,8 +45,6 @@
 #include "smtp_config.h"
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
-#include "mempool.h"
-#include "sf_email_attach_decode.h"
 
 #ifdef DEBUG
 #include "sf_types.h"
@@ -97,17 +95,6 @@
 #define SMTP_FLAG_IN_CONTENT_TYPE            0x00000008
 #define SMTP_FLAG_GOT_BOUNDARY               0x00000010
 #define SMTP_FLAG_DATA_HEADER_CONT           0x00000020
-#define SMTP_FLAG_IN_CONT_TRANS_ENC          0x00000040
-#define SMTP_FLAG_EMAIL_ATTACH               0x00000080
-#define SMTP_FLAG_MULTIPLE_EMAIL_ATTACH      0x00000100
-#define SMTP_FLAG_IN_CONT_DISP               0x00000200
-#define SMTP_FLAG_IN_CONT_DISP_CONT          0x00000400
-
-/* log flags */
-#define SMTP_FLAG_MAIL_FROM_PRESENT          0x00000001
-#define SMTP_FLAG_RCPT_TO_PRESENT            0x00000002
-#define SMTP_FLAG_FILENAME_PRESENT           0x00000004
-#define SMTP_FLAG_EMAIL_HDRS_PRESENT         0x00000008
 
 /* session flags */
 #define SMTP_FLAG_XLINK2STATE_GOTFIRSTCHUNK  0x00000001
@@ -210,8 +197,6 @@ typedef enum _SMTPRespEnum
 typedef enum _SMTPHdrEnum
 {
     HDR_CONTENT_TYPE = 0,
-    HDR_CONT_TRANS_ENC,
-    HDR_CONT_DISP,
     HDR_LAST
 
 } SMTPHdrEnum;
@@ -249,24 +234,15 @@ typedef struct _SMTPPcre
 
 } SMTPPcre;
 
-typedef struct s_SMTP_LogState
-{
-    MemBucket *log_hdrs_bkt;
-    unsigned char *emailHdrs;
-    uint32_t log_depth;
-    uint32_t hdrs_logged;
-} SMTP_LogState;
-
 typedef struct _SMTP
 {
     int state;
     int data_state;
     int state_flags;
-    int log_flags;
     int session_flags;
     int alert_mask;
     int reassembling;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
     uint64_t session_number;
 #endif
 
@@ -275,13 +251,7 @@ typedef struct _SMTP
     int               cur_server_line_len;
     */
 
-    MemBucket *decode_bkt;
     SMTPMimeBoundary  mime_boundary;
-    Email_DecodeState *decode_state;
-    SMTP_LogState *log_state;
-    SFDataBuffer recipients;
-    SFDataBuffer senders;
-    SFDataBuffer filenames;
 
     /* In future if we look at forwarded mail (message/rfc822) we may
      * need to keep track of additional mime boundaries

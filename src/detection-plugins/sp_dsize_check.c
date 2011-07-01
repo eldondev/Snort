@@ -1,6 +1,6 @@
-/* $Id: sp_dsize_check.c,v 1.31 2011/06/08 00:33:09 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -27,12 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sf_types.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "parser.h"
 #include "plugin_enum.h"
 #include "util.h"
@@ -90,7 +88,7 @@ int DSizeCheckCompare(void *l, void *r)
 
     if (!left || !right)
         return DETECTION_OPTION_NOT_EQUAL;
-
+                                
     if (( left->dsize == right->dsize) &&
         ( left->dsize2 == right->dsize2) &&
         ( left->operator == right->operator))
@@ -102,7 +100,7 @@ int DSizeCheckCompare(void *l, void *r)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: SetupDsizeCheck()
  *
  * Purpose: Attach the dsize keyword to the rule parse function
@@ -115,7 +113,7 @@ int DSizeCheckCompare(void *l, void *r)
 void SetupDsizeCheck(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("dsize", DsizeCheckInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("dsize", DsizeCheckInit, NULL, OPT_TYPE_DETECTION);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("dsize_eq", &dsizePerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
@@ -124,10 +122,10 @@ void SetupDsizeCheck(void)
 
 
 /****************************************************************************
- *
+ * 
  * Function: DsizeCheckInit(char *, OptTreeNode *)
  *
- * Purpose: Parse the rule argument and attach it to the rule data struct,
+ * Purpose: Parse the rule argument and attach it to the rule data struct, 
  *          then attach the detection function to the function list
  *
  * Arguments: data => rule arguments/data
@@ -151,7 +149,7 @@ void DsizeCheckInit(char *data, OptTreeNode *otn, int protocol)
     otn->ds_list[PLUGIN_DSIZE_CHECK] = (DsizeCheckData *)
         SnortAlloc(sizeof(DsizeCheckData));
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     ParseDsize(data, otn);
 
@@ -162,11 +160,11 @@ void DsizeCheckInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: ParseDsize(char *, OptTreeNode *)
  *
  * Purpose: Parse the dsize function argument and attach the detection
- *          function to the rule list as well.
+ *          function to the rule list as well.  
  *
  * Arguments: data => argument data
  *            otn => pointer to the current rule's OTN
@@ -191,7 +189,7 @@ void ParseDsize(char *data, OptTreeNode *otn)
 
     /* If a range is specified, put min in ds_ptr->dsize and max in
        ds_ptr->dsize2 */
-
+    
     if(isdigit((int)*data) && strchr(data, '<') && strchr(data, '>'))
     {
         pcTok = strtok(data, " <>");
@@ -231,9 +229,9 @@ void ParseDsize(char *data, OptTreeNode *otn)
 
         ds_ptr->operator = DSIZE_RANGE;
 
-#ifdef DEBUG_MSGS
-        DebugMessage(DEBUG_PLUGIN, "min dsize: %d\n", ds_ptr->dsize);
-        DebugMessage(DEBUG_PLUGIN, "max dsize: %d\n", ds_ptr->dsize2);
+#ifdef DEBUG
+        printf("min dsize: %d\n", ds_ptr->dsize);
+        printf("max dsize: %d\n", ds_ptr->dsize2);
 #endif
         fpl = AddOptFuncToList(CheckDsize, otn);
         fpl->type = RULE_OPTION_TYPE_DSIZE;
@@ -290,7 +288,7 @@ void ParseDsize(char *data, OptTreeNode *otn)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: CheckDsizeEq(char *, OptTreeNode *)
  *
  * Purpose: Test the packet's payload size against the rule payload size value

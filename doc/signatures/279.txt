@@ -56,13 +56,4 @@ Snort documentation contributed by Steven Alexander<alexander.s@mccd.edu>
 -- 
 Additional References:
 
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0221
-
-Bugtraq:
-http://www.securityfocus.com/bid/1009
-
-Nortel:
-http://www.nortelnetworks.com
-
 --

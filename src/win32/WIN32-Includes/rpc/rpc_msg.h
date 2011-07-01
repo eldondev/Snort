@@ -1,4 +1,4 @@
-/*  $Id: rpc_msg.h,v 1.3 2003/10/20 15:03:45 chrisgreen Exp $ */
+/*  $Id$ */
 /*	$OpenBSD: rpc_msg.h,v 1.2 1997/09/21 10:46:15 niklas Exp $	*/
 /*	$NetBSD: rpc_msg.h,v 1.5 1995/04/29 05:28:00 cgd Exp $	*/
 

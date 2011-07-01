@@ -41,22 +41,23 @@
 #include "plugbase.h"
 #include "spo_plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "mstring.h"
+
 #include "snort.h"
-#include "sfdaq.h"
 
 #define ANALYZER_CLASS "NIDS"
 #define ANALYZER_MODEL "Snort"
 #define ANALYZER_MANUFACTURER "http://www.snort.org"
-#define ANALYZER_SID_URL "http://www.snort.org/search/sid/"
+#define ANALYZER_SID_URL "http://www.snort.org/pub-bin/sigs.cgi?sid="
 
 #define SNORT_MAX_OWNED_SID 1000000
 #define DEFAULT_ANALYZER_NAME "snort"
 
 
 extern OptTreeNode *otn_tmp;
+extern char *pcap_interface;
 
 static char *init_args = NULL;
 static unsigned int info_priority = 4;
@@ -69,7 +70,7 @@ static int setup_analyzer(idmef_analyzer_t *analyzer)
 {
         int ret;
         prelude_string_t *string;
-
+        
         ret = idmef_analyzer_new_model(analyzer, &string);
         if ( ret < 0 )
                 return ret;
@@ -81,7 +82,7 @@ static int setup_analyzer(idmef_analyzer_t *analyzer)
         prelude_string_set_constant(string, ANALYZER_CLASS);
 
         ret = idmef_analyzer_new_manufacturer(analyzer, &string);
-        if ( ret < 0 )
+        if ( ret < 0 ) 
                 return ret;
         prelude_string_set_constant(string, ANALYZER_MANUFACTURER);
 
@@ -135,26 +136,29 @@ static int event_to_source_target(Packet *p, idmef_alert_t *alert)
 
         if ( ! IPH_IS_VALID(p) )
                 return 0;
-
+        
         ret = idmef_alert_new_source(alert, &source, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
 
-        ret = idmef_source_new_interface(source, &string);
-        if ( ret < 0 )
-            return ret;
-        prelude_string_set_ref(string, PRINT_INTERFACE(DAQ_GetInterfaceSpec()));
-
+        if (pcap_interface != NULL)
+        {
+            ret = idmef_source_new_interface(source, &string);
+            if ( ret < 0 )
+                return ret;
+            prelude_string_set_ref(string, pcap_interface);
+        }
+        
         ret = idmef_source_new_service(source, &service);
         if ( ret < 0 )
                 return ret;
 
         if ( p->tcph || p->udph )
                 idmef_service_set_port(service, p->sp);
-
+        
         idmef_service_set_ip_version(service, GET_IPH_VER(p));
         idmef_service_set_iana_protocol_number(service, GET_IPH_PROTO(p));
-
+        
         ret = idmef_source_new_node(source, &node);
         if ( ret < 0 )
                 return ret;
@@ -166,7 +170,7 @@ static int event_to_source_target(Packet *p, idmef_alert_t *alert)
         ret = idmef_address_new_address(address, &string);
         if ( ret < 0 )
                 return ret;
-
+        
         SnortSnprintf(saddr, sizeof(saddr), "%s", inet_ntoa(GET_SRC_ADDR(p)));
         prelude_string_set_ref(string, saddr);
 
@@ -174,36 +178,39 @@ static int event_to_source_target(Packet *p, idmef_alert_t *alert)
         if ( ret < 0 )
                 return ret;
 
-        ret = idmef_target_new_interface(target, &string);
-        if ( ret < 0 )
-            return ret;
-        prelude_string_set_ref(string, PRINT_INTERFACE(DAQ_GetInterfaceSpec()));
+        if (pcap_interface != NULL)
+        {
+            ret = idmef_target_new_interface(target, &string);
+            if ( ret < 0 )
+                return ret;
+            prelude_string_set_ref(string, pcap_interface);
+        }
 
         ret = idmef_target_new_service(target, &service);
         if ( ! ret < 0 )
                 return ret;
-
-        if ( p->tcph || p->udph )
+        
+        if ( p->tcph || p->udph )                
                 idmef_service_set_port(service, p->dp);
-
+        
         idmef_service_set_ip_version(service, GET_IPH_VER(p));
         idmef_service_set_iana_protocol_number(service, GET_IPH_PROTO(p));
-
+        
         ret = idmef_target_new_node(target, &node);
         if ( ret < 0 )
                 return ret;
-
+        
         ret = idmef_node_new_address(node, &address, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
-
+        
         ret = idmef_address_new_address(address, &string);
         if ( ret < 0 )
                 return ret;
-
+                
         SnortSnprintf(daddr, sizeof(daddr), "%s", inet_ntoa(GET_DST_ADDR(p)));
         prelude_string_set_ref(string, daddr);
-
+        
         return 0;
 }
 
@@ -217,7 +224,7 @@ static int add_byte_data(idmef_alert_t *alert, const char *meaning, const unsign
 
         if ( ! data || ! size )
                 return 0;
-
+        
         ret = idmef_alert_new_additional_data(alert, &ad, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
@@ -235,14 +242,14 @@ static int add_byte_data(idmef_alert_t *alert, const char *meaning, const unsign
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+        
         ret = prelude_string_set_ref(str, meaning);
         if ( ret < 0 ) {
                 ErrorMessage("%s: error setting byte string data meaning: %s.\n",
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+                
         return 0;
 }
 
@@ -256,7 +263,7 @@ static int add_string_data(idmef_alert_t *alert, const char *meaning, const char
 
         if ( ! data )
                 return 0;
-
+        
         ret = idmef_alert_new_additional_data(alert, &ad, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
@@ -274,14 +281,14 @@ static int add_string_data(idmef_alert_t *alert, const char *meaning, const char
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+        
         ret = prelude_string_set_ref(str, meaning);
         if ( ret < 0 ) {
                 ErrorMessage("%s: error setting string data meaning: %s.\n",
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+        
         return 0;
 }
 
@@ -292,11 +299,11 @@ static int add_int_data(idmef_alert_t *alert, const char *meaning, uint32_t data
         int ret;
         prelude_string_t *str;
         idmef_additional_data_t *ad;
-
+        
         ret = idmef_alert_new_additional_data(alert, &ad, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
-
+        
         idmef_additional_data_set_integer(ad, data);
 
         ret = idmef_additional_data_new_meaning(ad, &str);
@@ -305,14 +312,14 @@ static int add_int_data(idmef_alert_t *alert, const char *meaning, uint32_t data
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+        
         ret = prelude_string_set_ref(str, meaning);
         if ( ret < 0 ) {
                 ErrorMessage("%s: error setting integer data meaning: %s.\n",
                              prelude_strsource(ret), prelude_strerror(ret));
                 return -1;
         }
-
+        
         return 0;
 }
 
@@ -322,13 +329,13 @@ static int add_int_data(idmef_alert_t *alert, const char *meaning, uint32_t data
 static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
 {
         int i;
-
+        
         if ( ! p )
             return 0;
 
         add_int_data(alert, "snort_rule_sid", event->sig_id);
         add_int_data(alert, "snort_rule_rev", event->sig_rev);
-
+        
         if ( IPH_IS_VALID(p) ) {
                 add_int_data(alert, "ip_ver", GET_IPH_VER(p));
                 add_int_data(alert, "ip_hlen", GET_IPH_HLEN(p));
@@ -351,18 +358,18 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
 #else
                 add_int_data(alert, "ip_sum", ntohs(p->iph->ip_csum));
 #endif
-
+                
                 for ( i = 0; i < p->ip_option_count; i++ ) {
                         add_int_data(alert, "ip_option_code", p->ip_options[i].code);
-                        add_byte_data(alert, "ip_option_data",
-                            p->ip_options[i].data, p->ip_options[i].len);
+                        add_byte_data(alert, "ip_option_data", 
+                            p->ip_options[i].data, p->ip_options[i].len);        
                 }
         }
-
+        
         if ( p->tcph ) {
                 add_int_data(alert, "tcp_seq", ntohl(p->tcph->th_seq));
                 add_int_data(alert, "tcp_ack", ntohl(p->tcph->th_ack));
-
+                
                 add_int_data(alert, "tcp_off", TCP_OFFSET(p->tcph));
                 add_int_data(alert, "tcp_res", TCP_X2(p->tcph));
                 add_int_data(alert, "tcp_flags", p->tcph->th_flags);
@@ -371,10 +378,10 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
                 add_int_data(alert, "tcp_sum", ntohs(p->tcph->th_sum));
                 add_int_data(alert, "tcp_urp", ntohs(p->tcph->th_urp));
 
-
+                
                 for ( i = 0; i < p->tcp_option_count; i++ ) {
                         add_int_data(alert, "tcp_option_code", p->tcp_options[i].code);
-                        add_byte_data(alert, "tcp_option_data", p->tcp_options[i].data, p->tcp_options[i].len);
+                        add_byte_data(alert, "tcp_option_data", p->tcp_options[i].data, p->tcp_options[i].len);        
                 }
         }
 
@@ -389,7 +396,7 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
                 add_int_data(alert, "icmp_sum", ntohs(p->icmph->csum));
 
                 switch ( p->icmph->type ) {
-
+                        
                 case ICMP_ECHO:
                 case ICMP_ECHOREPLY:
                 case ICMP_INFO_REQUEST:
@@ -399,13 +406,13 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
                         add_int_data(alert, "icmp_id", ntohs(p->icmph->s_icmp_id));
                         add_int_data(alert, "icmp_seq", ntohs(p->icmph->s_icmp_seq));
                         break;
-
+                        
                 case ICMP_ADDRESSREPLY:
                         add_int_data(alert, "icmp_id", ntohs(p->icmph->s_icmp_id));
                         add_int_data(alert, "icmp_seq", ntohs(p->icmph->s_icmp_seq));
                         add_int_data(alert, "icmp_mask", (uint32_t) ntohl(p->icmph->s_icmp_mask));
                         break;
-
+                
                 case ICMP_REDIRECT:
 #ifndef SUP_IP6
                         add_string_data(alert, "icmp_gwaddr", inet_ntoa(p->icmph->s_icmp_gwaddr));
@@ -417,13 +424,13 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
                         }
 #endif
                         break;
-
+                
                 case ICMP_ROUTER_ADVERTISE:
                         add_int_data(alert, "icmp_num_addrs", p->icmph->s_icmp_num_addrs);
                         add_int_data(alert, "icmp_wpa", p->icmph->s_icmp_wpa);
                         add_int_data(alert, "icmp_lifetime", ntohs(p->icmph->s_icmp_lifetime));
                         break;
-
+                
                 case ICMP_TIMESTAMPREPLY:
                         add_int_data(alert, "icmp_id", ntohs(p->icmph->s_icmp_id));
                         add_int_data(alert, "icmp_seq", ntohs(p->icmph->s_icmp_seq));
@@ -435,7 +442,7 @@ static int packet_to_data(Packet *p, Event *event, idmef_alert_t *alert)
         }
 
         add_byte_data(alert, "payload", p->data, p->dsize);
-
+        
         return 0;
 }
 
@@ -449,7 +456,7 @@ static int event_to_impact(Event *event, idmef_alert_t *alert)
         idmef_impact_t *impact;
         idmef_assessment_t *assessment;
         idmef_impact_severity_t severity;
-
+        
         ret = idmef_alert_new_assessment(alert, &assessment);
         if ( ret < 0 )
                 return ret;
@@ -473,7 +480,7 @@ static int event_to_impact(Event *event, idmef_alert_t *alert)
 
         if ( ! otn_tmp )
                 return 0;
-
+        
         classtype = otn_tmp->sigInfo.classType;
         if ( classtype ) {
                 ret = idmef_impact_new_description(impact, &str);
@@ -482,7 +489,7 @@ static int event_to_impact(Event *event, idmef_alert_t *alert)
 
                 prelude_string_set_ref(str, classtype->name);
         }
-
+        
         return 0;
 }
 
@@ -496,15 +503,15 @@ static int add_snort_reference(idmef_classification_t *class, int gen_id, int si
 
         if ( sig_id >= SNORT_MAX_OWNED_SID )
                 return 0;
-
+        
         ret = idmef_classification_new_reference(class, &ref, IDMEF_LIST_APPEND);
         if ( ret < 0 )
                 return ret;
-
+        
         ret = idmef_reference_new_name(ref, &str);
         if ( ret < 0 )
                 return ret;
-
+        
         idmef_reference_set_origin(ref, IDMEF_REFERENCE_ORIGIN_VENDOR_SPECIFIC);
 
         if ( gen_id == 0 )
@@ -522,7 +529,7 @@ static int add_snort_reference(idmef_classification_t *class, int gen_id, int si
         ret = prelude_string_sprintf(str, "Snort Signature ID");
         if ( ret < 0 )
                 return ret;
-
+        
         ret = idmef_reference_new_url(ref, &str);
         if ( ret < 0 )
                 return ret;
@@ -530,8 +537,8 @@ static int add_snort_reference(idmef_classification_t *class, int gen_id, int si
         if ( gen_id == 0 )
                 ret = prelude_string_sprintf(str, ANALYZER_SID_URL "%u", sig_id);
         else
-                ret = prelude_string_sprintf(str, ANALYZER_SID_URL "%u-%u", gen_id, sig_id);
-
+                ret = prelude_string_sprintf(str, ANALYZER_SID_URL "%u:%u", gen_id, sig_id);
+         
         return ret;
 }
 
@@ -571,7 +578,7 @@ static int event_to_reference(Event *event, idmef_classification_t *class)
                 system = refs->system;
                 if ( ! system )
                         continue;
-
+                
                 ret = idmef_classification_new_reference(class, &ref, IDMEF_LIST_APPEND);
                 if ( ret < 0 )
                         return ret;
@@ -579,7 +586,7 @@ static int event_to_reference(Event *event, idmef_classification_t *class)
                 ret = idmef_reference_new_name(ref, &str);
                 if ( ret < 0 )
                         return ret;
-
+                
                 idmef_reference_set_origin(ref, reference_to_origin(system->name));
                 if ( idmef_reference_get_origin(ref) != IDMEF_REFERENCE_ORIGIN_VENDOR_SPECIFIC )
                         prelude_string_set_ref(str, refs->id);
@@ -589,9 +596,9 @@ static int event_to_reference(Event *event, idmef_classification_t *class)
                 ret = idmef_reference_new_url(ref, &str);
                 if ( ret < 0 )
                         return ret;
-
+                
                 prelude_string_sprintf(str, "%s%s", system->url ? system->url : "", refs->id ? refs->id : "");
-        }
+        }        
 
         return 0;
 }
@@ -637,15 +644,15 @@ void snort_alert_prelude(Packet *p, char *msg, void *data, Event *event)
         ret = event_to_reference(event, class);
         if ( ret < 0 )
                 goto err;
-
+        
         ret = event_to_source_target(p, alert);
         if ( ret < 0 )
                 goto err;
-
+        
         ret = packet_to_data(p, event, alert);
         if ( ret < 0 )
                 goto err;
-
+        
         ret = idmef_alert_new_detect_time(alert, &time);
         if ( ret < 0 )
                 goto err;
@@ -653,15 +660,15 @@ void snort_alert_prelude(Packet *p, char *msg, void *data, Event *event)
         tv.tv_sec = p->pkth->ts.tv_sec;
         tv.tv_usec = p->pkth->ts.tv_usec;
         idmef_time_set_from_timeval(time, &tv);
-
+        
         ret = idmef_time_new_from_gettimeofday(&time);
         if ( ret < 0 )
-                goto err;
+                goto err; 
         idmef_alert_set_create_time(alert, time);
-
+                
         idmef_alert_set_analyzer(alert, idmef_analyzer_ref(prelude_client_get_analyzer(client)), IDMEF_LIST_PREPEND);
         prelude_client_send_idmef(client, idmef);
-
+                
  err:
         idmef_message_destroy(idmef);
 }
@@ -689,26 +696,26 @@ static void parse_args(char *args, char **profile)
 {
         int i, tokens, ret;
         char **args_table, *value, *key;
-
+                
         args_table = mSplit(args, " \t", 0, &tokens, '\\');
         for ( i = 0; i < tokens; i++ ) {
-
+                
                 key = args_table[i];
                 strtok(key, "=");
-
+                
                 value = strtok(NULL, "");
                 if ( ! value )
                         FatalError("spo_alert_prelude: missing value for keyword '%s'.\n", key);
-
+                
                 ret = strcasecmp("profile", key);
                 if ( ret == 0 ) {
                         if ( *profile )
                                 free(*profile);
-
+                        
                         *profile = strdup(value);
                         continue;
                 }
-
+                
                 ret = strcasecmp("info", key);
                 if ( ret == 0 ) {
                         info_priority = atoi(value);
@@ -743,10 +750,10 @@ void AlertPreludeSetupAfterSetuid(void)
 
         if ( ! initialized )
                 return;
-
+        
         parse_args(init_args, &profile);
         free(init_args);
-
+       
         ret = prelude_thread_init(NULL);
         if ( ret < 0 )
             FatalError("%s: Unable to initialize the Prelude thread subsystem: %s.\n",
@@ -756,26 +763,26 @@ void AlertPreludeSetupAfterSetuid(void)
         if ( ret < 0 )
                 FatalError("%s: Unable to initialize the Prelude library: %s.\n",
                            prelude_strsource(ret), prelude_strerror(ret));
-
+        
         ret = prelude_client_new(&client, profile ? profile : DEFAULT_ANALYZER_NAME);
         if ( profile )
                 free(profile);
-
+        
         if ( ret < 0 )
                 FatalError("%s: Unable to create a prelude client object: %s.\n",
                            prelude_strsource(ret), prelude_strerror(ret));
 
-
+        
         flags = PRELUDE_CLIENT_FLAGS_ASYNC_SEND|PRELUDE_CLIENT_FLAGS_ASYNC_TIMER;
-
+        
         ret = prelude_client_set_flags(client, prelude_client_get_flags(client) | flags);
         if ( ret < 0 )
                 FatalError("%s: Unable to set asynchronous send and timer: %s.\n",
                            prelude_strsource(ret), prelude_strerror(ret));
 
-
+        
         setup_analyzer(prelude_client_get_analyzer(client));
-
+        
         ret = prelude_client_start(client);
         if ( ret < 0 ) {
                 if ( prelude_client_is_setup_needed(ret) )
@@ -784,7 +791,7 @@ void AlertPreludeSetupAfterSetuid(void)
                 FatalError("%s: Unable to initialize prelude client: %s.\n",
                            prelude_strsource(ret), prelude_strerror(ret));
         }
-
+                
         AddFuncToOutputList(snort_alert_prelude, OUTPUT_TYPE__ALERT, client);
         AddFuncToCleanExitList(snort_alert_prelude_clean_exit, client);
         AddFuncToRestartList(snort_alert_prelude_clean_exit, client);

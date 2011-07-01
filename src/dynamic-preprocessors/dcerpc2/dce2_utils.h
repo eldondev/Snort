@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- ****************************************************************************
+ **************************************************************************** 
  *
  ****************************************************************************/
 
@@ -26,11 +26,11 @@
 #include "dce2_debug.h"
 #include "dce2_memory.h"
 #include "dcerpc.h"
-//#include "sf_types.h"
+#include "sf_types.h"
 #include "sf_snort_packet.h"
 #include "sf_dynamic_preprocessor.h"
-//#include "snort_debug.h"
-#include "snort_bounds.h"
+#include "debug.h"
+#include "bounds.h"
 
 /********************************************************************
  * Macros
@@ -39,6 +39,9 @@
 
 #define DCE2_MOVE(data_ptr, data_len, amount) \
     { data_ptr = (uint8_t *)data_ptr + (amount); data_len -= (amount); }
+
+#define DCE2_PKT_SIZE  (ETHER_HDR_LEN + SUN_SPARC_TWIDDLE + IP_MAXPKT + VLAN_HDR_LEN)
+#define DCE2_PKTH_SIZE (sizeof(struct pcap_pkthdr) + DCE2_PKT_SIZE)
 
 /********************************************************************
  * Enumerations
@@ -111,38 +114,34 @@ typedef struct _DCE2_Buffer
 /********************************************************************
  * Inline function prototypes
  ********************************************************************/
-static inline int DCE2_BufferIsEmpty(DCE2_Buffer *);
-static inline void DCE2_BufferEmpty(DCE2_Buffer *);
-static inline uint32_t DCE2_BufferSize(DCE2_Buffer *);
-static inline uint32_t DCE2_BufferLength(DCE2_Buffer *);
-static inline void DCE2_BufferSetLength(DCE2_Buffer *, uint32_t);
-static inline uint8_t * DCE2_BufferData(DCE2_Buffer *);
-static inline uint32_t DCE2_BufferMinAllocSize(DCE2_Buffer *);
-static inline void DCE2_BufferSetMinAllocSize(DCE2_Buffer *, uint32_t);
+static INLINE int DCE2_BufferIsEmpty(DCE2_Buffer *);
+static INLINE void DCE2_BufferEmpty(DCE2_Buffer *);
+static INLINE uint32_t DCE2_BufferSize(DCE2_Buffer *);
+static INLINE uint32_t DCE2_BufferLength(DCE2_Buffer *);
+static INLINE void DCE2_BufferSetLength(DCE2_Buffer *, uint32_t);
+static INLINE uint8_t * DCE2_BufferData(DCE2_Buffer *);
+static INLINE uint32_t DCE2_BufferMinAllocSize(DCE2_Buffer *);
+static INLINE void DCE2_BufferSetMinAllocSize(DCE2_Buffer *, uint32_t);
 
-static inline char * DCE2_PruneWhiteSpace(char *);
-static inline int DCE2_IsEmptyStr(char *);
-static inline DCE2_Ret DCE2_Memcpy(void *, const void *, uint32_t, const void *, const void *);
-static inline DCE2_Ret DCE2_Memmove(void *, const void *, uint32_t, const void *, const void *);
-static inline int DCE2_UuidCompare(const void *, const void *);
-static inline void DCE2_CopyUuid(Uuid *, const Uuid *, const DceRpcBoFlag);
+static INLINE char * DCE2_PruneWhiteSpace(char *);
+static INLINE int DCE2_IsEmptyStr(char *);
+static INLINE DCE2_Ret DCE2_Memcpy(void *, const void *, uint32_t, const void *, const void *);
+static INLINE DCE2_Ret DCE2_Memmove(void *, const void *, uint32_t, const void *, const void *);
+static INLINE int DCE2_UuidCompare(const void *, const void *);
+static INLINE void DCE2_CopyUuid(Uuid *, const Uuid *, const int);
 
 /********************************************************************
  * Public function prototypes
  ********************************************************************/
 DCE2_Buffer * DCE2_BufferNew(uint32_t, uint32_t, DCE2_MemType);
-DCE2_Ret DCE2_BufferAddData(
-    DCE2_Buffer*, const uint8_t*, uint32_t len, uint32_t offset, DCE2_BufferMinAddFlag);
+DCE2_Ret DCE2_BufferAddData(DCE2_Buffer *, const uint8_t *, uint32_t, DCE2_BufferMinAddFlag);
 DCE2_Ret DCE2_BufferMoveData(DCE2_Buffer *, uint32_t, const uint8_t *, uint32_t);
 void DCE2_BufferDestroy(DCE2_Buffer *);
 
-uint16_t DCE2_GetWriteOffset(uint32_t total, int header);
-DCE2_Ret DCE2_HandleSegmentation(
-    DCE2_Buffer*, const uint8_t*, uint16_t len, uint32_t offset,
-    uint32_t need_len, uint16_t* copied);
+DCE2_Ret DCE2_HandleSegmentation(DCE2_Buffer *, const uint8_t *, uint16_t, uint32_t, uint16_t *);
 NORETURN void DCE2_Die(const char *, ...);
 void DCE2_Log(DCE2_LogType, const char *, ...);
-const char * DCE2_UuidToStr(const Uuid *, DceRpcBoFlag);
+const char * DCE2_UuidToStr(const Uuid *, int);
 void DCE2_PrintPktData(const uint8_t *, const uint16_t);
 
 /*********************************************************************
@@ -161,7 +160,7 @@ void DCE2_PrintPktData(const uint8_t *, const uint16_t);
  *  0 if not considered empty
  *
  *********************************************************************/
-static inline int DCE2_BufferIsEmpty(DCE2_Buffer *buf)
+static INLINE int DCE2_BufferIsEmpty(DCE2_Buffer *buf)
 {
     if (buf == NULL) return 1;
     if ((buf->data == NULL) || (buf->len == 0)) return 1;
@@ -181,7 +180,7 @@ static inline int DCE2_BufferIsEmpty(DCE2_Buffer *buf)
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_BufferEmpty(DCE2_Buffer *buf)
+static INLINE void DCE2_BufferEmpty(DCE2_Buffer *buf)
 {
     if (buf == NULL) return;
     buf->len = 0;
@@ -202,7 +201,7 @@ static inline void DCE2_BufferEmpty(DCE2_Buffer *buf)
  *      object is NULL.
  *
  *********************************************************************/
-static inline uint32_t DCE2_BufferSize(DCE2_Buffer *buf)
+static INLINE uint32_t DCE2_BufferSize(DCE2_Buffer *buf)
 {
     if (buf == NULL) return 0;
     return buf->size;
@@ -224,7 +223,7 @@ static inline uint32_t DCE2_BufferSize(DCE2_Buffer *buf)
  *      if buffer object is NULL.
  *
  *********************************************************************/
-static inline uint32_t DCE2_BufferLength(DCE2_Buffer *buf)
+static INLINE uint32_t DCE2_BufferLength(DCE2_Buffer *buf)
 {
     if (buf == NULL) return 0;
     return buf->len;
@@ -242,7 +241,7 @@ static inline uint32_t DCE2_BufferLength(DCE2_Buffer *buf)
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_BufferSetLength(DCE2_Buffer *buf, uint32_t len)
+static INLINE void DCE2_BufferSetLength(DCE2_Buffer *buf, uint32_t len)
 {
     if (buf == NULL) return;
     if (len > buf->size) buf->len = buf->size;
@@ -265,19 +264,19 @@ static inline void DCE2_BufferSetLength(DCE2_Buffer *buf, uint32_t len)
  *      buffer object is NULL.
  *
  *********************************************************************/
-static inline uint8_t * DCE2_BufferData(DCE2_Buffer *buf)
+static INLINE uint8_t * DCE2_BufferData(DCE2_Buffer *buf)
 {
     if (buf == NULL) return NULL;
     return buf->data;
 }
 
-static inline uint32_t DCE2_BufferMinAllocSize(DCE2_Buffer *buf)
+static INLINE uint32_t DCE2_BufferMinAllocSize(DCE2_Buffer *buf)
 {
     if (buf == NULL) return 0;
     return buf->min_add_size;
 }
 
-static inline void DCE2_BufferSetMinAllocSize(DCE2_Buffer *buf, uint32_t size)
+static INLINE void DCE2_BufferSetMinAllocSize(DCE2_Buffer *buf, uint32_t size)
 {
     if (buf == NULL) return;
     buf->min_add_size = size;
@@ -290,7 +289,7 @@ static inline void DCE2_BufferSetMinAllocSize(DCE2_Buffer *buf, uint32_t size)
  * Prunes whitespace surrounding string.
  * String must be 0 terminated.
  *
- * Arguments:
+ * Arguments: 
  *  char *
  *      NULL terminated string to prune.
  *  int
@@ -304,7 +303,7 @@ static inline void DCE2_BufferSetMinAllocSize(DCE2_Buffer *buf, uint32_t size)
  *               argument are replaced by NULL bytes.
  *
  ********************************************************************/
-static inline char * DCE2_PruneWhiteSpace(char *str)
+static INLINE char * DCE2_PruneWhiteSpace(char *str)
 {
     char *end;
 
@@ -340,7 +339,7 @@ static inline char * DCE2_PruneWhiteSpace(char *str)
  *  0  otherwise
  *
  ********************************************************************/
-static inline int DCE2_IsEmptyStr(char *str)
+static INLINE int DCE2_IsEmptyStr(char *str)
 {
     char *end;
 
@@ -370,7 +369,7 @@ static inline int DCE2_IsEmptyStr(char *str)
  *  DCE2_RET__SUCCESS - memcpy succeeded
  *
  ********************************************************************/
-static inline DCE2_Ret DCE2_Memcpy(void *dst, const void *src, uint32_t len,
+static INLINE DCE2_Ret DCE2_Memcpy(void *dst, const void *src, uint32_t len,
                                    const void *dst_start, const void *dst_end)
 {
     if (SafeMemcpy(dst, src, (size_t)len, dst_start, dst_end) != SAFEMEM_SUCCESS)
@@ -391,7 +390,7 @@ static inline DCE2_Ret DCE2_Memcpy(void *dst, const void *src, uint32_t len,
  *  DCE2_RET__SUCCESS - memmove succeeded
  *
  ********************************************************************/
-static inline DCE2_Ret DCE2_Memmove(void *dst, const void *src, uint32_t len,
+static INLINE DCE2_Ret DCE2_Memmove(void *dst, const void *src, uint32_t len,
                                     const void *dst_start, const void *dst_end)
 {
     if (SafeMemmove(dst, src, (size_t)len, dst_start, dst_end) != SAFEMEM_SUCCESS)
@@ -410,7 +409,7 @@ static inline DCE2_Ret DCE2_Memmove(void *dst, const void *src, uint32_t len,
  * Returns:
  *
  *********************************************************************/
-static inline int DCE2_UuidCompare(const void *data1, const void *data2)
+static INLINE int DCE2_UuidCompare(const void *data1, const void *data2)
 {
     const Uuid *uuid1 = (Uuid *)data1;
     const Uuid *uuid2 = (Uuid *)data2;
@@ -439,17 +438,17 @@ static inline int DCE2_UuidCompare(const void *data1, const void *data2)
  * order specified.
  *
  * Arguments:
- *  Uuid *
+ *  Uuid * 
  *      Pointer to uuid to copy to.
- *  Uuid *
+ *  Uuid * 
  *      Pointer to uuid to copy from.
- *  const int
+ *  const int 
  *      The byte order to use.
  *
  * Returns: None
  *
  *********************************************************************/
-static inline void DCE2_CopyUuid(Uuid *dst_uuid, const Uuid *pkt_uuid, const DceRpcBoFlag byte_order)
+static INLINE void DCE2_CopyUuid(Uuid *dst_uuid, const Uuid *pkt_uuid, const int byte_order)
 {
     dst_uuid->time_low = DceRpcNtohl(&pkt_uuid->time_low, byte_order);
     dst_uuid->time_mid = DceRpcNtohs(&pkt_uuid->time_mid, byte_order);

@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000140
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a buffer overflow in 
+the MySQL MaxDB web server.
+
+-- 
+
+Impact: 
+A denial of service will occur, and arbitrary code may be executed with the 
+privileges of the user running the web server.
+
+--
+Detailed Information:
+If an HTTP GET request beginning with a "%" character and followed by at least 
+215 non-newline characters is sent to the MySQL MaxDB web server, a buffer 
+overflow will occur. This will result in a denial of service, and possibly 
+execution of arbitrary code with the privileges of the user running the web 
+server.
+
+--
+Affected Systems:
+MySQL MaxDB >= 7.5.00.24
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or an automated script.
+
+-- 
+
+Ease of Attack: 
+Simple, as a web browser can be used.
+
+-- 
+
+False Positives:
+None Known
+
+--
+False Negatives:
+None Known
+
+-- 
+
+Corrective Action: 
+Upgrade to version 7.5.00.26 or higher.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

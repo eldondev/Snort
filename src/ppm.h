@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2006-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -106,9 +106,8 @@ extern PPM_TICKS ppm_tpu;
 extern ppm_pkt_timer_t   ppm_pkt_times[PPM_MAX_TIMERS];
 extern ppm_pkt_timer_t  *ppm_pt;
 extern unsigned int      ppm_pkt_index;
-extern ppm_rule_timer_t  ppm_rule_times[PPM_MAX_TIMERS];
+extern ppm_rule_timer_t  ppm_rule_times;
 extern ppm_rule_timer_t *ppm_rt;
-extern unsigned int      ppm_rule_times_index;
 extern uint64_t            ppm_cur_time;
 extern int ppm_abort_this_pkt;
 extern int ppm_suspend_this_rule;
@@ -195,25 +194,13 @@ extern int ppm_suspend_this_rule;
 }
 
 #define PPM_INIT_RULE_TIMER() \
-    if(ppm_rule_times_index < PPM_MAX_TIMERS) \
-{ \
-    ppm_rt = &ppm_rule_times[ppm_rule_times_index++]; \
+    ppm_rt = &ppm_rule_times; \
     ppm_suspend_this_rule = 0; \
     ppm_rt->start=ppm_cur_time; \
-    ppm_rt->max_rule_ticks = snort_conf->ppm_cfg.max_rule_ticks; \
-}
+    ppm_rt->max_rule_ticks = snort_conf->ppm_cfg.max_rule_ticks;
 
 #define PPM_END_RULE_TIMER() \
-    if(( ppm_rule_times_index > 0) && ppm_rt ) \
-{ \
-    ppm_rule_times_index--; \
-    if (ppm_rule_times_index > 0) \
-    { \
-        ppm_rt=&ppm_rule_times[ppm_rule_times_index-1]; \
-    } else { \
-        ppm_rt=NULL; \
-    } \
-}
+    if( ppm_rt ) ppm_rt=NULL
 
 /* use PPM_GET_TIME; first to get the current time */
 #define PPM_PACKET_TEST() \
@@ -230,7 +217,7 @@ extern int ppm_suspend_this_rule;
 #if 0 && defined(PPM_TEST)
 #define PPM_DBG_CSV(state, otn, when) \
     LogMessage( \
-                "PPM, %u, %u, %s, " STDu64 "\n", \
+                "PPM, %u, %u, %s, %llu\n", \
                 otn->sigInfo.generator, otn->sigInfo.id, state, when \
               )
 #else

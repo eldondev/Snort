@@ -5,21 +5,11 @@ noinst_LIBRARIES = libspd.a
 
 BUILT_SOURCES = sf_snort_plugin_hdropts.c \
 sf_snort_packet.h \
-sf_snort_plugin_api.h \
-sf_decompression.h
+sf_snort_plugin_api.h
 
 nodist_libspd_a_SOURCES = sf_snort_plugin_hdropts.c \
 sf_snort_packet.h \
-sf_snort_plugin_api.h \
-sf_decompression.h
-
-if BUILD_REACT
-REACT_SOURCE = sp_react.c sp_react.h
-endif
-
-if BUILD_RESPOND3
-RESPOND3_SOURCE = sp_respond3.c sp_respond.h
-endif
+sf_snort_plugin_api.h
 
 libspd_a_SOURCES = \
 detection_options.c detection_options.h \
@@ -27,7 +17,6 @@ sp_asn1.c sp_asn1.h \
 sp_asn1_detect.c sp_asn1_detect.h \
 sp_byte_check.c sp_byte_check.h \
 sp_byte_jump.c sp_byte_jump.h \
-sp_byte_extract.c sp_byte_extract.h \
 sp_clientserver.c sp_clientserver.h \
 sp_cvs.c sp_cvs.h \
 sp_dsize_check.c sp_dsize_check.h \
@@ -47,9 +36,10 @@ sp_ipoption_check.c sp_ipoption_check.h \
 sp_isdataat.c sp_isdataat.h \
 sp_pattern_match.c sp_pattern_match.h  \
 sp_pcre.c sp_pcre.h \
-$(REACT_SOURCE) \
-$(RESPOND3_SOURCE) \
+sp_react.c sp_react.h \
 sp_replace.c sp_replace.h \
+sp_respond.c sp_respond.h  \
+sp_respond2.c \
 sp_rpc_check.c sp_rpc_check.h \
 sp_session.c sp_session.h \
 sp_tcp_ack_check.c sp_tcp_ack_check.h \
@@ -57,11 +47,7 @@ sp_tcp_flag_check.h sp_tcp_flag_check.c \
 sp_tcp_seq_check.c sp_tcp_seq_check.h \
 sp_tcp_win_check.c sp_tcp_win_check.h \
 sp_ttl_check.c sp_ttl_check.h \
-sp_urilen_check.c sp_urilen_check.h \
-sp_file_data.c sp_file_data.h \
-sp_base64_decode.c sp_base64_decode.h \
-sp_base64_data.c sp_base64_data.h \
-sp_pkt_data.c sp_pkt_data.h
+sp_urilen_check.c sp_urilen_check.h
 
 copy_files = \
 	if test -f $$dst_file; then \
@@ -97,7 +83,6 @@ sed_hdropts = \
 		-e "s/ICMP_ECHO_REQUEST/ICMP_ECHO/g" \
 		-e "s/icmph_union.echo.id/s_icmp_id/g" \
 		-e "s/icmph_union.echo.seq/s_icmp_seq/g" \
-        -e "/sf_snort_detection_engine.h/d" \
 	$$src_file > $$dst_file;
 
 sf_snort_plugin_hdropts.c: ../dynamic-plugins/sf_engine/sf_snort_plugin_hdropts.c
@@ -106,13 +91,10 @@ sf_snort_plugin_hdropts.c: ../dynamic-plugins/sf_engine/sf_snort_plugin_hdropts.
 sf_snort_plugin_api.h: ../dynamic-plugins/sf_engine/sf_snort_plugin_api.h
 	@src_file=$?; dst_file=$@; $(copy_files)
 
-sf_decompression.h: ../dynamic-plugins/sf_engine/sf_decompression.h
-	@src_file=$?; dst_file=$@; $(copy_files)
-
 sf_snort_packet.h: ../dynamic-plugins/sf_engine/sf_snort_packet.h
 	@src_file=$?; dst_file=$@; $(copy_files)
 
 clean-local:
-	rm -rf sf_snort_plugin_hdropts.c sf_snort_packet.h sf_snort_plugin_api.h sf_decompression.h
+	rm -rf sf_snort_plugin_hdropts.c sf_snort_packet.h sf_snort_plugin_api.h
 
 INCLUDES = @INCLUDES@

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steve Sturges
  *         Andy Mullican
@@ -30,6 +30,10 @@
 #ifndef _SF_SNORT_PACKET_H_
 #define _SF_SNORT_PACKET_H_
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifndef WIN32
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -38,20 +42,9 @@
 #include <windows.h>
 #endif
 
-#include <daq.h>
-#include <sfbpf_dlt.h>
-
 #include "sf_ip.h"
-#include "sf_protocols.h"
 
 #define VLAN_HDR_LEN  4
-
-// for vrt backwards compatibility
-#define pcap_header pkt_header
-
-typedef int (*LogFunction)(void *ssnptr, uint8_t **buf, uint32_t *len, uint32_t *type);
-
-typedef DAQ_PktHdr_t SFDAQ_PktHdr_t;
 
 typedef struct _VlanHeader
 {
@@ -62,8 +55,6 @@ typedef struct _VlanHeader
 
 //#define NO_NON_ETHER_DECODER
 #define ETHER_HDR_LEN  14
-#define ETHERNET_TYPE_IP    0x0800
-#define ETHERNET_TYPE_IPV6  0x86dd
 #define ETHERNET_TYPE_8021Q 0x8100
 
 typedef struct _EtherHeader
@@ -110,7 +101,6 @@ typedef struct _IPV4Header
     struct in_addr destination;
 } IPV4Header;
 
-#define MAX_LOG_FUNC   8
 #define MAX_IP_OPTIONS 40
 #define MAX_IP6_EXTENSIONS 40
 /* ip option codes */
@@ -154,8 +144,8 @@ typedef struct _TCPHeader
 #define TCPHEADER_PUSH 0x08
 #define TCPHEADER_ACK  0x10
 #define TCPHEADER_URG  0x20
-#define TCPHEADER_ECE  0x40
-#define TCPHEADER_CWR  0x80
+#define TCPHEADER_RES2 0x40
+#define TCPHEADER_RES1 0x80
 #define TCPHEADER_NORESERVED (TCPHEADER_FIN|TCPHEADER_SYN|TCPHEADER_RST \
                             |TCPHEADER_PUSH|TCPHEADER_ACK|TCPHEADER_URG)
 
@@ -201,7 +191,7 @@ typedef struct _ICMPHeader
     union
     {
         /* type 12 */
-        u_int8_t parameter_problem_ptr;
+        u_int8_t parameter_problem_ptr; 
 
         /* type 5 */
         struct in_addr gateway_addr;
@@ -211,10 +201,10 @@ typedef struct _ICMPHeader
 
         /* type 13, 14 */
         ICMPSequenceID timestamp;
-
+        
         /* type 15, 16 */
         ICMPSequenceID info;
-
+        
         int voidInfo;
 
         /* type 3/code=4 (Path MTU, RFC 1191) */
@@ -225,7 +215,7 @@ typedef struct _ICMPHeader
         } path_mtu;
 
         /* type 9 */
-        struct router_advertisement
+        struct router_advertisement 
         {
             u_int8_t number_addrs;
             u_int8_t entry_size;
@@ -247,25 +237,25 @@ typedef struct _ICMPHeader
 #define icmp_ra_entry_size  icmp_header_union.router_advertisement.entry_size
 #define icmp_ra_lifetime    icmp_header_union.router_advertisement.lifetime
 
-    union
+    union 
     {
         /* timestamp */
-        struct timestamp
+        struct timestamp 
         {
             u_int32_t orig;
             u_int32_t receive;
             u_int32_t transmit;
         } timestamp;
-
+        
         /* IP header for unreach */
-        struct ipv4_header
+        struct ipv4_header  
         {
             IPV4Header *ip;
             /* options and then 64 bits of data */
         } ipv4_header;
-
-        /* Router Advertisement */
-        struct router_address
+       
+        /* Router Advertisement */ 
+        struct router_address 
         {
             u_int32_t addr;
             u_int32_t preference;
@@ -302,13 +292,11 @@ typedef struct _ICMPHeader
 #define ICMP_ADDRESS_REQUEST        17    /* Address Mask Request         */
 #define ICMP_ADDRESS_REPLY          18    /* Address Mask Reply           */
 
-#define INVALID_CHECKSUM_IP   0x01
-#define INVALID_CHECKSUM_TCP  0x02
-#define INVALID_CHECKSUM_UDP  0x04
-#define INVALID_CHECKSUM_ICMP 0x08
-#define INVALID_CHECKSUM_IGMP 0x10
-#define INVALID_CHECKSUM_ALL  0x1F
-#define INVALID_TTL           0x20
+#define CHECKSUM_INVALID_IP 0x01
+#define CHECKSUM_INVALID_TCP 0x02
+#define CHECKSUM_INVALID_UDP 0x04
+#define CHECKSUM_INVALID_ICMP 0x08
+#define CHECKSUM_INVALID_IGMP 0x10
 
 typedef struct _IPv6Extension
 {
@@ -324,36 +312,25 @@ typedef struct _IPv4Hdr
     u_int16_t ip_id;        /* identification  */
     u_int16_t ip_off;       /* fragment offset */
     u_int8_t ip_ttl;        /* time to live field */
-    u_int8_t ip_proto;      /* datagram protocol */
+    u_int8_t ip_proto;      /* datagram protocol */ 
     u_int16_t ip_csum;      /* checksum */
     sfip_t ip_src;          /* source IP */
     sfip_t ip_dst;          /* dest IP */
 } IP4Hdr;
 
-typedef struct _IP6RawHdr
-{
-    u_int32_t vcl;          // version, class, and label */
-    u_int16_t payload_len;  // length of the payload */
-    u_int8_t  next_header;  // same values as ip4 protocol field + new ip6 values
-    u_int8_t  hop_limit;    // same usage as ip4 ttl
-
-    struct in6_addr src_addr;
-    struct in6_addr dst_addr;
-} IP6RawHdr;
-
 typedef struct _IPv6Hdr
-{
+{ 
     u_int32_t vcl;      /* version, class, and label */
     u_int16_t len;      /* length of the payload */
     u_int8_t  next;     /* next header
                          * Uses the same flags as
                          * the IPv4 protocol field */
-    u_int8_t  hop_lmt;  /* hop limit */
+    u_int8_t  hop_lmt;  /* hop limit */ 
     sfip_t ip_src;
     sfip_t ip_dst;
-} IP6Hdr;
+} IP6Hdr; 
 
-typedef struct _IP6FragHdr
+typedef struct _IP6FragHdr 
 {
     u_int8_t   ip6f_nxt;     /* next header */
     u_int8_t   ip6f_reserved;    /* reserved field */
@@ -427,7 +404,7 @@ u_int16_t   orig_ip6_ret_off(struct _SFSnortPacket *);
 u_int8_t    orig_ip6_ret_ver(struct _SFSnortPacket *);
 u_int8_t    orig_ip6_ret_hlen(struct _SFSnortPacket *);
 
-typedef struct _IPH_API
+typedef struct _IPH_API 
 {
     sfip_t *    (*iph_ret_src)(struct _SFSnortPacket *);
     sfip_t *    (*iph_ret_dst)(struct _SFSnortPacket *);
@@ -476,21 +453,13 @@ typedef struct _MplsHdr
 {
     u_int32_t label;
     u_int8_t  exp;
-    u_int8_t  bos;
+    u_int8_t  bos; 
     u_int8_t  ttl;
 } MplsHdr;
 
-#define MAX_PROTO_LAYERS 32
-
-typedef struct {
-    PROTO_ID proto_id;
-    uint16_t proto_length;
-    uint8_t* proto_start;
-} ProtoLayer;
-
 typedef struct _SFSnortPacket
 {
-    const SFDAQ_PktHdr_t *pkt_header; /* Is this GPF'd? */
+    const struct pcap_pkthdr *pcap_header; /* Is this GPF'd? */
     const u_int8_t *pkt_data;
 
     void *ether_arp_header;
@@ -506,8 +475,6 @@ typedef struct _SFSnortPacket
     const IPV4Header *outer_ip4_header;
     const TCPHeader *tcp_header, *orig_tcp_header;
     const UDPHeader *udp_header, *orig_udp_header;
-    const UDPHeader *inner_udph;   /* if Teredo + UDP, this will be the inner UDP header */
-    const UDPHeader *outer_udph;   /* if Teredo + UDP, this will be the outer UDP header */
     const ICMPHeader *icmp_header, *orig_icmp_header;
 
     const u_int8_t *payload;
@@ -543,15 +510,16 @@ typedef struct _SFSnortPacket
     int outer_family;
     int number_bytes_to_check;
 
-    //int ip_payload_length;
-    //int ip_payload_offset;
-
     u_int32_t preprocessor_bit_mask;
     u_int32_t preproc_reassembly_pkt_bit_mask;
 
+    //int ip_payload_length;
+    //int ip_payload_offset;
+
+    u_int32_t pcap_cap_len;
     u_int32_t http_pipeline_count;
     u_int32_t flags;
-    u_int16_t proto_bits;
+    u_int32_t proto_bits;
 
     u_int16_t payload_size;
     u_int16_t ip_payload_size;
@@ -577,7 +545,7 @@ typedef struct _SFSnortPacket
     u_int8_t ip_reserved;
 
     u_int8_t num_uris;
-    u_int8_t invalid_flags;
+    u_int8_t checksums_invalid;
     u_int8_t encapsulated;
 
     u_int8_t num_ip_options;
@@ -588,8 +556,6 @@ typedef struct _SFSnortPacket
     u_char ip_last_option_invalid_flag;
     u_char tcp_last_option_invalid_flag;
 
-    uint8_t next_layer_index;
-    uint8_t log_func_count;
 #ifndef NO_NON_ETHER_DECODER
     const void *fddi_header;
     void *fddi_saps;
@@ -605,12 +571,8 @@ typedef struct _SFSnortPacket
     void *pflog2_header;
     void *pflog3_header;
 
-#ifdef DLT_LINUX_SLL
     const void *sll_header;
-#endif
-#ifdef DLT_IEEE802_11
     const void *wifi_header;
-#endif
     const void *ppp_over_ether_header;
 
     const void *ether_eapol_header;
@@ -619,33 +581,20 @@ typedef struct _SFSnortPacket
     void *eapol_key;
 #endif
 
-
     IPOptions ip_options[MAX_IP_OPTIONS];
     TCPOptions tcp_options[MAX_TCP_OPTIONS];
     IP6Extension ip6_extensions[MAX_IP6_EXTENSIONS];
-
-    const IP6RawHdr* raw_ip6_header;
-    ProtoLayer proto_layers[MAX_PROTO_LAYERS];
-    LogFunction log_funcs[MAX_LOG_FUNC];
-    uint16_t max_payload;
-
-
-    /**policyId provided in configuration file. Used for correlating configuration 
-     * with event output
-     */
-    uint16_t configPolicyId;
 
 } SFSnortPacket;
 
 #define PKT_ZERO_LEN offsetof(SFSnortPacket, ip_options)
 
-#define PROTO_BIT__IP       0x0001
-#define PROTO_BIT__ARP      0x0002
-#define PROTO_BIT__TCP      0x0004
-#define PROTO_BIT__UDP      0x0008
-#define PROTO_BIT__ICMP     0x0010
-#define PROTO_BIT__TEREDO   0x0020
-#define PROTO_BIT__ALL      0xffff
+#define PROTO_BIT__IP    0x00000001
+#define PROTO_BIT__ARP   0x00000002
+#define PROTO_BIT__TCP   0x00000004
+#define PROTO_BIT__UDP   0x00000008
+#define PROTO_BIT__ICMP  0x00000010
+#define PROTO_BIT__ALL   0xffffffff
 
 #define IsIP(p) (IPH_IS_VALID(p))
 #define IsTCP(p) (IsIP(p) && (GET_IPH_PROTO(p) == IPPROTO_TCP))
@@ -663,98 +612,38 @@ typedef struct _SFSnortPacket
     ((tcp_header)->offset_reserved = \
      (unsigned char)(((tcp_header)->offset_reserved & 0x0f) | (value << 4)))
 
-// beware:  some flags are redefined in dynamic-plugins/sf_dynamic_define.h!
-#define FLAG_REBUILT_FRAG     0x00000001  /* is a rebuilt fragment */
-#define FLAG_REBUILT_STREAM   0x00000002  /* is a rebuilt stream */
-#define FLAG_STREAM_UNEST_UNI 0x00000004  /* is from an unestablished stream and
-                                           * we've only seen traffic in one direction */
-#define FLAG_STREAM_EST       0x00000008  /* is from an established stream */
-
-#define FLAG_STREAM_INSERT    0x00000010  /* this packet has been queued for stream reassembly */
-#define FLAG_STREAM_TWH       0x00000020  /* packet completes the 3-way handshake */
-#define FLAG_FROM_SERVER      0x00000040  /* this packet came from the server
-                                             side of a connection (TCP) */
-#define FLAG_FROM_CLIENT      0x00000080  /* this packet came from the client
-                                             side of a connection (TCP) */
-
-#define FLAG_PDU_HEAD         0x00000100  /* start of PDU */
-#define FLAG_PDU_TAIL         0x00000200  /* end of PDU */
-#define FLAG_UNSURE_ENCAP     0x00000400  /* packet may have incorrect encapsulation layer. */
-                                          /* don't alert if "next layer" is invalid. */
-#define FLAG_HTTP_DECODE      0x00000800  /* this packet has normalized http */
-
-#define FLAG_IGNORE_PORT           0x00001000  /* this packet should be ignored, based on port */
-#define FLAG_NO_DETECT             0x00002000  /* this packet should not be preprocessed */
-#define FLAG_ALLOW_MULTIPLE_DETECT 0x00004000  /* packet has either pipelined mime attachements */
-                                               /* or pipeline http requests */
-#define FLAG_PAYLOAD_OBFUSCATE     0x00008000
-
-#define FLAG_STATELESS        0x00010000  /* Packet has matched a stateless rule */
-#define FLAG_PASS_RULE        0x00020000  /* this packet has matched a pass rule */
-#define FLAG_IP_RULE          0x00040000  /* this packet is being evaluated against an IP rule */
+#define FLAG_REBUILT_FRAG     0x00000001
+#define FLAG_REBUILT_STREAM   0x00000002
+#define FLAG_STREAM_UNEST_UNI 0x00000004
+#define FLAG_STREAM_UNEST_BI  0x00000008
+#define FLAG_STREAM_EST       0x00000010
+#define FLAG_FROM_SERVER      0x00000040	
+#define FLAG_FROM_CLIENT      0x00000080
+#define FLAG_HTTP_DECODE      0x00000100
+#define FLAG_STREAM_INSERT    0x00000400
+#define FLAG_ALT_DECODE       0x00000800
+#define FLAG_STREAM_TWH       0x00001000
+#define FLAG_IGNORE_PORT      0x00002000  /* this packet should be ignored, based on port */
+#define FLAG_PASS_RULE        0x00004000  /* this packet has matched a pass rule */
+#define FLAG_NO_DETECT        0x00008000  /* this packet should not be preprocessed */
+#define FLAG_PREPROC_RPKT     0x00010000  /* set in original packet to indicate a preprocessor
+                                           * has a reassembled packet */
+#define FLAG_DCE_RPKT         0x00020000  /* this is a DCE/RPC reassembled packet */
+#define FLAG_IP_RULE          0x00040000  /* this packet being evaluated against an ip rule */
 #define FLAG_IP_RULE_2ND      0x00080000  /* this packet is being evaluated against an IP rule */
 
-#define FLAG_PREPROC_RPKT     0x00100000  /* set in original packet to indicate a preprocessor */
-                                          /* has a reassembled packet */
-#define FLAG_DCE_RPKT         0x00200000  /* this packet is a DCE/RPC reassembled one */
-#define FLAG_DCE_PKT          0x00400000  /* a DCE packet processed by DCE/RPC pp */
-#define FLAG_RPC_PKT          0x00800000  /* an ONC RPC packet processed by rpc decode pp */
+#define FLAG_SMB_SEG          0x00100000  /* this is an SMB desegmented packet */
+#define FLAG_DCE_SEG          0x00200000  /* this is a DCE/RPC desegmented packet */
+#define FLAG_DCE_FRAG         0x00400000  /* this is a DCE/RPC defragmented packet */
+#define FLAG_SMB_TRANS        0x00800000  /* this is an SMB Transact reassembled packet */
+#define FLAG_DCE_PKT          0x01000000  /* this is a DCE packet processed by DCE/RPC preprocessor */
 
-#define FLAG_SMB_SEG          0x01000000  /* this is an SMB desegmented packet */
-#define FLAG_DCE_SEG          0x02000000  /* this is a DCE/RPC desegmented packet */
-#define FLAG_DCE_FRAG         0x04000000  /* this is a DCE/RPC defragmented packet */
-#define FLAG_SMB_TRANS        0x08000000  /* this is an SMB Transact reassembled packet */
-
-
-#define FLAG_LOGGED           0x10000000  /* this packet has been logged */
-#define FLAG_PSEUDO           0x20000000  /* is a pseudo packet */
-#define FLAG_MODIFIED         0x40000000  /* packet had normalizations, etc. */
-#ifdef NORMALIZER
-#define FLAG_RESIZED          0x80000000  /* packet has new size; must set modified too */
-#endif
-
-#define FLAG_PDU_FULL (FLAG_PDU_HEAD | FLAG_PDU_TAIL)
+#define FLAG_STATELESS        0x10000000  /* Packet has matched a stateless rule */
+#define FLAG_INLINE_DROP      0x20000000
+#define FLAG_OBFUSCATED       0x40000000  /* this packet has been obfuscated */
+#define FLAG_LOGGED           0x80000000  /* this packet has been logged */
 
 #define SFTARGET_UNKNOWN_PROTOCOL -1
-
-static inline int PacketWasCooked(const SFSnortPacket* p)
-{
-    return ( p->flags &
-        ( FLAG_REBUILT_STREAM | FLAG_REBUILT_FRAG |
-          FLAG_DCE_RPKT | FLAG_DCE_SEG | FLAG_DCE_FRAG |
-          FLAG_SMB_SEG | FLAG_SMB_TRANS | FLAG_PSEUDO) ) != 0;
-}
-
-static inline void SetLogFuncs(SFSnortPacket *p, LogFunction funcs)
-{
-    if(p->log_func_count == MAX_LOG_FUNC)
-        return;
-    p->log_funcs[p->log_func_count] = funcs;
-    p->log_func_count++;
-}
-
-
-/* Only include application layer reassembled data
- * flags here - no FLAG_REBUILT_FRAG */
-#define REASSEMBLED_PACKET_FLAGS \
-    (FLAG_REBUILT_STREAM|FLAG_SMB_SEG|FLAG_DCE_SEG|FLAG_DCE_FRAG|FLAG_SMB_TRANS)
-
-#ifdef ENABLE_PAF
-static inline int PacketHasFullPDU (const SFSnortPacket* p)
-{
-    return ( (p->flags & FLAG_PDU_FULL) == FLAG_PDU_FULL );
-}
-
-static inline int PacketHasStartOfPDU (const SFSnortPacket* p)
-{
-    return ( (p->flags & FLAG_PDU_HEAD) != 0 );
-}
-
-static inline int PacketHasPAFPayload (const SFSnortPacket* p)
-{
-    return ( (p->flags & FLAG_REBUILT_STREAM) || PacketHasFullPDU(p) );
-}
-#endif
 
 #endif /* _SF_SNORT_PACKET_H_ */
 

@@ -47,9 +47,10 @@ Moderate..
 
 --
 False Positives:
-The networked game "Joint Operations" is reported to generate traffic
-that may generate events from this rule. The $SQL_SERVERS variable in
-snort.conf should be configured correctly to eliminate this behavior.
+Since this rule cannot be constrained using ports and the connection
+state for MSDAC is not tracked, false positive events may occur under
+normal circumstances. The $SQL_SERVERS variable in snort.conf should be
+configured correctly to eliminate this behavior.
 
 --
 False Negatives:
@@ -59,9 +60,10 @@ None known
 Corrective Action:
 Apply the appropriate vendor supplied patches and service packs.
 
-Use a packet filtering firewall to block access to port 1434 for UDP traffic
+Disallow access to database servers from sources external to the
+protected network.
 
-Use IPsec to block incoming requests on UDP port 1434 on the SQL server
+Disallow access to database servers from untrusted hosts.
 
 --
 Contributors:
@@ -72,13 +74,5 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 --
 Additional References:
 
-Bugtraq:
-http://www.securityfocus.com/bid/9407
-
-CERT:
-http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2003-0903
-
-Microsoft:
-http://www.microsoft.com/technet/treeview/default.asp?url=/technet/security/bulletin/MS04-003.asp
 
 --

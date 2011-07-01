@@ -1,0 +1,67 @@
+Rule: 
+
+--
+Sid: 
+100000115
+
+-- 
+Summary: 
+This event is generated when the PHP-Nuke program's Web_Links module is access 
+with a NULL value for the CID parameter.
+
+-- 
+
+Impact: 
+Sensitive path information may be disclosed, allowing an attacker to conduct 
+reconnaissance against the affected host.
+
+--
+Detailed Information:
+Queries made to PHP-Nuke's Web_Links module which omit the CID parameter, or 
+which leave its value blank, will generate an error that discloses sensitive 
+path information about the affected host.
+
+--
+Affected Systems:
+PHP-Nuke 6.0
+PHP-Nuke 6.5
+PHP-Nuke 6.5 RC1
+PHP-Nuke 6.5 RC2
+PHP-Nuke 6.5 RC3
+PHP-Nuke 6.5 BETA 1
+PHP-Nuke 6.5 FINAL
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser.
+-- 
+
+Ease of Attack: 
+Simple, as example exploit URIs exist.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+An unsupported fix exists at the URI referenced in the Additional References 
+section. No vendor-supplied patch or workaround exists.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+http://www.securityfocus.com/archive/1/321313
+
+--

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,18 +18,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /*
-*   sflsq.c
+*   sflsq.c    
 *
-*   Simple list, stack, queue, and dictionary implementations
+*   Simple list, stack, queue, and dictionary implementations 
 *   ( most of these implementations are list based - not performance monsters,
 *     and they all use alloc via s_alloc/s_free )
 *   Stack based Ineteger and Pointer Stacks, these are for performance.(inline would be better)
 *
 *   11/05/2005 - man - Added sflist_firstx() and sflist_nextx() with user
 *   provided SF_NODE inputs for tracking the list position.  This allows
-*   multiple readers to traverse a list. The built in 'cur' field does not
+*   multiple readers to traverse a list. The built in 'cur' field does not 
 *   wrok for multiple readers.
 *
 *
@@ -39,16 +39,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "sflsq.h"
 
 /*
 *  private alloc
-*/
-static void * s_alloc (size_t n)
+*/ 
+static void * s_alloc (size_t n) 
 {
   void *p = (void*) calloc( 1,n );
   return p;
@@ -56,25 +52,25 @@ static void * s_alloc (size_t n)
 
 /*
 *  private free
-*/
-static void s_free (void *p)
+*/ 
+static void s_free (void *p) 
 {
   if( p ) free( p );
 }
 
 /*
 *   INIT - called by the NEW functions
-*/
-void sflist_init ( SF_LIST * s)
+*/ 
+void sflist_init ( SF_LIST * s) 
 {
-  s->count=0;
+  s->count=0; 
   s->head = s->tail = s->cur = 0;
 }
 
 /*
 *    NEW
 */
-SF_LIST * sflist_new(void)
+SF_LIST * sflist_new(void) 
 {
    SF_LIST * s;
    s = (SF_LIST*)s_alloc( sizeof(SF_LIST) );
@@ -82,18 +78,18 @@ SF_LIST * sflist_new(void)
    return s;
 }
 
-SF_STACK * sfstack_new(void)
+SF_STACK * sfstack_new(void) 
 {
    return (SF_STACK*)sflist_new();
 }
 
-SF_QUEUE * sfqueue_new(void)
+SF_QUEUE * sfqueue_new(void) 
 {
    return (SF_QUEUE*)sflist_new();
 }
 /*
-*  Add-before Item
-*/
+*  Add-before Item 
+*/ 
 int sflist_add_before ( SF_LIST* s, SF_LNODE * lnode, NODE_DATA ndata )
 {
   SF_LNODE * q;
@@ -129,9 +125,9 @@ int sflist_add_before ( SF_LIST* s, SF_LNODE * lnode, NODE_DATA ndata )
 *     ADD to List/Stack/Queue/Dictionary
 */
 /*
-*  Add-Head Item
-*/
-int
+*  Add-Head Item 
+*/ 
+int 
 sflist_add_head ( SF_LIST* s, NODE_DATA ndata )
 {
   SF_LNODE * q;
@@ -160,9 +156,9 @@ sflist_add_head ( SF_LIST* s, NODE_DATA ndata )
 }
 
 /*
-*  Add-Tail Item
-*/
-int
+*  Add-Tail Item 
+*/ 
+int 
 sflist_add_tail ( SF_LIST* s, NODE_DATA ndata )
 {
   SF_LNODE * q;
@@ -189,26 +185,26 @@ sflist_add_tail ( SF_LIST* s, NODE_DATA ndata )
   return 0;
 }
 
-int sfqueue_add(SF_QUEUE * s, NODE_DATA ndata )
+int sfqueue_add(SF_QUEUE * s, NODE_DATA ndata ) 
 {
   return sflist_add_tail ( s, ndata );
 }
 
-int sfstack_add( SF_STACK* s, NODE_DATA ndata )
+int sfstack_add( SF_STACK* s, NODE_DATA ndata ) 
 {
   return sflist_add_tail ( s, ndata );
 }
 
-/*
+/* 
 *   List walk - First/Next - return the node data or NULL
 */
 NODE_DATA sflist_first( SF_LIST * s )
 {
-    if(!s)
+    if(!s) 
         return 0;
 
     s->cur = s->head;
-    if( s->cur )
+    if( s->cur ) 
         return s->cur->ndata;
     return 0;
 }
@@ -220,7 +216,7 @@ NODE_DATA sflist_next( SF_LIST * s )
     if( s->cur )
     {
         s->cur = s->cur->next;
-        if( s->cur )
+        if( s->cur ) 
             return s->cur->ndata;
     }
     return 0;
@@ -229,9 +225,9 @@ NODE_DATA sflist_firstpos( SF_LIST * s, SF_LNODE ** v )
 {
     if(!s)
         return 0;
-
+    
     *v = s->head;
-
+    
     if( *v )
         return (*v)->ndata;
 
@@ -241,19 +237,19 @@ NODE_DATA sflist_nextpos( SF_LIST * s,  SF_LNODE ** v )
 {
     if(!s)
         return 0;
-
+    
     if(v)
     {
        if(*v)
        {
           *v = (*v)->next;
-          if( *v )
+          if( *v ) 
               return (*v)->ndata;
        }
     }
     return 0;
 }
-/*
+/* 
 *   List walk - First/Next - return the node data or NULL
 */
 SF_LNODE * sflist_first_node( SF_LIST * s )
@@ -262,7 +258,7 @@ SF_LNODE * sflist_first_node( SF_LIST * s )
         return 0;
 
     s->cur = s->head;
-    if( s->cur )
+    if( s->cur ) 
         return s->cur;
     return 0;
 }
@@ -273,7 +269,7 @@ SF_LNODE * sflist_next_node( SF_LIST * s )
     if( s->cur )
     {
         s->cur = s->cur->next;
-        if( s->cur )
+        if( s->cur ) 
             return s->cur;
     }
     return 0;
@@ -281,8 +277,8 @@ SF_LNODE * sflist_next_node( SF_LIST * s )
 
 /*
 *  Remove Head Item from list
-*/
-NODE_DATA sflist_remove_head (SF_LIST * s)
+*/ 
+NODE_DATA sflist_remove_head (SF_LIST * s) 
 {
   NODE_DATA ndata = 0;
   SF_QNODE * q;
@@ -331,11 +327,11 @@ NODE_DATA sflist_remove_tail (SF_LIST * s)
   return (NODE_DATA)ndata;
 }
 
-void sflist_remove_node (SF_LIST * s, SF_LNODE * n, void(*nfree)(void*) )
+void sflist_remove_node (SF_LIST * s, SF_LNODE * n, void(*nfree)(void*) ) 
 {
  // NODE_DATA ndata = 0;
   SF_LNODE * cur;
-
+      
   if( n == s->head )
   {
         s->head = s->head->next;
@@ -382,34 +378,34 @@ void sflist_remove_node (SF_LIST * s, SF_LNODE * n, void(*nfree)(void*) )
 
 /*
 *  Remove Head Item from queue
-*/
-NODE_DATA sfqueue_remove (SF_QUEUE * s)
+*/ 
+NODE_DATA sfqueue_remove (SF_QUEUE * s) 
 {
   return (NODE_DATA)sflist_remove_head( s );
 }
 
 /*
 *  Remove Tail Item from stack
-*/
-NODE_DATA sfstack_remove (SF_QUEUE * s)
+*/ 
+NODE_DATA sfstack_remove (SF_QUEUE * s) 
 {
   return (NODE_DATA)sflist_remove_tail( s );
 }
 
 /*
 *  COUNT
-*/
-int sfqueue_count (SF_QUEUE * s)
+*/ 
+int sfqueue_count (SF_QUEUE * s) 
 {
   if(!s)return 0;
   return s->count;
 }
-int sflist_count ( SF_LIST* s)
+int sflist_count ( SF_LIST* s) 
 {
   if(!s)return 0;
   return s->count;
 }
-int sfstack_count ( SF_STACK * s)
+int sfstack_count ( SF_STACK * s) 
 {
   if(!s)return 0;
   return s->count;
@@ -417,59 +413,59 @@ int sfstack_count ( SF_STACK * s)
 
 
 /*
-*   Free List + Free it's data nodes using 'nfree'
+*   Free List + Free it's data nodes using 'nfree' 
 */
-void sflist_free_all( SF_LIST * s, void (*nfree)(void*) )
+void sflist_free_all( SF_LIST * s, void (*nfree)(void*) ) 
 {
   void * p;
-
+  
   if(!s)
       return;
-
+  
   while( s->count > 0 )
   {
      p = sflist_remove_head (s);
-
-	 if( p && nfree )
+    
+	 if( p && nfree ) 
          nfree( p );
   }
   s_free(s);
 }
 
-void sfqueue_free_all(SF_QUEUE * s,void (*nfree)(void*) )
+void sfqueue_free_all(SF_QUEUE * s,void (*nfree)(void*) ) 
 {
-  sflist_free_all( s, nfree );
+  sflist_free_all( s, nfree ); 
 }
 
-void sfstack_free_all(SF_STACK * s,void (*nfree)(void*) )
+void sfstack_free_all(SF_STACK * s,void (*nfree)(void*) ) 
 {
-  sflist_free_all( s, nfree );
+  sflist_free_all( s, nfree ); 
 }
 
-void sflist_static_free_all( SF_LIST * s, void (*nfree)(void*) )
+void sflist_static_free_all( SF_LIST * s, void (*nfree)(void*) ) 
 {
   void * p;
-
+  
   if(!s)
       return;
-
+  
   while( s->count > 0 )
   {
      p = sflist_remove_head (s);
-
-	 if( p && nfree )
+    
+	 if( p && nfree ) 
          nfree( p );
   }
 }
 
-void sfqueue_static_free_all(SF_QUEUE * s,void (*nfree)(void*) )
+void sfqueue_static_free_all(SF_QUEUE * s,void (*nfree)(void*) ) 
 {
-  sflist_static_free_all( s, nfree );
+  sflist_static_free_all( s, nfree ); 
 }
 
-void sfstack_static_free_all(SF_STACK * s,void (*nfree)(void*) )
+void sfstack_static_free_all(SF_STACK * s,void (*nfree)(void*) ) 
 {
-  sflist_static_free_all( s, nfree );
+  sflist_static_free_all( s, nfree ); 
 }
 
 
@@ -477,7 +473,7 @@ void sfstack_static_free_all(SF_STACK * s,void (*nfree)(void*) )
 *  FREE List/Queue/Stack/Dictionary
 *
 *  This does not free a nodes data
-*/
+*/ 
 void sflist_free (SF_LIST * s)
 {
   while( sflist_count(s) )
@@ -486,13 +482,13 @@ void sflist_free (SF_LIST * s)
   }
   s_free(s);
 }
-void sfqueue_free (SF_QUEUE * s)
+void sfqueue_free (SF_QUEUE * s) 
 {
-  sflist_free ( s );
+  sflist_free ( s ); 
 }
 void sfstack_free (SF_STACK * s)
 {
-  sflist_free ( s );
+  sflist_free ( s ); 
 }
 
 /* Use these if the SF_LIST was not dynamically allocated via
@@ -503,14 +499,14 @@ void sflist_static_free(SF_LIST *s)
         sflist_remove_head(s);
 }
 
-void sfqueue_static_free(SF_QUEUE *s)
+void sfqueue_static_free(SF_QUEUE *s) 
 {
-  sflist_static_free(s);
+  sflist_static_free(s); 
 }
 
 void sfstack_static_free(SF_STACK *s)
 {
-  sflist_static_free(s);
+  sflist_static_free(s); 
 }
 
 /*

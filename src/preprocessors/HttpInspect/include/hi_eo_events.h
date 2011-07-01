@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -33,8 +33,7 @@ typedef enum _HI_EVENTS
     HI_EO_CLIENT_DOUBLE_DECODE  , 
     HI_EO_CLIENT_U_ENCODE       , 
     HI_EO_CLIENT_BARE_BYTE      , 
-    /* Base36 is deprecated - leave here so events keep the same number */
-    HI_EO_CLIENT_BASE36         ,
+    HI_EO_CLIENT_BASE36         , 
     HI_EO_CLIENT_UTF_8          , 
     HI_EO_CLIENT_IIS_UNICODE    , 
     HI_EO_CLIENT_MULTI_SLASH    , 
@@ -51,23 +50,8 @@ typedef enum _HI_EVENTS
     HI_EO_CLIENT_LONG_HDR       ,
     HI_EO_CLIENT_MAX_HEADERS    ,
     HI_EO_CLIENT_MULTIPLE_CONTLEN,
-    HI_EO_CLIENT_CHUNK_SIZE_MISMATCH,
-    HI_EO_CLIENT_INVALID_TRUEIP ,
-    HI_EO_CLIENT_MULTIPLE_HOST_HDRS,
-    HI_EO_CLIENT_LONG_HOSTNAME  ,
-    HI_EO_CLIENT_EVENT_NUM      
+    HI_EO_CLIENT_EVENT_NUM
 } HI_EVENTS;
-
-typedef enum _HI_SERV_EVENTS
-{
-    HI_EO_ANOM_SERVER =         0,
-    HI_EO_SERVER_INVALID_STATCODE,
-    HI_EO_SERVER_NO_CONTLEN,
-    HI_EO_SERVER_UTF_NORM_FAIL,
-    HI_EO_SERVER_UTF7,
-    HI_EO_SERVER_DECOMPR_FAILED,
-    HI_EO_SERVER_EVENT_NUM
-}HI_SERV_EVENTS;
 
 /*
 **  These defines are the alert names for each event
@@ -80,9 +64,8 @@ typedef enum _HI_SERV_EVENTS
     "(http_inspect) U ENCODING"
 #define HI_EO_CLIENT_BARE_BYTE_STR                      \
     "(http_inspect) BARE BYTE UNICODE ENCODING"
-/* Base36 is deprecated - leave here so events keep the same number */
 #define HI_EO_CLIENT_BASE36_STR                         \
-    "(http_inspect) BASE36 ENCODING"
+    "(http_inspect) BASE36 ENCODING"    
 #define HI_EO_CLIENT_UTF_8_STR                          \
     "(http_inspect) UTF-8 ENCODING"
 #define HI_EO_CLIENT_IIS_UNICODE_STR                    \
@@ -111,35 +94,20 @@ typedef enum _HI_SERV_EVENTS
     "(http_inspect) WEBROOT DIRECTORY TRAVERSAL"
 #define HI_EO_CLIENT_LONG_HDR_STR                       \
     "(http_inspect) LONG HEADER"
-#define HI_EO_CLIENT_MAX_HEADERS_STR                    \
+#define HI_EO_CLIENT_MAX_HEADERS_STR                       \
     "(http_inspect) MAX HEADER FIELDS"
 #define HI_EO_CLIENT_MULTIPLE_CONTLEN_STR               \
     "(http_inspect) MULTIPLE CONTENT LENGTH"
-#define HI_EO_CLIENT_CHUNK_SIZE_MISMATCH_STR            \
-    "(http_inspect) CHUNK SIZE MISMATCH DETECTED"
-#define HI_EO_CLIENT_MULTIPLE_HOST_HDRS_STR             \
-    "(http_inspect) MULTIPLE HOST HDRS DETECTED"
-#define HI_EO_CLIENT_INVALID_TRUEIP_STR                 \
-    "(http_inspect) INVALID IP IN TRUE-CLIENT-IP/XFF HEADER"
-#define HI_EO_CLIENT_LONG_HOSTNAME_STR                  \
-    "(http_inspect) HOSTNAME EXCEEDS 255 CHARACTERS"
 
 /*
-**  Server Events
+**  Anomalous Server Events
 */
+#define HI_EO_ANOM_SERVER           0
+
+#define HI_EO_ANOM_SERVER_EVENT_NUM 1
 
 #define HI_EO_ANOM_SERVER_STR                           \
     "(http_inspect) ANOMALOUS HTTP SERVER ON UNDEFINED HTTP PORT"
-#define HI_EO_SERVER_INVALID_STATCODE_STR                \
-    "(http_inspect) INVALID STATUS CODE IN HTTP RESPONSE"
-#define HI_EO_SERVER_NO_CONTLEN_STR                     \
-    "(http_inspect) NO CONTENT-LENGTH OR TRANSFER-ENCODING IN HTTP RESPONSE"
-#define HI_EO_SERVER_UTF_NORM_FAIL_STR                  \
-    "(http_inspect) HTTP RESPONSE HAS UTF CHARSET WHICH FAILED TO NORMALIZE"
-#define HI_EO_SERVER_UTF7_STR                           \
-    "(http_inspect) HTTP RESPONSE HAS UTF-7 CHARSET"
-#define HI_EO_SERVER_DECOMPR_FAILED_STR                  \
-    "(http_inspect) HTTP RESPONSE GZIP DECOMPRESSION FAILED"
 
 /*
 **  Event Priorities

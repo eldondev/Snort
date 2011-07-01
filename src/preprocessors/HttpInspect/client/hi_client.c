@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_client.c
 **
@@ -32,12 +32,12 @@
 **  protocol, finding where the various fields begin and end.  This must
 **  be accomplished in a stateful and stateless manner.
 **
-**  While the fields are being determined, we also do checks for
+**  While the fields are being determined, we also do checks for 
 **  normalization, so we don't normalize fields that don't need it.
 **
 **  Currently, the only fields we check for this is the URI and the
 **  parameter fields.
-**
+**  
 **  NOTES:
 **    - 3.8.03:  Initial development.  DJR
 **    - 2.4.05:  Added tab_uri_delimiter config option.  AJM.
@@ -50,10 +50,6 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "hi_ui_config.h"
 #include "hi_si.h"
 #include "hi_mi.h"
@@ -63,34 +59,72 @@
 #include "hi_util_hbm.h"
 #include "hi_return_codes.h"
 #include "util.h"
-#include "mstring.h"
-#include "sfutil/util_unfold.h"
-#include "hi_cmd_lookup.h"
-#include "detection_util.h"
+
+/* These numbers were chosen to avoid conflicting with 
+ * the return codes in hi_return_codes.h */ 
+#define URI_END  99
+#define POST_END 100
+#define NO_URI   101
+#define INVALID_HEX_VAL -1
+
 
 #define HEADER_NAME__COOKIE "Cookie"
 #define HEADER_LENGTH__COOKIE 6
 #define HEADER_NAME__CONTENT_LENGTH "Content-length"
 #define HEADER_LENGTH__CONTENT_LENGTH 14
-#define HEADER_NAME__XFF "X-Forwarded-For"
-#define HEADER_LENGTH__XFF 15
-#define HEADER_NAME__TRUE_IP "True-Client-IP"
-#define HEADER_LENGTH__TRUE_IP 14
-#define HEADER_NAME__HOSTNAME "Host"
-#define HEADER_LENGTH__HOSTNAME 4
 
-/**  This makes passing function arguments much more readable and easier
+/**
+**  This structure holds pointers to the different sections of an HTTP
+**  request.  We need to track where whitespace begins and ends, so we
+**  can evaluate the placement of the URI correctly.
+**
+**  For example,
+**
+**  GET     / HTTP/1.0
+**     ^   ^          
+**   start end
+**
+**  The end space pointers are set to NULL if there is space until the end
+**  of the buffer.
+*/
+typedef struct s_URI_PTR
+{
+    const u_char *uri;                /* the beginning of the URI */
+    const u_char *uri_end;            /* the end of the URI */
+    const u_char *norm;               /* ptr to first normalization occurence */
+    const u_char *ident;              /* ptr to beginning of the HTTP identifier */
+    const u_char *first_sp_start;     /* beginning of first space delimiter */
+    const u_char *first_sp_end;       /* end of first space delimiter */
+    const u_char *second_sp_start;    /* beginning of second space delimiter */
+    const u_char *second_sp_end;      /* end of second space delimiter */
+    const u_char *param;              /* '?' (beginning of parameter field) */
+    const u_char *delimiter;          /* HTTP URI delimiter (\r\n\) */
+    const u_char *last_dir;           /* ptr to last dir, so we catch long dirs */
+    const u_char *proxy;              /* ptr to the absolute URI */
+}  URI_PTR;
+
+typedef struct s_HEADER_PTR
+{
+    URI_PTR header;
+    //HEADER_FIELD_PTR hdr_field;
+    COOKIE_PTR cookie;
+    CONTLEN_PTR content_len;
+} HEADER_PTR;
+
+/**
+**  This makes passing function arguments much more readable and easier
 **  to follow.
 */
 typedef int (*LOOKUP_FCN)(HI_SESSION *, const u_char *, const u_char *, const u_char **,
-            URI_PTR *);
+        URI_PTR *);
 
 /*
-**  The lookup table contains functions for different HTTP delimiters
+**  The lookup table contains functions for different HTTP delimiters 
 **  (like whitespace and the HTTP delimiter \r and \n).
 */
-LOOKUP_FCN lookup_table[256];
-int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
+static LOOKUP_FCN lookup_table[256];
+static int hex_lookup[256];
+static int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr);
 
 /*
@@ -100,76 +134,38 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
 /**
 **  This routine checks for chunk encoding anomalies in an HTTP client request
 **  packet.
-**
+**  
 **  We convert potential chunk lengths and test them against the user-defined
 **  max chunk length.  We log events on any chunk lengths that are over this
 **  defined chunk lengths.
-**
+**  
 **  Chunks are skipped to save time when the chunk is contained in the packet.
-**
+**  
 **  We assume coming into this function that we are pointed at the beginning
 **  of what may be a chunk length.  That's why the iCheckChunk var is set
 **  to 1.
-**
+**  
 **  @param Session pointer to the Session construct
 **  @param start   pointer to where to beginning of buffer
 **  @param end     pointer to the end of buffer
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS      function successful
 **  @retval HI_INVALID_ARG  invalid argument
 */
-int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *end,
-        const u_char **post_end, u_char *iChunkBuf, int max_size,
-        int last_chunk_size, int *chunkSize, int *chunkRead)
+static int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *end, const u_char **post_end)
 {
-    int   iChunkLen   = 0;
+    u_int   iChunkLen   = 0;
     int    iChunkChars = 0;
-    int chunkPresent = 0;
     int    iCheckChunk = 1;
     const u_char *ptr;
     const u_char *jump_ptr;
-    int iDataLen = 0;
-    int chunkBytesCopied = 0;
 
     if(!start || !end)
         return HI_INVALID_ARG;
 
     ptr = start;
-
-    if(last_chunk_size)
-    {
-        if(last_chunk_size > max_size)
-        {
-            if(chunkSize)
-                *chunkSize = last_chunk_size - max_size ;
-            last_chunk_size = max_size;
-        }
-
-        iDataLen = end - ptr;
-
-        if(last_chunk_size > iDataLen)
-        {
-            if(chunkSize)
-                *chunkSize = last_chunk_size - iDataLen ;
-            last_chunk_size = iDataLen;
-        }
-
-        jump_ptr = ptr + last_chunk_size - 1;
-
-        if(hi_util_in_bounds(start, end, jump_ptr))
-        {
-            chunkPresent = 1;
-            if(iChunkBuf)
-            {
-                memcpy(iChunkBuf, ptr, last_chunk_size);
-                chunkBytesCopied = last_chunk_size;
-            }
-            ptr = jump_ptr + 1;
-        }
-
-    }
 
     while(hi_util_in_bounds(start, end, ptr))
     {
@@ -177,31 +173,14 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
         {
             if(iCheckChunk && iChunkLen != 0)
             {
-                if(Session->server_conf->chunk_length < (unsigned int)iChunkLen &&
+                if(Session->server_conf->chunk_length < iChunkLen &&
                    hi_eo_generate_event(Session, HI_EO_CLIENT_LARGE_CHUNK))
                 {
                     hi_eo_client_event_log(Session, HI_EO_CLIENT_LARGE_CHUNK,
                                            NULL, NULL);
                 }
 
-                SkipBlankAndNewLine(start,end, &ptr);
-
-                if(*ptr == '\n')
-                    ptr++;
-
-                iDataLen = end - ptr ;
-
-                if( iChunkLen > iDataLen)
-                {
-                    if(chunkSize)
-                        *chunkSize = iChunkLen - iDataLen;
-                    iChunkLen = iDataLen;
-                    jump_ptr = ptr + iDataLen - 1;
-                }
-                else
-                {
-                    jump_ptr = ptr + iChunkLen;
-                }
+                jump_ptr = ptr + iChunkLen;
 
                 if(jump_ptr <= ptr)
                 {
@@ -210,20 +189,7 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
 
                 if(hi_util_in_bounds(start, end, jump_ptr))
                 {
-                    chunkPresent = 1;
-                    if(iChunkBuf && ((chunkBytesCopied + iChunkLen) <= max_size))
-                    {
-                        memcpy(iChunkBuf+chunkBytesCopied, ptr, iChunkLen);
-                        chunkBytesCopied += iChunkLen;
-                    }
                     ptr = jump_ptr;
-                    /* Check to see if the chunks ends */
-                    if( ((ptr + 2) < end) && (*(ptr + 2) != '\n') &&
-                            hi_eo_generate_event(Session, HI_EO_CLIENT_CHUNK_SIZE_MISMATCH))
-                    {
-                        hi_eo_client_event_log(Session, HI_EO_CLIENT_CHUNK_SIZE_MISMATCH,
-                                NULL, NULL);
-                    }
                 }
                 else
                 {
@@ -252,7 +218,7 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
 
         if(iCheckChunk)
         {
-            if(valid_lookup[*ptr] != HEX_VAL)
+            if(hex_lookup[*ptr] == INVALID_HEX_VAL)
             {
                 if(*ptr == '\r')
                 {
@@ -298,7 +264,8 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
                 else
                 {
                     iChunkLen <<= 4;
-                    iChunkLen |= (unsigned int)(hex_lookup[*ptr]);
+                    iChunkLen |= (unsigned int)hex_lookup[*ptr];
+
                     iChunkChars++;
                 }
             }
@@ -306,17 +273,9 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
 
         ptr++;
     }
-    if (chunkPresent )
+    if (post_end && iChunkChars )
     {
-        if(post_end)
-        {
-            *(post_end) = ptr;
-        }
-
-        if(chunkRead)
-        {
-            *chunkRead = chunkBytesCopied;
-        }
+        *(post_end) = ptr;
         return 1;
     }
 
@@ -330,7 +289,7 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
 /**
 **  Catch multiple requests per packet, by returning pointer to after the
 **  end of the request header if there is another request.
-**
+**  
 **  There are 4 types of "valid" delimiters that we look for.  They are:
 **  "\r\n\r\n"
 **  "\r\n\n"
@@ -339,19 +298,19 @@ int CheckChunkEncoding(HI_SESSION *Session, const u_char *start, const u_char *e
 **  The only patterns that we really only need to look for are:
 **  "\n\r\n"
 **  "\n\n"
-**  The reason being that these two patterns are suffixes of the other
+**  The reason being that these two patterns are suffixes of the other 
 **  patterns.  So once we find those, we are all good.
-**
+**  
 **  @param Session pointer to the session
 **  @param start pointer to the start of text
 **  @param end   pointer to the end of text
-**
+**  
 **  @return pointer
-**
+**  
 **  @retval NULL  Did not find pipeline request
 **  @retval !NULL Found another possible request.
 */
-static inline const u_char *FindPipelineReq(HI_SESSION *Session,
+static INLINE const u_char *FindPipelineReq(HI_SESSION *Session, 
             const u_char *start, const u_char *end)
 {
     const u_char *p;
@@ -372,7 +331,7 @@ static inline const u_char *FindPipelineReq(HI_SESSION *Session,
     **
     **  a.k.a there needs to be data after the initial request to inspect
     **  to make it worth our while.
-    */
+    */ 
     while(p < (end - 6))
     {
         if(*p == '\n')
@@ -425,29 +384,29 @@ static inline const u_char *FindPipelineReq(HI_SESSION *Session,
 /**
 **  This checks that there is a version following a space with in an HTTP
 **  packet.
-**
+**  
 **  This function gets called when a whitespace area has ended, and we want
 **  to know if a version identifier is followed directly after.  So we look
 **  for the rfc standard "HTTP/" and report appropriately.  We also need
 **  to make sure that the function succeeds given an end of buffer, so for
 **  instance if the buffer ends like "  HTT", we still assume that this is
 **  a valid version identifier because of TCP segmentation.
-**
+**  
 **  We also check for the 0.9 standard of GET URI\r\n.  When we see a \r or
 **  a \n, then we just return with the pointer still pointing to that char.
 **  The reason is because on the next loop, we'll do the evaluation that
 **  we normally do and finish up processing there.
-**
+**  
 **  @param start pointer to the start of the version identifier
 **  @param end   pointer to the end of the buffer (could be the end of the
 **               data section, or just to the beginning of the delimiter.
-**
+**  
 **  @return integer
-**
+**  
 **  @retval 1 this is an HTTP version identifier
 **  @retval 0 this is not an HTTP identifier, or bad parameters
 */
-int IsHttpVersion(const u_char **ptr, const u_char *end)
+static int IsHttpVersion(const u_char **ptr, const u_char *end)
 {
     static u_char s_acHttpDelimiter[] = "HTTP/";
     static int    s_iHttpDelimiterLen = 5;
@@ -488,15 +447,15 @@ int IsHttpVersion(const u_char **ptr, const u_char *end)
         }
 
         (*ptr)++;
-    }
+    }     
 
     /*
-    **  This means that we match all the chars that we could given the
+    **  This means that we match all the chars that we could given the 
     **  remaining length so we should increment the pointer by that much
     **  since we don't need to inspect this again.
     */
 
-    /* This pointer is not used again.   When 1 is returned it causes
+    /* This pointer is not used again.   When 1 is returned it causes 
      * NextNonWhiteSpace to return also.  */
 #if 0
     (*ptr)++;
@@ -522,14 +481,14 @@ int IsHttpVersion(const u_char **ptr, const u_char *end)
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
 **  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  
 **  @return integer
-**
-**  @retval HI_OUT_OF_BOUNDS
+**  
+**  @retval HI_OUT_OF_BOUNDS 
 **  @retval URI_END end of the URI is found, check URI_PTR.
 **  @retval NO_URI  malformed delimiter, no URI.
 */
-int find_rfc_delimiter(HI_SESSION *Session, const u_char *start,
+static int find_rfc_delimiter(HI_SESSION *Session, const u_char *start, 
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     if(*ptr == start || !uri_ptr->uri)
@@ -556,14 +515,14 @@ int find_rfc_delimiter(HI_SESSION *Session, const u_char *start,
     {
         return HI_OUT_OF_BOUNDS;
     }
-
+        
     if(**ptr == '\n')
     {
         uri_ptr->delimiter = (*ptr)-1;
 
         if(!uri_ptr->ident)
             uri_ptr->uri_end = uri_ptr->delimiter;
-
+        
         return URI_END;
     }
 
@@ -577,7 +536,7 @@ int find_rfc_delimiter(HI_SESSION *Session, const u_char *start,
 /**
 **  Check for non standard delimiter '\n'.
 **
-**  It now appears that apache and iis both take this non-standard
+**  It now appears that apache and iis both take this non-standard 
 **  delimiter.  So, we most likely will always look for it, but maybe
 **  give off a special alert or something.
 **
@@ -585,14 +544,14 @@ int find_rfc_delimiter(HI_SESSION *Session, const u_char *start,
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval URI_END delimiter found, end of URI
-**  @retval NO_URI
+**  @retval NO_URI  
 */
-int find_non_rfc_delimiter(HI_SESSION *Session, const u_char *start,
+static int find_non_rfc_delimiter(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -624,10 +583,10 @@ int find_non_rfc_delimiter(HI_SESSION *Session, const u_char *start,
         }
 
         uri_ptr->delimiter = *ptr;
-
+        
         if(!uri_ptr->ident)
             uri_ptr->uri_end = uri_ptr->delimiter;
-
+        
         return URI_END;
     }
 
@@ -653,33 +612,33 @@ int find_non_rfc_delimiter(HI_SESSION *Session, const u_char *start,
 /**
 **  Update the URI_PTR fields spaces, find the next non-white space char,
 **  and validate the HTTP version identifier after the spaces.
-**
+**  
 **  This is the main part of the URI algorithm.  This verifies that there
 **  isn't too many spaces in the data to be a URI, it checks that after the
 **  second space that there is an HTTP identifier or otherwise it's no good.
 **  Also, if we've found an identifier after the first whitespace, and
 **  find another whitespace, there is no URI.
-**
+**  
 **  The uri and uri_end pointers are updated in this function depending
 **  on what space we are at, and if the space was followed by the HTTP
 **  identifier.  (NOTE:  the HTTP delimiter is no longer "HTTP/", but
 **  can also be "\r\n", "\n", or "\r".  This is the defunct method, and
 **  we deal with it in the IsHttpVersion and delimiter functions.)
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       found the next non-whitespace
 **  @retval HI_OUT_OF_BOUNDS whitespace to the end of the buffer
 **  @retval URI_END          delimiter found, end of URI
 **  @retval NO_URI
 */
-int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
+static int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start, 
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -734,7 +693,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
     if(uri_ptr->first_sp_end)
     {
         /*
-        **  If the second space has been set, then this means that we have
+        **  If the second space has been set, then this means that we have   
         **  seen a third space, which we shouldn't see in the URI so we
         **  are now done and know there is no URI in this packet.
         */
@@ -743,7 +702,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
             return NO_URI;
         }
 
-        /*
+        /* 
         **  Treat whitespace differently at the end of the URI than we did
         **  at the beginning.  Ignore and return if special characters are
         **  not defined as whitespace after the URI.
@@ -775,7 +734,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
         **  and we unset the URI so we can set it later if need be.
         **
         **  This is mainly so we handle data that is all spaces correctly.
-        **
+        **  
         **  In the normal case where we've seen text and then the first space,
         **  we leave the uri ptr pointing at the beginning of the data, and
         **  set the uri end after we've determined where to put it.
@@ -805,7 +764,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
         {
             if(ServerConf->apache_whitespace.on)
             {
-                if(hi_eo_generate_event(Session,
+                if(hi_eo_generate_event(Session, 
                                         ServerConf->apache_whitespace.alert))
                 {
                     hi_eo_client_event_log(Session, HI_EO_CLIENT_APACHE_WS,
@@ -868,7 +827,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
                 **
                 **  When we get here it means that we have found the end of
                 **  the FIRST whitespace, and that there was no delimiter,
-                **  so we reset the uri pointers and other related
+                **  so we reset the uri pointers and other related 
                 **  pointers.
                 */
                 uri_ptr->uri      = *end_sp;
@@ -917,7 +876,7 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
 */
 /**
 **  Check for percent normalization in the URI buffer.
-**
+**  
 **  We don't do much here besides check the configuration, set the pointer,
 **  and continue processing.
 **
@@ -925,13 +884,13 @@ int NextNonWhiteSpace(HI_SESSION *Session, const u_char *start,
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS function successful
 */
-int SetPercentNorm(HI_SESSION *Session, const u_char *start,
+static int SetPercentNorm(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -945,7 +904,7 @@ int SetPercentNorm(HI_SESSION *Session, const u_char *start,
     }
 
     (*ptr)++;
-
+   
     return HI_SUCCESS;
 }
 
@@ -955,16 +914,16 @@ int SetPercentNorm(HI_SESSION *Session, const u_char *start,
 */
 /**
 **  We check the directory length against the global config.
-**
+**  
 **  @param Session pointer to the current session
 **  @param uri_ptr pointer to the URI state
 **  @param ptr     pointer to the current index in buffer
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS
 */
-static inline int CheckLongDir(HI_SESSION *Session, URI_PTR *uri_ptr,
+static INLINE int CheckLongDir(HI_SESSION *Session, URI_PTR *uri_ptr, 
                                const u_char *ptr)
 {
     int iDirLen;
@@ -972,7 +931,7 @@ static inline int CheckLongDir(HI_SESSION *Session, URI_PTR *uri_ptr,
     /*
     **  Check for oversize directory
     */
-    if(Session->server_conf->long_dir &&
+    if(Session->server_conf->long_dir && 
         uri_ptr->last_dir && !uri_ptr->param)
     {
         iDirLen = ptr - uri_ptr->last_dir;
@@ -995,19 +954,19 @@ static inline int CheckLongDir(HI_SESSION *Session, URI_PTR *uri_ptr,
 */
 /**
 **  Check for any directory traversal or multi-slash normalization.
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       function successful
 **  @retval HI_OUT_OF_BOUNDS reached the end of the buffer
 */
-int SetSlashNorm(HI_SESSION *Session, const u_char *start,
+static int SetSlashNorm(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -1080,21 +1039,21 @@ int SetSlashNorm(HI_SESSION *Session, const u_char *start,
 */
 /**
 **  Check for backslashes and if we need to normalize.
-**
+**  
 **  This really just checks the configuration option, and sets the norm
 **  variable if applicable.
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       function successful
 */
-int SetBackSlashNorm(HI_SESSION *Session, const u_char *start,
+static int SetBackSlashNorm(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -1113,60 +1072,27 @@ int SetBackSlashNorm(HI_SESSION *Session, const u_char *start,
 }
 
 /*
- * **  NAME
- * **    SetPlusNorm::
- * */
-/**
- * **  Check for "+" and if we need to normalize.
- * **
- * **
- * **  @param ServerConf pointer to the server configuration
- * **  @param start      pointer to the start of payload
- * **  @param end        pointer to the end of the payload
- * **  @param ptr        pointer to the pointer of the current index
- * **  @param uri_ptr    pointer to the URI_PTR construct
- * **
- * **  @return integer
- * **
- * **  @retval HI_SUCCESS       function successful
- * */
-
-
-int SetPlusNorm(HI_SESSION *Session, const u_char *start,
-        const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
-{
-    if(!uri_ptr->norm && !uri_ptr->ident)
-    {
-        uri_ptr->norm = *ptr;
-    }
-
-    (*ptr)++;
-
-    return HI_SUCCESS;
-}
-
-/*
 **  NAME
 **    SetBinaryNorm::
 */
 /**
 **  Look for non-ASCII chars in the URI.
-**
+**  
 **  We look for these chars in the URI and set the normalization variable
 **  if it's not already set.  I think we really only need this for IIS
 **  servers, but we may want to know if it's in the URI too.
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       function successful
 */
-int SetBinaryNorm(HI_SESSION *Session, const u_char *start,
+static int SetBinaryNorm(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     if(!uri_ptr->norm && !uri_ptr->ident)
@@ -1187,18 +1113,18 @@ int SetBinaryNorm(HI_SESSION *Session, const u_char *start,
 **  This function sets the parameter field as the first '?'.  The big thing
 **  is that we set the param value, so we don't false positive long dir
 **  events when it's really just a long parameter field.
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       function successful
 */
-int SetParamField(HI_SESSION *Session, const u_char *start,
+static int SetParamField(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     if(!uri_ptr->ident)
@@ -1216,18 +1142,18 @@ int SetParamField(HI_SESSION *Session, const u_char *start,
 */
 /**
 **  This function checks for an absolute URI in the URI.
-**
+**  
 **  @param ServerConf pointer to the server configuration
 **  @param start      pointer to the start of payload
 **  @param end        pointer to the end of the payload
 **  @param ptr        pointer to the pointer of the current index
-**  @param uri_ptr    pointer to the URI_PTR construct
-**
+**  @param uri_ptr    pointer to the URI_PTR construct  
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS       function successful
 */
-int SetProxy(HI_SESSION *Session, const u_char *start,
+static int SetProxy(HI_SESSION *Session, const u_char *start,
         const u_char *end, const u_char **ptr, URI_PTR *uri_ptr)
 {
     HTTPINSPECT_CONF *ServerConf = Session->server_conf;
@@ -1258,12 +1184,12 @@ int SetProxy(HI_SESSION *Session, const u_char *start,
 /**
 **  This is where we set the HI_CLIENT values that we found during URI
 **  discovery.  This also covers checking these values for errors.
-**
+**  
 **  @param Client   pointer to HI_CLIENT structure
 **  @param uri_ptr  pointer to the uri data
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_NONFATAL_ERR problem with the uri values.
 **  @retval HI_SUCCESS      values set successfully
 */
@@ -1285,7 +1211,7 @@ static int SetClientVars(HI_CLIENT *Client, URI_PTR *uri_ptr, u_int dsize)
         printf("** second_end   = %c\n", *uri_ptr->second_sp_end);
     if(uri_ptr->delimiter)
         printf("** delimiter    = %c\n", *uri_ptr->delimiter);
-
+    
     if(uri_ptr->uri)
         printf("** uri          = %c\n", *uri_ptr->uri);
     if(uri_ptr->norm)
@@ -1293,7 +1219,7 @@ static int SetClientVars(HI_CLIENT *Client, URI_PTR *uri_ptr, u_int dsize)
     */
 
     /*
-    **  This means that there was only spaces or delimiters within the
+    **  This means that there was only spaces or delimiters within the 
     **  complete URI.  In this case, there is no valid URI so we just
     **  return such.
     */
@@ -1335,10 +1261,11 @@ static int SetClientVars(HI_CLIENT *Client, URI_PTR *uri_ptr, u_int dsize)
     return HI_SUCCESS;
 }
 
-static inline int hi_client_extract_post(
+static INLINE int hi_client_extract_post(
     HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf,
     const u_char *ptr, const u_char *end, URI_PTR *result, int content_length)
 {
+    int iRet;
     const u_char *start = ptr;
     const u_char *post_end = end;
 
@@ -1347,7 +1274,7 @@ static inline int hi_client_extract_post(
     /* Limit search depth */
     if ((!content_length))
     {
-        if ( ServerConf->chunk_length && (CheckChunkEncoding(Session, start, end, &post_end, NULL, 0, 0 , NULL, NULL) == 1) )
+        if ( ServerConf->chunk_length && (CheckChunkEncoding(Session, start, end, &post_end) == 1) )
         {
             result->uri = start;
             result->uri_end = post_end;
@@ -1358,145 +1285,74 @@ static inline int hi_client_extract_post(
             return HI_NONFATAL_ERR;
         }
     }
-
-    if(content_length > 0)
+    if ( ServerConf->post_depth && (content_length > ServerConf->post_depth) && ((post_end - ptr ) > ServerConf->post_depth))
     {
-        if ((post_end - ptr ) > content_length)
-        {
-            post_end = ptr + content_length;
-        }
+        post_end = ptr + ServerConf->post_depth;
+        result->uri_end = ptr + content_length;
     }
-    else
-        return HI_NONFATAL_ERR;
+    else if (((post_end - ptr ) > content_length) && content_length > 0 )
+    {
+        post_end = ptr + content_length;
+        result->uri_end = post_end;
+    }
 
     result->uri = start;
-    result->uri_end = post_end;
 
+    while(hi_util_in_bounds(start, post_end, ptr))
+    {
+        if(lookup_table[*ptr] || ServerConf->whitespace[*ptr])
+        {
+            if(lookup_table[*ptr])
+            {
+                iRet = (lookup_table[*ptr])(Session, start, post_end, &ptr, result);
+            }
+            else
+            {
+                iRet = NextNonWhiteSpace(Session, start, post_end, &ptr, result);
+            }
+            if (iRet)
+            {
+                if(iRet == URI_END || iRet == HI_OUT_OF_BOUNDS)
+                {
+                    result->uri = start;
+                    return POST_END;
+                }
+                else if(iRet != HI_SUCCESS)
+                {
+                    result->uri = start;
+                    return HI_NONFATAL_ERR;
+                }
+            }
+            else 
+            {
+                continue;
+            }
+
+        }
+
+        /* Reset these, since we're not delimited by spaces for the version
+         * with post data */
+        result->first_sp_start = result->first_sp_end = NULL;
+        ptr++;
+    }
+
+    result->uri = start;
     return POST_END;
 }
 
-
-static inline int HTTP_CopyExtraDataToSession(const uint8_t *start, int length, int command_type, HTTP_LOG_STATE *log_state)
-{
-    uint8_t *alt_buf;
-    uint32_t alt_size;
-    uint32_t *alt_len;
-    int ret;
-
-    if (length <= 0)
-        return -1;
-
-
-    switch (command_type)
-    {
-        case COPY_URI:
-            alt_buf = log_state->uri_extracted;
-            alt_size = MAX_URI_EXTRACTED;
-            alt_len = &(log_state->uri_bytes);
-            break;
-
-        case COPY_HOSTNAME:
-            alt_buf = log_state->hostname_extracted;
-            alt_size = MAX_HOSTNAME;
-            alt_len = &(log_state->hostname_bytes);
-            break;
-
-        default:
-            return -1;
-    }
-
-    if(length > (int) alt_size)
-        length = alt_size;
-
-    *alt_len = 0;
-
-    ret = SafeMemcpy(alt_buf, start, length, alt_buf, alt_buf + alt_size);
-
-    if (ret != SAFEMEM_SUCCESS)
-    {
-        return -1;
-    }
-
-    *alt_len += length;
-
-    return 0;
-}
-
-static inline void HTTP_CopyUri(HTTPINSPECT_CONF *ServerConf, const u_char *start, const u_char *end, HttpSessionData *hsd, int stream_ins)
-{
-    int iRet = 0;
-    const u_char *cur_ptr;
-
-    cur_ptr = start;
-
-    if(ServerConf->log_uri && !stream_ins && hsd)
-    {
-        SkipBlankSpace(start,end,&cur_ptr);
-
-        start = cur_ptr;
-        if(!SetLogBuffers(hsd))
-        {
-            iRet = HTTP_CopyExtraDataToSession((uint8_t *)start, (end - start), COPY_URI, hsd->log_state);
-            if(!iRet)
-                hsd->log_flags |= HTTP_LOG_URI;
-        }
-    }
-}
-
-
-static inline int unfold_http_uri(HTTPINSPECT_CONF *ServerConf, const u_char *end, URI_PTR *uri_ptr, HttpSessionData *hsd, int stream_ins)
-{
-    uint8_t unfold_buf[DECODE_BLEN];
-    uint32_t unfold_size =0;
-    const u_char *p;
-    int folded = 0;
-    const char *tmp = NULL;
-    int iRet = -1;
-
-    p =  uri_ptr->uri;
-
-
-    sf_unfold_header(p, (end - p), unfold_buf, sizeof(unfold_buf), &unfold_size, 0, &folded);
-
-    if( !folded)
-    {
-        HTTP_CopyUri(ServerConf, uri_ptr->uri , uri_ptr->uri_end, hsd, stream_ins);
-        return iRet;
-    }
-
-    tmp = SnortStrnPbrk((const char *)unfold_buf, unfold_size, " \t");
-
-    if (tmp != NULL)
-    {
-        unfold_size = ((uint8_t *)tmp - unfold_buf);
-        iRet = 0;
-    }
-
-    p = p + unfold_size;
-    uri_ptr->uri_end = p;
-
-    HTTP_CopyUri(ServerConf, unfold_buf, unfold_buf + unfold_size, hsd, stream_ins);
-
-    return iRet;
-}
-
-
-static inline int hi_client_extract_uri(
-    HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf,
-    HI_CLIENT * Client, const u_char *start, const u_char *end,
-    const u_char *ptr, URI_PTR *uri_ptr, HttpSessionData *hsd, int stream_ins)
+static INLINE int hi_client_extract_uri(
+    HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf, 
+    HI_CLIENT * Client, const u_char *start, const u_char *end, 
+    const u_char *ptr, URI_PTR *uri_ptr)
 {
     int iRet = HI_SUCCESS;
-    const u_char *tmp;
-    int uri_copied = 0;
 
     Session->norm_flags &= ~HI_BODY;
-
 
     /*
     **  This loop compares each char to an array of functions
     **  (one for each char) and calling that function if there is one.
-    **
+    **  
     **  If there is no function, then we just increment the char ptr and
     **  continue processing.
     **
@@ -1509,24 +1365,12 @@ static inline int hi_client_extract_uri(
 
     while(hi_util_in_bounds(start, end, ptr))
     {
-        if(!ServerConf->extended_ascii_uri)
+        /* isascii returns non-zero if it is ascii */
+        if (isascii((int)*ptr) == 0)
         {
-            /* isascii returns non-zero if it is ascii */
-            if (isascii((int)*ptr) == 0)
-            {
-                /* Possible post data or something else strange... */
-                iRet = URI_END;
-                /* Find the end of the URI in this case*/
-                tmp = (const u_char *)SnortStrnPbrk((const char *)ptr, (uri_ptr->uri_end - ptr), " \r\n\t");
-                if(tmp != NULL)
-                    uri_ptr->uri_end = tmp;
-
-                if(!uri_copied)
-                {
-                    HTTP_CopyUri(ServerConf, uri_ptr->uri , uri_ptr->uri_end, hsd, stream_ins);
-                }
-                break;
-            }
+            /* Possible post data or something else strange... */
+            iRet = URI_END;
+            break;
         }
 
         if(lookup_table[*ptr] || ServerConf->whitespace[*ptr])
@@ -1545,19 +1389,6 @@ static inline int hi_client_extract_uri(
             {
                 if(iRet == URI_END)
                 {
-                    if((*(uri_ptr->uri_end) == '\n') || (*(uri_ptr->uri_end) == '\r') )
-                    {
-                        uri_copied = 1;
-                        if(!unfold_http_uri(ServerConf, end, uri_ptr, hsd, stream_ins ))
-                        {
-                            SkipCRLF(start,end, &ptr);
-                            continue;
-                        }
-                    }
-                    else if(!uri_copied)
-                    {
-                        HTTP_CopyUri(ServerConf, uri_ptr->uri , uri_ptr->uri_end, hsd, stream_ins);
-                    }
                     /*
                     **  You found a URI, let's break and check it out.
                     */
@@ -1579,13 +1410,13 @@ static inline int hi_client_extract_uri(
                     **  to us if we don't do this first.
                     */
                     if(Session->server_conf->chunk_length)
-                            CheckChunkEncoding(Session, start, end, NULL, NULL, 0, 0, NULL, NULL);
+                            CheckChunkEncoding(Session, start, end, NULL);
 
                     /*
                     **  We only inspect the packet for another pipeline
                     **  request if there wasn't a previous pipeline request.
-                    **  The reason that we do this is because
-                    */
+                    **  The reason that we do this is because 
+                    */  
                     if(!Client->request.pipeline_req)
                     {
                         /*
@@ -1623,11 +1454,20 @@ static inline int hi_client_extract_uri(
 }
 
 
-const u_char *extract_http_cookie(const u_char *p, const u_char *end, HEADER_PTR *header_ptr,
-        HEADER_FIELD_PTR *header_field_ptr)
+static INLINE int IsHeaderFieldName(const u_char *p, const u_char *start, const u_char *end, const char *header_name, size_t header_len)
 {
-    const u_char *crlf;
-    const u_char *start;
+    if( hi_util_in_bounds(start, end, p+header_len))  
+    {
+        if(!strncasecmp((const char *)p, header_name, header_len))
+            return 1;
+        else
+            return 0;
+    }
+    return 0;
+}
+
+static INLINE const u_char *extract_http_cookie(const u_char *p, const u_char *end, HEADER_PTR *header_ptr, HEADER_FIELD_PTR *header_field_ptr)
+{
     if (header_ptr->cookie.cookie)
     {
         /* unusal, multiple cookies... alloc new cookie pointer */
@@ -1638,222 +1478,65 @@ const u_char *extract_http_cookie(const u_char *p, const u_char *end, HEADER_PTR
             header_ptr->header.uri_end = p;
             return p;
         }
-        header_field_ptr->cookie->next = extra_cookie;
-        header_field_ptr->cookie = extra_cookie;
+        (header_field_ptr)->cookie->next = extra_cookie;
+        (header_field_ptr)->cookie = extra_cookie;
         /* extra_cookie->next = NULL; */ /* removed, since calloc NULLs this. */
     }
     else
     {
-        header_field_ptr->cookie = &header_ptr->cookie;
+        (header_field_ptr)->cookie = &header_ptr->cookie;
     }
-
-    start = p;
-    /* skip spaces before : */
-    SkipBlankSpace(start,end,&p);
-    if(hi_util_in_bounds(start, end, p) && *p == ':')
-    {
-        p++;
-        SkipBlankSpace(start,end,&p);
-    }
-
-    header_field_ptr->cookie->cookie = p;
+    (header_field_ptr)->cookie->cookie = p;                           
 
     {
-        crlf = (u_char *)SnortStrnStr((const char *)p, end - p, "\n");
-
+        const u_char *crlf = (u_char *)SnortStrnStr((const char *)p, end - p, "\n");
         /* find a \n  */
         if (crlf) /* && hi_util_in_bounds(start, end, crlf+1)) bounds is checked in SnortStrnStr */
         {
-            if(*(crlf -1) == '\r')
-                header_field_ptr->cookie->cookie_end = crlf - 1;
-            else
-                header_field_ptr->cookie->cookie_end = crlf;
-
+            (header_field_ptr)->cookie->cookie_end = crlf + 1;
             p = crlf;
         }
         else
         {
-            header_ptr->header.uri_end = header_field_ptr->cookie->cookie_end = end;
+            header_ptr->header.uri_end = (header_field_ptr)->cookie->cookie_end = end;                     
             return end;
         }
     }
     return p;
 }
 
-
-const u_char *extract_http_xff(HI_SESSION *Session, const u_char *p, const u_char *start,
-        const u_char *end, HEADER_PTR *header_ptr, sfip_t **true_ip)
-{
-    SFIP_RET status;
-    sfip_t *tmp;
-    char *ipAddr = NULL;
-    uint8_t unfold_buf[DECODE_BLEN];
-    uint32_t unfold_size =0;
-    const u_char *start_ptr, *end_ptr, *cur_ptr;
-
-    if(!true_ip || *true_ip)
-        return p;
-
-    SkipBlankSpace(start,end,&p);
-
-    if(hi_util_in_bounds(start, end, p) && *p == ':')
-    {
-        p++;
-        sf_unfold_header(p, end-start, unfold_buf, sizeof(unfold_buf), &unfold_size, 0 , 0);
-
-        if(!unfold_size)
-        {
-            header_ptr->header.uri_end = end;
-            return end;
-        }
-
-        p = p + unfold_size;
-
-        start_ptr = unfold_buf;
-        cur_ptr = unfold_buf;
-        end_ptr = unfold_buf + unfold_size;
-        SkipBlankSpace(start_ptr,end_ptr,&cur_ptr);
-
-        start_ptr = cur_ptr;
-        while( cur_ptr < end_ptr )
-        {
-            if( *cur_ptr == ' ' || *cur_ptr == '\t' ||
-                    *cur_ptr == ',' )
-                break;
-            cur_ptr++;
-        }
-
-        if(cur_ptr - start_ptr)
-            ipAddr = SnortStrndup((const char *)start_ptr, cur_ptr - start_ptr );
-        if(ipAddr)
-        {
-            if( (tmp = sfip_alloc(ipAddr, &status)) == NULL )
-            {
-                if((status != SFIP_ARG_ERR) && (status !=SFIP_ALLOC_ERR))
-                {
-                    if(hi_eo_generate_event(Session, HI_EO_CLIENT_INVALID_TRUEIP))
-                    {
-                        hi_eo_client_event_log(Session, HI_EO_CLIENT_INVALID_TRUEIP, NULL, NULL);
-                    }
-                }
-                free(ipAddr);
-                return p;
-            }
-#ifndef SUP_IP6
-            if (tmp->family == AF_INET6)
-            {
-                sfip_free(tmp);
-                free(ipAddr);
-                return p;
-            }
-#endif
-            *true_ip = tmp;
-            free(ipAddr);
-        }
-
-    }
-    else
-    {
-        header_ptr->header.uri_end = end;
-        return end;
-    }
-
-    return p;
-
-}
-
-
-const u_char *extract_http_hostname(HI_SESSION *Session, const u_char *p, const u_char *start,
-        const u_char *end, HEADER_PTR *header_ptr, HttpSessionData *hsd)
-{
-    uint8_t unfold_buf[DECODE_BLEN];
-    uint32_t unfold_size =0;
-    const u_char *start_ptr, *end_ptr, *cur_ptr;
-    int iRet=0;
-
-
-    SkipBlankSpace(start,end,&p);
-
-    if(hi_util_in_bounds(start, end, p) && *p == ':')
-    {
-        p++;
-        sf_unfold_header(p, end-start, unfold_buf, sizeof(unfold_buf), &unfold_size, 0, 0);
-
-        if(!unfold_size)
-        {
-            header_ptr->header.uri_end = end;
-            return end;
-        }
-
-        p = p + unfold_size;
-
-        start_ptr = unfold_buf;
-        cur_ptr = unfold_buf;
-        end_ptr = unfold_buf + unfold_size;
-        SkipBlankSpace(start_ptr,end_ptr,&cur_ptr);
-
-        start_ptr = cur_ptr;
-
-        if((end_ptr - start_ptr) >= MAX_HOSTNAME)
-        {
-            if(hi_eo_generate_event(Session, HI_EO_CLIENT_LONG_HOSTNAME))
-            {
-                hi_eo_client_event_log(Session, HI_EO_CLIENT_LONG_HOSTNAME, NULL, NULL);
-            }
-        }
-
-        iRet = HTTP_CopyExtraDataToSession((uint8_t *)start_ptr, (end_ptr - start_ptr), COPY_HOSTNAME, hsd->log_state);
-        if(!iRet)
-        {
-            hsd->log_flags |= HTTP_LOG_HOSTNAME;
-        }
-    }
-    else
-    {
-        header_ptr->header.uri_end = end;
-        return end;
-    }
-
-    return p;
-}
-
-
-const u_char *extract_http_content_length(HI_SESSION *Session,
-        HTTPINSPECT_CONF *ServerConf, const u_char *p, const u_char *start,
-        const u_char *end, HEADER_PTR *header_ptr, HEADER_FIELD_PTR *header_field_ptr)
+static INLINE const u_char *extract_http_content_length(HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf, const u_char *p, const u_char *start, const u_char *end, HEADER_PTR *header_ptr, HEADER_FIELD_PTR *header_field_ptr)
 {
     const u_char *crlf;
     int space_present = 0;
     if (header_ptr->content_len.cont_len_start)
     {
-        if(hi_eo_generate_event(Session, HI_EO_CLIENT_MULTIPLE_CONTLEN))
-        {
-            hi_eo_client_event_log(Session, HI_EO_CLIENT_MULTIPLE_CONTLEN, NULL, NULL);
-        }
+        hi_eo_client_event_log(Session, HI_EO_CLIENT_MULTIPLE_CONTLEN, NULL, NULL);
         header_ptr->header.uri_end = p;
+        //header_ptr->content_len.cont_len_start = header_ptr->content_len.cont_len_end = NULL;
         header_ptr->content_len.len = 0;
         return p;
     }
     else
     {
-        header_field_ptr->content_len = &header_ptr->content_len;
+        (header_field_ptr)->content_len = &header_ptr->content_len;
         p = p + 14;
     }
     /* Move past all the blank spaces. Only tabs and spaces are allowed here */
-    SkipBlankSpace(start,end,&p);
+    while((hi_util_in_bounds(start, end, p)) && ( *p == ' ' || *p == '\t') ) {p++;}
 
     if(hi_util_in_bounds(start, end, p) && *p == ':')
     {
         p++;
         if (  hi_util_in_bounds(start, end, p) )
         {
-            if ( ServerConf->profile == HI_APACHE || ServerConf->profile == HI_ALL)
+            if ( ServerConf->profile == HI_APACHE || ServerConf->profile == HI_ALL) 
             {
-                SkipWhiteSpace(start,end,&p);
+                while( (hi_util_in_bounds(start, end, p)) && isspace((int)*p) && (*p != '\n') ) {p++;}
             }
             else
             {
-                SkipBlankAndNewLine(start,end,&p);
+                while( (hi_util_in_bounds(start, end, p)) && ( *p == ' ' || *p == '\t') && (*p != '\n')  ) {p++;}
             }
             if( hi_util_in_bounds(start, end, p))
             {
@@ -1864,7 +1547,7 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
                         if ( *p == '\n')
                         {
                             p++;
-                            while( hi_util_in_bounds(start, end, p) && ( *p == ' ' || *p == '\t'))
+                            while( hi_util_in_bounds(start, end, p) && ( *p == ' ' || *p == '\t')) 
                             {
                                 space_present = 1;
                                 p++;
@@ -1873,41 +1556,37 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
                             {
                                 if ( isdigit((int)*p))
                                     break;
-                                else if(isspace((int)*p) &&
-                                        (ServerConf->profile == HI_APACHE || ServerConf->profile == HI_ALL) )
+                                else if(isspace((int)*p) && (ServerConf->profile == HI_APACHE || ServerConf->profile == HI_ALL) )
                                 {
-                                    SkipWhiteSpace(start,end,&p);
+                                    while((hi_util_in_bounds(start, end, p)) && isspace((int)*p) && (*p != '\n') ) {p++;}
                                 }
                                 else
-                                {
-                                    header_field_ptr->content_len->cont_len_start =
-                                        header_field_ptr->content_len->cont_len_end = NULL;
-                                    header_field_ptr->content_len->len = 0;
+                                {   
+                                    (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                                    (header_field_ptr)->content_len->len = 0;
                                     return p;
                                 }
                             }
                             else
                             {
-                                header_field_ptr->content_len->cont_len_start =
-                                    header_field_ptr->content_len->cont_len_end = NULL;
-                                header_field_ptr->content_len->len = 0;
+                                (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                                (header_field_ptr)->content_len->len = 0;
                                 return p;
                             }
                         }
                         else
-                          break;
+                        break;
                     }
                 }
                 else if(!isdigit((int)*p))
                 {
-                    header_field_ptr->content_len->cont_len_start =
-                        header_field_ptr->content_len->cont_len_end = NULL;
-                    header_field_ptr->content_len->len = 0;
+                    (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                    (header_field_ptr)->content_len->len = 0;
                     return p;
                 }
                 if(isdigit((int)*p))
                 {
-                    header_field_ptr->content_len->cont_len_start = p;
+                    (header_field_ptr)->content_len->cont_len_start = p;                           
                     p++;
                     while(hi_util_in_bounds(start, end, p))
                     {
@@ -1918,14 +1597,13 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
                         }
                         else if((*p == '\n')) /* digit followed by \n */
                         {
-                            header_field_ptr->content_len->cont_len_end = p;
+                            (header_field_ptr)->content_len->cont_len_end = p;
                             break;
                         }
-                        else if( (!isdigit((int)*p)) && (!isspace((int)*p))) /* alphabet after digit*/
+                        else if( (!isdigit((int)*p)) && (!isspace((int)*p))) // alphabet after digit
                         {
-                            header_field_ptr->content_len->cont_len_start =
-                                header_field_ptr->content_len->cont_len_end = NULL;
-                            header_field_ptr->content_len->len = 0;
+                            (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                            (header_field_ptr)->content_len->len = 0;
 
                             crlf = (u_char *)SnortStrnStr((const char *)p, end - p, "\n");
                             if (crlf)
@@ -1937,27 +1615,26 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
                                 header_ptr->header.uri_end = end;
                                 return end;
                             }
-                        }
+                        } 
                         else
                         {
                             if (ServerConf->profile == HI_APACHE || ServerConf->profile == HI_ALL)
                             {
-                                SkipWhiteSpace(start,end,&p);
+                                while( (hi_util_in_bounds(start, end, p)) && isspace((int)*p) && (*p != '\n') ) {p++;}
                             }
                             else
                             {
-                                SkipBlankAndNewLine(start,end,&p);
+                                while( (hi_util_in_bounds(start, end, p)) && ( *p == ' ' || *p == '\t') && (*p != '\n')  ) {p++;}
                             }
                             if ( *p == '\n' )
                             {
-                                header_field_ptr->content_len->cont_len_end = p;
+                                (header_field_ptr)->content_len->cont_len_end = p;
                                 break;
                             }
                             else /*either a "digit digit" or "digit other character" */
                             {
-                                header_field_ptr->content_len->cont_len_start =
-                                    header_field_ptr->content_len->cont_len_end = NULL;
-                                header_field_ptr->content_len->len = 0;
+                                (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                                (header_field_ptr)->content_len->len = 0;
                                 crlf = (u_char *)SnortStrnStr((const char *)p, end - p, "\n");
                                 if (crlf)
                                 {
@@ -1976,9 +1653,8 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
                 }
                 else
                 {
-                    header_field_ptr->content_len->cont_len_start =
-                        header_field_ptr->content_len->cont_len_end = NULL;
-                    header_field_ptr->content_len->len = 0;
+                    (header_field_ptr)->content_len->cont_len_start = (header_field_ptr)->content_len->cont_len_end = NULL;
+                    (header_field_ptr)->content_len->len = 0;
                     return p;
                 }
             }
@@ -2000,14 +1676,15 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
             }
         }
     }
-    if ( header_field_ptr && (header_field_ptr->content_len->cont_len_start) &&
-      (header_field_ptr->content_len->cont_len_end) )
+    if ( header_field_ptr && ((header_field_ptr)->content_len->cont_len_start) )
     {
         char *pcEnd;
-        header_field_ptr->content_len->len = SnortStrtol((char *)header_field_ptr->content_len->cont_len_start, &pcEnd, 10);
-        if(errno == ERANGE || ((char *)header_field_ptr->content_len->cont_len_start == pcEnd))
+        errno = 0;
+        (header_field_ptr)->content_len->len = strtol((char *)(header_field_ptr)->content_len->cont_len_start, &pcEnd, 10);
+        if(errno == ERANGE || ((char *)(header_field_ptr)->content_len->cont_len_start == pcEnd))
         {
-            header_field_ptr->content_len->len = 0;
+            //warning
+            (header_field_ptr)->content_len->len = 0;
         }
     }
     if(!p || !hi_util_in_bounds(start, end, p))
@@ -2016,67 +1693,19 @@ const u_char *extract_http_content_length(HI_SESSION *Session,
     return p;
 }
 
-static inline const u_char *extractHeaderFieldValues(HI_SESSION *Session,
-        HTTPINSPECT_CONF *ServerConf, const u_char *p, const u_char *offset,
-        const u_char *start, const u_char *end, HEADER_PTR *header_ptr, HEADER_FIELD_PTR *header_field_ptr,
-        HttpSessionData *hsd, int stream_ins, int *host_name_header)
+static INLINE const u_char *extractHeaderFieldValues(HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf, const u_char *p, const u_char *offset, const u_char *start, const u_char *end, HEADER_PTR *header_ptr, HEADER_FIELD_PTR *header_field_ptr)
 {
     if (((p - offset) == 0) && ((*p == 'C') || (*p == 'c')))
     {
         /* Search for 'Cookie' at beginning, starting from current *p */
-        if ( ServerConf->enable_cookie &&
-                IsHeaderFieldName(p, end, HEADER_NAME__COOKIE, HEADER_LENGTH__COOKIE))
+        if (IsHeaderFieldName(p, start, end, HEADER_NAME__COOKIE, HEADER_LENGTH__COOKIE))
         {
-            p = extract_http_cookie((p+ HEADER_LENGTH__COOKIE), end, header_ptr, header_field_ptr);
+            p = extract_http_cookie(p, end, header_ptr, header_field_ptr);
         }
-        else if ( IsHeaderFieldName(p, end, HEADER_NAME__CONTENT_LENGTH, HEADER_LENGTH__CONTENT_LENGTH) )
+        else if ( IsHeaderFieldName(p, start, end, HEADER_NAME__CONTENT_LENGTH, HEADER_LENGTH__CONTENT_LENGTH) )
         {
             p = extract_http_content_length(Session, ServerConf, p, start, end, header_ptr, header_field_ptr );
 
-        }
-    }
-    else if (((p - offset) == 0) && ((*p == 'x') || (*p == 'X') || (*p == 't') || (*p == 'T')))
-    {
-        if ( (ServerConf->enable_xff) && hsd )
-        {
-            if(IsHeaderFieldName(p, end, HEADER_NAME__XFF, HEADER_LENGTH__XFF))
-            {
-                p = p + HEADER_LENGTH__XFF;
-                p = extract_http_xff(Session, p, start, end, header_ptr, &(hsd->true_ip));
-            }
-            else if(IsHeaderFieldName(p, end, HEADER_NAME__TRUE_IP, HEADER_LENGTH__TRUE_IP))
-            {
-                p = p + HEADER_LENGTH__TRUE_IP;
-                p = extract_http_xff(Session, p, start, end, header_ptr, &(hsd->true_ip));
-            }
-
-        }
-    }
-    else if(((p - offset) == 0) && ((*p == 'H') || (*p == 'h')))
-    {
-        if(IsHeaderFieldName(p, end, HEADER_NAME__HOSTNAME, HEADER_LENGTH__HOSTNAME))
-        {
-            /* Alert when there are multiple host headers in one request */
-            if(*host_name_header)
-            {
-                if(hi_eo_generate_event(Session, HI_EO_CLIENT_MULTIPLE_HOST_HDRS))
-                {
-                    hi_eo_client_event_log(Session, HI_EO_CLIENT_MULTIPLE_HOST_HDRS, NULL, NULL);
-                }
-                return p;
-            }
-            else
-            {
-                *host_name_header = 1;
-                if ( hsd && !stream_ins && (ServerConf->log_hostname))
-                {
-                    if(!SetLogBuffers(hsd))
-                    {
-                        p = p + HEADER_LENGTH__HOSTNAME;
-                        p = extract_http_hostname(Session, p, start, end, header_ptr, hsd);
-                    }
-                }
-            }
         }
     }
     return p;
@@ -2090,7 +1719,7 @@ static inline const u_char *extractHeaderFieldValues(HI_SESSION *Session,
 /**
 **  Catch multiple requests per packet, by returning pointer to after the
 **  end of the request header if there is another request.
-**
+**  
 **  There are 4 types of "valid" delimiters that we look for.  They are:
 **  "\r\n\r\n"
 **  "\r\n\n"
@@ -2099,22 +1728,22 @@ static inline const u_char *extractHeaderFieldValues(HI_SESSION *Session,
 **  The only patterns that we really only need to look for are:
 **  "\n\r\n"
 **  "\n\n"
-**  The reason being that these two patterns are suffixes of the other
+**  The reason being that these two patterns are suffixes of the other 
 **  patterns.  So once we find those, we are all good.
-**
+**  
 **  @param Session pointer to the session
 **  @param start pointer to the start of text
 **  @param end   pointer to the end of text
-**
+**  
 **  @return pointer
-**
+**  
 **  @retval NULL  Did not find pipeline request
 **  @retval !NULL Found another possible request.
 */
-static inline const u_char *hi_client_extract_header(
-    HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf,
-    HEADER_PTR *header_ptr, const u_char *start,
-    const u_char *end, HttpSessionData *hsd, int stream_ins)
+static INLINE const u_char *hi_client_extract_header(
+    HI_SESSION *Session, HTTPINSPECT_CONF *ServerConf, 
+    HI_CLIENT * Client, HEADER_PTR *header_ptr,
+    const u_char *start, const u_char *end)
 {
     int iRet = HI_SUCCESS;
     const u_char *p;
@@ -2122,7 +1751,6 @@ static inline const u_char *hi_client_extract_header(
     URI_PTR version_string;
     HEADER_FIELD_PTR header_field_ptr ;
     int header_count = 0;
-    int host_name_header = 0;
 
     if(!start || !end)
         return NULL;
@@ -2137,16 +1765,13 @@ static inline const u_char *hi_client_extract_header(
     **
     **  a.k.a there needs to be data after the initial request to inspect
     **  to make it worth our while.
-    */
+    */ 
     if (p > (end - 6 ))
     {
         header_ptr->header.uri = NULL;
         return p;
     }
     header_ptr->content_len.len = 0;
-
-    header_ptr->header.uri = start;
-    header_ptr->header.uri_end = end;
 
     /* This is to skip past the HTTP/1.0 (or 1.1) version string */
     if (IsHttpVersion(&p, end))
@@ -2243,26 +1868,23 @@ static inline const u_char *hi_client_extract_header(
 
                     if(hi_util_in_bounds(start, end, p) && (*p == '\n'))
                     {
-                        p++;
                         header_ptr->header.uri_end = p;
-                        return p;
+                        return ++p;
                     }
                 }
                 else if(*p == '\n')
                 {
-                    p++;
                     header_ptr->header.uri_end = p;
-                    return p;
+                    return ++p;
                 }
             }
-            else if ( (p = extractHeaderFieldValues(Session, ServerConf, p, offset, start, end, header_ptr, &header_field_ptr, hsd, stream_ins, &host_name_header)) == end)
+            else if ( (p = extractHeaderFieldValues(Session, ServerConf, p, offset, start, end, header_ptr, &header_field_ptr)) == end)
             {
                 return end;
             }
-
+            
         }
-        else if( (p == header_ptr->header.uri) &&
-                (p = extractHeaderFieldValues(Session, ServerConf, p, offset, start, end, header_ptr, &header_field_ptr, hsd, stream_ins, &host_name_header)) == end)
+        else if( (p == header_ptr->header.uri) && (p = extractHeaderFieldValues(Session, ServerConf, p, offset, start, end, header_ptr, &header_field_ptr)) == end)
         {
             return end;
         }
@@ -2298,32 +1920,24 @@ static inline const u_char *hi_client_extract_header(
                 Client->request.cookie.next = NULL;\
     } while(0);
 
-#define CLR_METHOD(Client) \
-    do { \
-                Client->request.method_raw = NULL;\
-                Client->request.method_size = 0; \
-                Client->request.method = 0 ;\
-    } while(0);
-                
-
 /*
 **  NAME
 **    StatelessInspection::
 */
 /**
 **  Find the URI and determine whether the URI needs to be normalized.
-**
+**  
 **  This is a big step in stateless inspection, because we need to reliably
 **  find the URI and when possible filter out non-URIs.  We do this using a
 **  simple state machine that is based on characters found in the data
 **  buffer.
-**
+**  
 **  Another important aspect of the stateless inspection is the ability to
 **  track and inspect pipelined requests.  It is VERY IMPORTANT to reset the
 **  pipeline_req pointer, since we don't memset the whole structure.  This
 **  pointer is reset in the hi_si_session_inspection() function.  Check there
 **  for more details.
-**
+**  
 **  Normalization is detected when we are looking at the packet for the URI.
 **  We look for the following issues:
 **      - ////
@@ -2337,26 +1951,25 @@ static inline const u_char *hi_client_extract_header(
 **  pointer, then the normalization pointer is reset and we start over.
 **  Using this method should cut down the memcpy()s per URI, since most
 **  URIs are not normalized.
-**
+**  
 **  If this function returns HI_NONFATAL_ERR, we return out of mode_inspection
 **  with an error and abort HttpInspect processing, and continue on with
 **  any other processing we do.  The Session parameters that we use here are
 **  reset in the next time that we do session_inspection, so we don't do
 **  any initialization here.
-**
+**  
 **  @param Session pointer to the HTTP session
 **  @param data    pointer to the start of the packet payload
 **  @param dsize   size of the payload
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_INVALID_ARG  invalid argument
 **  @retval HI_NONFATAL_ERR no URI detected
 **  @retval HI_SUCCESS      URI detected and Session pointers updated
 */
-
-int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
-        int dsize, HttpSessionData *hsd, int stream_ins)
+static int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
+        int dsize)
 {
     HTTPINSPECT_CONF *ServerConf;
     HTTPINSPECT_CONF *ClientConf;
@@ -2365,13 +1978,12 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
     URI_PTR uri_ptr;
     URI_PTR post_ptr;
     HEADER_PTR header_ptr;
-    HTTP_CMD_CONF *CmdConf = NULL;
     const u_char *start;
     const u_char *end;
     const u_char *ptr, *mthd;
     const u_char *method_end = NULL;
     int method_len;
-    int iRet=0;
+    int iRet;
     int len;
     char non_ascii_mthd = 0;
     char sans_uri = 0;
@@ -2442,7 +2054,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
                 }
             }
         }
-
+        
         break;
     }
 
@@ -2479,10 +2091,10 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
     }
     method_len = method_ptr.uri_end - method_ptr.uri;
 
-    /* Need slightly special handling for POST requests
+    /* Need slightly special handling for POST requests 
      * Since we don't normalize on the request method itself,
      * just do a strcmp here and skip the characters below. */
-    if(method_len == 4 && !strncasecmp("POST", (const char *)method_ptr.uri, 4))
+    if(method_len == 4 && !strncasecmp("POST", (const char *)method_ptr.uri, 4)) 
     {
         hi_stats.post++;
         Client->request.method = HI_POST_METHOD;
@@ -2492,22 +2104,38 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         hi_stats.get++;
         Client->request.method = HI_GET_METHOD;
     }
-    else if(method_len > 0 && method_len <= MAX_METHOD_LEN )
-    {
-        CmdConf = http_cmd_lookup_find(ServerConf->cmd_lookup, (const char *)method_ptr.uri,
-                method_len, &iRet);
-
-        if(iRet == -1 || (CmdConf == NULL))
-        {
-            sans_uri = 1;
-            Client->request.method = HI_UNKNOWN_METHOD;
-        }
-
-    }
     else
     {
-        sans_uri = 1;
         Client->request.method = HI_UNKNOWN_METHOD;
+    }
+
+    if (Client->request.method == HI_UNKNOWN_METHOD)
+    {
+        if (IsHttpVersion(&ptr, end))
+        {
+            sans_uri = 1;
+            iRet = URI_END;
+            method_ptr.uri = method_ptr.uri_end = NULL;
+        }
+        else if (method_len == len)
+        {
+            sans_uri = 1;
+            iRet = URI_END;
+            method_ptr.uri = method_ptr.uri_end = NULL;
+        }
+        else if (SnortStrnPbrk((const char *)method_ptr.uri, method_len, "()<>@,;:\\\"/[]?={} \t") != NULL)
+        {
+            /* Look for the seperator charactors as part of the method */
+            sans_uri = 1;
+            iRet = URI_END;
+            method_ptr.uri = method_ptr.uri_end = NULL;
+        }
+        else if (non_ascii_mthd == 1)
+        {
+            sans_uri = 1;
+            iRet = URI_END;
+            method_ptr.uri = method_ptr.uri_end = NULL;
+        }
     }
 
     if (!sans_uri )
@@ -2518,7 +2146,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         /* This will set up the URI pointers - effectively extracting
          * the URI. */
         iRet = hi_client_extract_uri(
-             Session, ServerConf, Client, start, end, ptr, &uri_ptr, hsd, stream_ins);
+             Session, ServerConf, Client, start, end, ptr, &uri_ptr);
     }
 
     /* Check if the URI exceeds the max header field length */
@@ -2531,9 +2159,8 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         hi_eo_client_event_log(Session, HI_EO_CLIENT_LONG_HDR, NULL, NULL);
     }
 
-    if(iRet == URI_END &&
-        !(ServerConf->uri_only) &&
-        !(Client->request.method & HI_UNKNOWN_METHOD))
+    if(iRet == URI_END && 
+        (Client->request.method & (HI_POST_METHOD | HI_GET_METHOD)))
     {
         Client->request.method_raw = method_ptr.uri;
         Client->request.method_size = method_ptr.uri_end - method_ptr.uri;
@@ -2543,34 +2170,32 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         //
         // uri_ptr.end points to end of URI & HTTP version identifier.
         if (hi_util_in_bounds(start, end, uri_ptr.uri_end + 1))
-            ptr = hi_client_extract_header(Session, ServerConf, &header_ptr, uri_ptr.uri_end+1, end, hsd, stream_ins);
+            ptr = hi_client_extract_header(Session, ServerConf, Client, &header_ptr, uri_ptr.uri_end+1, end);
 
         if (header_ptr.header.uri)
         {
             Client->request.header_raw = header_ptr.header.uri;
             Client->request.header_raw_size = header_ptr.header.uri_end - header_ptr.header.uri;
-            if(!Client->request.header_raw_size)
+            if ((int)Client->request.header_raw_size <= 0)
             {
                 CLR_HEADER(Client);
             }
             else
             {
-                hi_stats.req_headers++;
-                Client->request.header_norm = header_ptr.header.uri;
+                hi_stats.headers++;
+                Client->request.header_norm = header_ptr.header.norm;
                 if (header_ptr.cookie.cookie)
                 {
-                    hi_stats.req_cookies++;
+                    hi_stats.cookies++;
                     Client->request.cookie.cookie = header_ptr.cookie.cookie;
                     Client->request.cookie.cookie_end = header_ptr.cookie.cookie_end;
                     Client->request.cookie.next = header_ptr.cookie.next;
-                    Client->request.cookie_norm = header_ptr.cookie.cookie;
                 }
                 else
                 {
                     Client->request.cookie.cookie = NULL;
                     Client->request.cookie.cookie_end = NULL;
                     Client->request.cookie.next = NULL;
-                    Client->request.cookie_norm = NULL;
                 }
             }
         }
@@ -2584,7 +2209,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         ptr = FindPipelineReq(Session, uri_ptr.delimiter, end);
         //ptr = FindPipelineReq(Session, ptr, end);
         if(ptr)
-        {
+        { 
             if (header_ptr.content_len.cont_len_start)
             {
                 post_ptr.uri = ptr;
@@ -2619,7 +2244,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
                 {
                     post_ptr.uri = ptr;
                     post_ptr.uri_end = end;
-
+     
                     if((POST_END == hi_client_extract_post(
                         Session, ServerConf, ptr, end, &post_ptr, -1)))
                     {
@@ -2628,44 +2253,26 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
                         Client->request.post_raw_size = post_ptr.uri_end - post_ptr.uri;
                         Client->request.post_norm = post_ptr.norm;
                     }
-                    else
+                    else 
                     {
                         CLR_POST(Client);
                     }
                 }
             }
-
-            if(Client->request.post_raw && (ServerConf->post_depth > -1))
-            {
-                if(ServerConf->post_depth && ((int)Client->request.post_raw_size > ServerConf->post_depth))
-                {
-                    Client->request.post_raw_size = ServerConf->post_depth;
-                }
-            }
-            else
-            {
-                CLR_POST(Client);
-            }
         }
-        else
+        else 
         {
             CLR_POST(Client);
             ptr = uri_ptr.delimiter;
         }
     }
-    else
+    else 
     {
-        CLR_HEADER(Client);
         CLR_POST(Client);
-        if (!(Client->request.method & HI_UNKNOWN_METHOD) && method_ptr.uri)
+        if (method_ptr.uri)
         {
             Client->request.method_raw = method_ptr.uri;
             Client->request.method_size = method_ptr.uri_end - method_ptr.uri;
-        }
-        else
-        {
-            CLR_METHOD(Client);
-            return HI_NONFATAL_ERR;
         }
         ptr = uri_ptr.delimiter;
     }
@@ -2681,12 +2288,12 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         if(uri_ptr.uri != uri_ptr.first_sp_end)
         {
             if(Session->server_conf->chunk_length)
-                CheckChunkEncoding(Session, start, end, NULL, NULL, 0, 0, NULL, NULL);
+                CheckChunkEncoding(Session, start, end, NULL);
 
             return HI_NONFATAL_ERR;
         }
     }
-    else
+    else 
     {
            /*
             **  Find the next pipeline request, if one is there.  If we don't find
@@ -2697,12 +2304,12 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
         {
             if(post_ptr.uri)
             {
-                Client->request.pipeline_req =
+                Client->request.pipeline_req = 
                     FindPipelineReq(Session, post_ptr.delimiter, end);
             }
             else if(!Client->request.pipeline_req && uri_ptr.uri)
             {
-                Client->request.pipeline_req =
+                Client->request.pipeline_req = 
                     FindPipelineReq(Session, ptr, end);
             }
         }
@@ -2711,6 +2318,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
             Client->request.pipeline_req = NULL;
         }
     }
+
 
     /*
     **  We set the HI_CLIENT variables from the URI_PTR structure.  We also
@@ -2721,6 +2329,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
     {
         return iRet;
     }
+
     /*
     **  One last check for an oversize directory.  This gets the long
     **  directory when there is a beginning slash and no other slashes
@@ -2745,7 +2354,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
     {
         if(hi_eo_generate_event(Session, HI_EO_CLIENT_PROXY_USE))
         {
-            hi_eo_client_event_log(Session, HI_EO_CLIENT_PROXY_USE,
+            hi_eo_client_event_log(Session, HI_EO_CLIENT_PROXY_USE, 
                     NULL, NULL);
         }
     }
@@ -2753,7 +2362,7 @@ int StatelessInspection(HI_SESSION *Session, const unsigned char *data,
     return HI_SUCCESS;
 }
 
-int hi_client_inspection(void *S, const unsigned char *data, int dsize, HttpSessionData *hsd, int stream_ins)
+int hi_client_inspection(void *S, const unsigned char *data, int dsize)
 {
     HTTPINSPECT_GLOBAL_CONF *GlobalConf;
     HI_SESSION *Session;
@@ -2790,7 +2399,7 @@ int hi_client_inspection(void *S, const unsigned char *data, int dsize, HttpSess
         /*
         **  Otherwise we assume stateless inspection
         */
-        iRet = StatelessInspection(Session, data, dsize, hsd, stream_ins);
+        iRet = StatelessInspection(Session, data, dsize);
         if (iRet)
         {
             return iRet;
@@ -2807,16 +2416,17 @@ int hi_client_inspection(void *S, const unsigned char *data, int dsize, HttpSess
 /**
 **  Initializes arrays and search algorithms depending on the type of
 **  inspection that we are doing.
-**
+**  
 **  @param GlobalConf pointer to the global configuration
-**
+**  
 **  @return integer
-**
+**  
 **  @retval HI_SUCCESS function successful.
 */
 int hi_client_init(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
 {
     int iCtr;
+    int iNum;
 
     if(GlobalConf->inspection_type == HI_UI_CONFIG_STATEFUL)
     {
@@ -2827,6 +2437,7 @@ int hi_client_init(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
     else
     {
         memset(lookup_table, 0x00, sizeof(lookup_table));
+        memset(hex_lookup, -1, sizeof(hex_lookup));
 
         /*
         **  Set up the non-ASCII register for processing.
@@ -2856,9 +2467,6 @@ int hi_client_init(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
         */
         lookup_table['\\'] = SetBackSlashNorm;
 
-        lookup_table['+'] = SetPlusNorm;
-
-
         /*
         **  Look up parameter field, so we don't alert on long directory
         **  strings, when the next slash in the parameter field.
@@ -2870,6 +2478,35 @@ int hi_client_init(HTTPINSPECT_GLOBAL_CONF *GlobalConf)
         */
         lookup_table[':'] = SetProxy;
 
+        /*
+        **  Set up the hex array
+        */
+        iNum = 0;
+        for(iCtr = 48; iCtr < 58; iCtr++)
+        {
+            hex_lookup[iCtr] = iNum;
+            iNum++;
+        }
+
+        /*
+        **  Set the upper case values.
+        */
+        iNum = 10;
+        for(iCtr = 65; iCtr < 71; iCtr++)
+        {
+            hex_lookup[iCtr] = iNum;
+            iNum++;
+        }
+
+        /*
+        **  Set the lower case values.
+        */
+        iNum = 10;
+        for(iCtr = 97; iCtr < 103; iCtr++)
+        {
+            hex_lookup[iCtr] = iNum;
+            iNum++;
+        }
     }
 
     return HI_SUCCESS;
@@ -2914,12 +2551,12 @@ int main(int argc, char **argv)
         printf("** error client init\n");
         return iRet;
     }
-
+    
     SiInput.sip = inet_addr("1.1.1.1");
     SiInput.sip = inet_addr("1.1.1.2");
     SiInput.dport = 80;
     SiInput.sport = 7880;
-
+    
     if((iRet = hi_si_session_inspection(&GlobalConf, &Session, &SiInput,
                     &iInspectMode)))
     {
@@ -2928,7 +2565,7 @@ int main(int argc, char **argv)
     }
 
     printf("** iInspectMode = %d\n", iInspectMode);
-    if((iRet = hi_mi_mode_inspection(Session, iInspectMode, data,
+    if((iRet = hi_mi_mode_inspection(Session, iInspectMode, data, 
                     strlen(data))))
     {
         printf("** error mode_inspection\n");
@@ -2938,5 +2575,5 @@ int main(int argc, char **argv)
     return 0;
 }
 #endif
-
-
+    
+    

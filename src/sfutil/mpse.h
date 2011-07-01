@@ -1,9 +1,9 @@
 /*
-** $Id: mpse.h,v 1.19 2011/02/09 23:23:36 jjordan Exp $
+** $Id$
 **
 **  mpse.h       
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Marc Norton <mnorton@sourcefire.com>
 **
 ** Multi-Pattern Search Engine
@@ -68,10 +68,6 @@
 #define MPSE_ACF_Q     12 
 #define MPSE_LOWMEM_Q  13 
 
-#ifdef INTEL_SOFT_CPM
-#define MPSE_INTEL_CPM 14 
-#endif /* INTEL_SOFT_CPM */
-
 #define MPSE_INCREMENT_GLOBAL_CNT 1
 #define MPSE_DONT_INCREMENT_GLOBAL_COUNT 0
 
@@ -106,7 +102,7 @@ uint64_t mpseGetPatByteCount(void);
 void   mpseResetByteCount(void);
 
 int mpsePrintInfo( void * obj );
-int mpsePrintSummary(int);
+int mpsePrintSummary(void );
   
 void   mpseVerbose( void * pvoid );
 void   mpseSetOpt( void * pvoid,int flag);

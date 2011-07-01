@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,12 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_byte_jump.h,v 1.13 2011/02/09 23:22:57 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SP_BYTE_JUMP_H__
 #define __SP_BYTE_JUMP_H__
 
 #include "decode.h"
-#include "plugbase.h"
 
 typedef struct _ByteJumpData
 {
@@ -34,12 +33,11 @@ typedef struct _ByteJumpData
     uint8_t data_string_convert_flag;
     uint8_t from_beginning_flag;
     uint8_t align_flag;
-    int8_t endianess;
+    uint8_t endianess;
     uint32_t base;
     uint32_t multiplier;
     int32_t post_offset;
-    int8_t offset_var;
-    RuleOptByteOrderFunc byte_order_func;
+
 } ByteJumpData;
 
 void SetupByteJump(void);

@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Andy  Mullican
  *
@@ -34,27 +34,25 @@
 
 #include <string.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "snort_smtp.h"
 #include "smtp_util.h"
-#include "snort_bounds.h"
+#include "bounds.h"
 #include "sf_dynamic_preprocessor.h"
 #include "sf_snort_packet.h"
 
 extern SMTP *smtp_ssn;
+extern DynamicPreprocessorData _dpd;
 extern char smtp_normalizing;
+
 
 /*
  * SMTP_NormalizeCmd
- *
+ * 
  * If command doesn't need normalizing it will do nothing, except in
  * the case where we are already normalizing in which case the line
  * will get copied to the alt buffer.
- * If the command needs normalizing the normalized data will be copied
- * to the alt buffer.  If we are not already normalizing, all of the
+ * If the command needs normalizing the normalized data will be copied 
+ * to the alt buffer.  If we are not already normalizing, all of the 
  * data up to this point will be copied into the alt buffer first.
  *
  * XXX This may copy unwanted data if we are ignoring the data in the

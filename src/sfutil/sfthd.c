@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -96,7 +96,7 @@ SFXHASH * sfthd_new_hash(unsigned nbytes, size_t key, size_t data)
 SFXHASH * sfthd_local_new(unsigned bytes)
 {
     SFXHASH *local_hash =
-        sfthd_new_hash(bytes,
+        sfthd_new_hash(bytes, 
                        sizeof(THD_IP_NODE_KEY),
                        sizeof(THD_IP_NODE));
 
@@ -111,7 +111,7 @@ SFXHASH * sfthd_local_new(unsigned bytes)
 SFXHASH * sfthd_global_new(unsigned bytes)
 {
     SFXHASH *global_hash =
-        sfthd_new_hash(bytes,
+        sfthd_new_hash(bytes, 
                        sizeof(THD_IP_GNODE_KEY),
                        sizeof(THD_IP_NODE));
 
@@ -253,7 +253,7 @@ void sfthd_free(THD_STRUCT *thd)
     free(thd);
 }
 
-void * sfthd_create_rule_threshold(int id,
+void * sfthd_create_rule_threshold(int id, 
                                    int tracking,
                                    int type,
                                    int count,
@@ -651,7 +651,7 @@ int sfthd_create_threshold(ThresholdObjects *thd_objs,
         if (thd_objs->sfthd_garray[policyId] == NULL)
         {
             return -1;
-        }
+        } 
     }
 
     if( sig_id == 0 )
@@ -687,7 +687,7 @@ int sfthd_test_rule(SFXHASH *rule_hash, THD_NODE *sfthd_node,
     return (status < -1) ? 1 : status;
 }
 
-static inline int sfthd_test_suppress (
+static INLINE int sfthd_test_suppress (
     THD_NODE* sfthd_node,
     snort_ip_p ip)
 {
@@ -708,7 +708,6 @@ static inline int sfthd_test_suppress (
 #endif
         /* Don't log, and stop looking( event's to this address
          * for this gen_id+sig_id) */
-        sfthd_node->filtered++;
         return -1;
     }
     return 1; /* Keep looking for other suppressors */
@@ -717,7 +716,7 @@ static inline int sfthd_test_suppress (
 /*
  *  Do the appropriate test for the Threshold Object Type
  */
-static inline int sfthd_test_non_suppress(
+static INLINE int sfthd_test_non_suppress(
     THD_NODE* sfthd_node,
     THD_IP_NODE* sfthd_ip_node,
     time_t curtime)
@@ -757,7 +756,6 @@ static inline int sfthd_test_non_suppress(
 
         /* Don't Log yet, don't keep looking:
          * already logged our limit, don't log this sid  */
-        sfthd_node->filtered++;
         return -2;
     }
     if( sfthd_node->type == THD_TYPE_LIMIT )
@@ -787,7 +785,6 @@ static inline int sfthd_test_non_suppress(
 
         /* Don't Log yet, don't keep looking:
          * already logged our limit, don't log this sid  */
-        sfthd_node->filtered++;
         return -2;
     }
 
@@ -810,7 +807,6 @@ static inline int sfthd_test_non_suppress(
             sfthd_ip_node->tstart= curtime;
             return 0; /* Log it, stop looking */
         }
-        sfthd_node->filtered++;
         return -2; /* don't log yet */
     }
 
@@ -828,7 +824,6 @@ static inline int sfthd_test_non_suppress(
 
             /* Don't Log yet, keep looking:
              * only log after we reach count, which must be > '1' */
-            sfthd_node->filtered++;
             return -2;
         }
         else
@@ -839,7 +834,6 @@ static inline int sfthd_test_non_suppress(
                 {
                     /* don't log it, stop looking:
                      * log once per time interval - than block it */
-                    sfthd_node->filtered++;
                     return -2;
                 }
                 /* Log it, stop looking:
@@ -850,7 +844,6 @@ static inline int sfthd_test_non_suppress(
             {
                 /* don't log it, stop looking:
                  * we must see at least count events 1st */
-                sfthd_node->filtered++;
                 return -2;
             }
         }
@@ -974,7 +967,7 @@ int sfthd_test_local(
 /*
  *   Test a global thresholding object
  */
-static inline int sfthd_test_global(
+static INLINE int sfthd_test_global(
     SFXHASH *global_hash,
     THD_NODE   * sfthd_node,
     unsigned     gen_id,     /* from current event */

@@ -1,0 +1,59 @@
+Rule: 
+
+--
+Sid: 
+100000173
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in RSA Security RSA Authentication Agent For Web.
+
+-- 
+Impact: 
+Cross site scripting leading to possible inclusion of code of the attackers 
+choosing.
+
+--
+Detailed Information:
+A vulnerability exists in RSA Security RSA Authentication Agent For Web that 
+may allow an attacker to include code of their choosing due to the improper 
+checking of user supplied input.
+
+--
+Affected Systems:
+RSA Security RSA Authentication Agent For Web 5.2
+
+--
+Attack Scenarios: 
+An attacker can supply a link to include code of their choosing in data 
+supplied to RSA Security RSA Authentication Agent For Web.
+
+-- 
+Ease of Attack: 
+Simple.
+
+-- 
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+Corrective Action: 
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+
+--

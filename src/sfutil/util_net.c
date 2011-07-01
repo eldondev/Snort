@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -93,37 +93,32 @@ char * mktcpflag_str(int flags)
  * 
  * @param ip ip in NETWORK BYTE ORDER
  */
-#ifndef SUP_IP6
-char *inet_ntoax(const struct in_addr ip_addr)
-#else
-char *inet_ntoax(sfip_t *ip)
-#endif
+char *inet_ntoax(uint32_t ip)
 {
-    static char ip_buf1[INET6_ADDRSTRLEN];
-    static char ip_buf2[INET6_ADDRSTRLEN];
-    static int buf_num = 0;
-    int buf_size = INET6_ADDRSTRLEN;
-    char *ip_buf;
-#ifndef SUP_IP6
-    uint32_t ip = ip_addr.s_addr;
-#endif
+    static char s_buf1[16];
+    static char s_buf2[16];
+    static int which = 0;
+    char *buf;
+    char *net_str;
 
-    if (buf_num)
-        ip_buf = ip_buf2;
+    net_str = inet_ntoa(*(struct in_addr *)&ip);
+
+    if(which)
+    {
+        buf = s_buf2;
+        which = 0;
+    }
     else
-        ip_buf = ip_buf1;
+    {
+        buf = s_buf1;
+        which = 1;
+    }
 
-    buf_num ^= 1;
-    ip_buf[0] = 0;
+    SnortSnprintf(buf, 16, "%s", net_str);
 
-#ifndef SUP_IP6
-    SnortSnprintf(ip_buf, buf_size, "%s", inet_ntoa(*((struct in_addr *)&ip)));
-#else
-    SnortSnprintf(ip_buf, buf_size, "%s", inet_ntoa(ip));
-#endif
-
-    return ip_buf;    
+    return buf;    
 }
+
 
 #ifdef TEST_UTIL_NET
 int main(void)

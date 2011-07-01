@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -17,16 +17,16 @@
 ** along with this program; if not, write to the Free Software
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-/* $Id: spo_alert_syslog.c,v 1.52 2011/06/08 00:33:16 jjordan Exp $ */
+/* $Id$ */
 
-/* spo_alert_syslog
- *
+/* spo_alert_syslog 
+ * 
  * Purpose:
  *
  * This module sends alerts to the syslog service.
  *
  * Arguments:
- *
+ *   
  * Logging mechanism?
  *
  * Effect:
@@ -60,20 +60,19 @@
 #include "decode.h"
 #include "event.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "parser.h"
 #include "mstring.h"
 #include "util.h"
 #include "strlcatu.h"
 #include "strlcpyu.h"
-#include "util_net.h"
+
 #include "snort.h"
-#include "sfdaq.h"
 
 extern OptTreeNode *otn_tmp;
+extern char *pcap_interface;
 
 typedef struct _SyslogData
 {
@@ -82,18 +81,18 @@ typedef struct _SyslogData
     int options;
 } SyslogData;
 
-static void AlertSyslogInit(char *);
-static SyslogData *ParseSyslogArgs(char *);
-static void AlertSyslog(Packet *, char *, void *, Event *);
-static void AlertSyslogCleanExit(int, void *);
-static void AlertSyslogRestart(int, void *);
+void AlertSyslogInit(char *);
+SyslogData *ParseSyslogArgs(char *);
+void AlertSyslog(Packet *, char *, void *, Event *);
+void AlertSyslogCleanExit(int, void *);
+void AlertSyslogRestart(int, void *);
 
 
 
 /*
  * Function: SetupSyslog()
  *
- * Purpose: Registers the output plugin keyword and initialization
+ * Purpose: Registers the output plugin keyword and initialization 
  *          function into the output plugin list.  This is the function that
  *          gets called from InitOutputPlugins() in plugbase.c.
  *
@@ -104,7 +103,7 @@ static void AlertSyslogRestart(int, void *);
  */
 void AlertSyslogSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("alert_syslog", OUTPUT_TYPE_FLAG__ALERT, AlertSyslogInit);
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Output plugin: Alert-Syslog is setup...\n"););
@@ -122,7 +121,7 @@ void AlertSyslogSetup(void)
  * Returns: void function
  *
  */
-static void AlertSyslogInit(char *args)
+void AlertSyslogInit(char *args)
 {
     SyslogData *data;
     DEBUG_WRAP(DebugMessage(DEBUG_INIT, "Output: Alert-Syslog Initialized\n"););
@@ -148,9 +147,9 @@ static void AlertSyslogInit(char *args)
 /*
  * Function: ParseSyslogArgs(char *)
  *
- * Purpose: Process the preprocessor arguements from the rules file and
+ * Purpose: Process the preprocessor arguements from the rules file and 
  *          initialize the preprocessor's data struct.  This function doesn't
- *          have to exist if it makes sense to parse the args in the init
+ *          have to exist if it makes sense to parse the args in the init 
  *          function.
  *
  * Arguments: args => argument list
@@ -158,7 +157,7 @@ static void AlertSyslogInit(char *args)
  * Returns: void function
  *
  */
-static SyslogData *ParseSyslogArgs(char *args)
+SyslogData *ParseSyslogArgs(char *args)
 {
 #ifdef WIN32
     char *DEFAULT_SYSLOG_HOST = "127.0.0.1";
@@ -186,7 +185,7 @@ static SyslogData *ParseSyslogArgs(char *args)
     {
         /* horrible kludge to catch default initialization */
         if(file_name != NULL)
-        {
+        {            
             LogMessage("%s(%d) => No arguments to alert_syslog preprocessor!\n",
                     file_name, file_line);
         }
@@ -197,7 +196,7 @@ static SyslogData *ParseSyslogArgs(char *args)
     /*
      * NON-WIN32:  Config should be in the format:
      *   output alert_syslog: LOG_AUTH LOG_ALERT
-     *
+     * 
      * WIN32:  Config can be in any of these formats:
      *   output alert_syslog: LOG_AUTH LOG_ALERT
      *   output alert_syslog: host=hostname, LOG_AUTH LOG_ALERT
@@ -227,7 +226,7 @@ static SyslogData *ParseSyslogArgs(char *args)
             if(num_host_toks > 0 && strcmp(host_toks[0], "host") != 0 )
             {
                 FatalError("%s(%d) => Badly formed alert_syslog 'host' "
-                        "argument ('%s')\n",
+                        "argument ('%s')\n", 
                         file_name, file_line, host_string);
             }
             /* check for empty strings */
@@ -236,7 +235,7 @@ static SyslogData *ParseSyslogArgs(char *args)
                     (num_host_toks >= 3 && strlen(host_toks[2]) == 0))
             {
                 FatalError("%s(%d) => Badly formed alert_syslog 'host' "
-                        "argument ('%s')\n",
+                        "argument ('%s')\n", 
                         file_name, file_line, host_string);
             }
             switch(num_host_toks)
@@ -253,16 +252,16 @@ static SyslogData *ParseSyslogArgs(char *args)
                     {
                         snort_conf->syslog_server_port = DEFAULT_SYSLOG_PORT; /*default*/
                         LogMessage("WARNING %s(%d) => alert_syslog port "
-                                "appears to be non-numeric ('%s').  Defaulting "
-                                "to port %d!\n", file_name, file_line,
+                                "appears to be non-numeric ('%s').  Defaulting " 
+                                "to port %d!\n", file_name, file_line, 
                                 host_toks[2], DEFAULT_SYSLOG_PORT);
-
+                                
                     }
                     break;
 
                 default:  /* badly formed, should never occur */
                     FatalError("%s(%d) => Badly formed alert_syslog 'host' "
-                            "argument ('%s')\n",
+                            "argument ('%s')\n", 
                             file_name, file_line, host_string);
             }
             mSplitFree(&host_toks, num_host_toks);
@@ -274,7 +273,7 @@ static SyslogData *ParseSyslogArgs(char *args)
     }
 
     DEBUG_WRAP(DebugMessage(DEBUG_INIT, "Logging alerts to syslog "
-                "server %s on port %d\n", snort_conf->syslog_server,
+                "server %s on port %d\n", snort_conf->syslog_server, 
                 snort_conf->syslog_server_port););
     mSplitFree(&config_toks, num_facility_toks);
 #endif /* WIN32 */
@@ -288,7 +287,7 @@ static SyslogData *ParseSyslogArgs(char *args)
         {
             if((tmp = VarGet(facility_toks[i]+1)) == NULL)
             {
-                FatalError("%s(%d) => Undefined variable %s\n",
+                FatalError("%s(%d) => Undefined variable %s\n", 
                         file_name, file_line, facility_toks[i]);
             }
         }
@@ -299,28 +298,28 @@ static SyslogData *ParseSyslogArgs(char *args)
 
         /* possible openlog options */
 
-#ifdef LOG_CONS
+#ifdef LOG_CONS 
         if(!strcasecmp("LOG_CONS", tmp))
         {
             data->options |= LOG_CONS;
         }
         else
 #endif
-#ifdef LOG_NDELAY
+#ifdef LOG_NDELAY 
         if(!strcasecmp("LOG_NDELAY", tmp))
         {
             data->options |= LOG_NDELAY;
         }
         else
 #endif
-#ifdef LOG_PERROR
+#ifdef LOG_PERROR 
         if(!strcasecmp("LOG_PERROR", tmp))
         {
             data->options |= LOG_PERROR;
         }
         else
 #endif
-#ifdef LOG_PID
+#ifdef LOG_PID 
         if(!strcasecmp("LOG_PID", tmp))
         {
             data->options |= LOG_PID;
@@ -337,84 +336,84 @@ static SyslogData *ParseSyslogArgs(char *args)
 
         /* possible openlog facilities */
 
-#ifdef LOG_AUTHPRIV
+#ifdef LOG_AUTHPRIV 
         if(!strcasecmp("LOG_AUTHPRIV", tmp))
         {
             data->facility = LOG_AUTHPRIV;
         }
         else
 #endif
-#ifdef LOG_AUTH
+#ifdef LOG_AUTH 
         if(!strcasecmp("LOG_AUTH", tmp))
         {
             data->facility = LOG_AUTH;
         }
         else
 #endif
-#ifdef LOG_DAEMON
+#ifdef LOG_DAEMON 
         if(!strcasecmp("LOG_DAEMON", tmp))
         {
             data->facility = LOG_DAEMON;
         }
         else
 #endif
-#ifdef LOG_LOCAL0
+#ifdef LOG_LOCAL0 
         if(!strcasecmp("LOG_LOCAL0", tmp))
         {
             data->facility = LOG_LOCAL0;
         }
         else
 #endif
-#ifdef LOG_LOCAL1
+#ifdef LOG_LOCAL1 
         if(!strcasecmp("LOG_LOCAL1", tmp))
         {
             data->facility = LOG_LOCAL1;
         }
         else
 #endif
-#ifdef LOG_LOCAL2
+#ifdef LOG_LOCAL2 
         if(!strcasecmp("LOG_LOCAL2", tmp))
         {
             data->facility = LOG_LOCAL2;
         }
         else
 #endif
-#ifdef LOG_LOCAL3
+#ifdef LOG_LOCAL3 
         if(!strcasecmp("LOG_LOCAL3", tmp))
         {
             data->facility = LOG_LOCAL3;
         }
         else
 #endif
-#ifdef LOG_LOCAL4
+#ifdef LOG_LOCAL4 
         if(!strcasecmp("LOG_LOCAL4", tmp))
         {
             data->facility = LOG_LOCAL4;
         }
         else
 #endif
-#ifdef LOG_LOCAL5
+#ifdef LOG_LOCAL5 
         if(!strcasecmp("LOG_LOCAL5", tmp))
         {
             data->facility = LOG_LOCAL5;
         }
         else
 #endif
-#ifdef LOG_LOCAL6
+#ifdef LOG_LOCAL6 
         if(!strcasecmp("LOG_LOCAL6", tmp))
         {
             data->facility = LOG_LOCAL6;
         }
         else
 #endif
-#ifdef LOG_LOCAL7
+#ifdef LOG_LOCAL7 
         if(!strcasecmp("LOG_LOCAL7", tmp))
         {
             data->facility = LOG_LOCAL7;
         }
         else
 #endif
-#ifdef LOG_USER
+#ifdef LOG_USER 
         if(!strcasecmp("LOG_USER", tmp))
         {
             data->facility = LOG_USER;
@@ -424,56 +423,56 @@ static SyslogData *ParseSyslogArgs(char *args)
 
         /* possible syslog priorities */
 
-#ifdef LOG_EMERG
+#ifdef LOG_EMERG 
         if(!strcasecmp("LOG_EMERG", tmp))
         {
             data->priority = LOG_EMERG;
         }
         else
 #endif
-#ifdef LOG_ALERT
+#ifdef LOG_ALERT 
         if(!strcasecmp("LOG_ALERT", tmp))
         {
             data->priority = LOG_ALERT;
         }
         else
 #endif
-#ifdef LOG_CRIT
+#ifdef LOG_CRIT 
         if(!strcasecmp("LOG_CRIT", tmp))
         {
             data->priority = LOG_CRIT;
         }
         else
 #endif
-#ifdef LOG_ERR
+#ifdef LOG_ERR 
         if(!strcasecmp("LOG_ERR", tmp))
         {
             data->priority = LOG_ERR;
         }
         else
 #endif
-#ifdef LOG_WARNING
+#ifdef LOG_WARNING 
         if(!strcasecmp("LOG_WARNING", tmp))
         {
             data->priority = LOG_WARNING;
         }
         else
 #endif
-#ifdef LOG_NOTICE
+#ifdef LOG_NOTICE 
         if(!strcasecmp("LOG_NOTICE", tmp))
         {
             data->priority = LOG_NOTICE;
         }
         else
 #endif
-#ifdef LOG_INFO
+#ifdef LOG_INFO 
         if(!strcasecmp("LOG_INFO", tmp))
         {
             data->priority = LOG_INFO;
         }
         else
 #endif
-#ifdef LOG_DEBUG
+#ifdef LOG_DEBUG 
         if(!strcasecmp("LOG_DEBUG", tmp))
         {
             data->priority = LOG_DEBUG;
@@ -509,116 +508,156 @@ static SyslogData *ParseSyslogArgs(char *args)
  *          as you like.  Try not to destroy the performance of the whole
  *          system by trying to do too much....
  *
- * Arguments: p => pointer to the current packet data struct
+ * Arguments: p => pointer to the current packet data struct 
  *
  * Returns: void function
  *
  */
-static void AlertSyslog(Packet *p, char *msg, void *arg, Event *event)
+void AlertSyslog(Packet *p, char *msg, void *arg, Event *event)
 {
+    char sip[16];
+    char dip[16];
+    char pri_data[STD_BUF];
+    char ip_data[STD_BUF];
+    char event_data[STD_BUF];
+#define SYSLOG_BUF  1024
+    char event_string[SYSLOG_BUF];
     SyslogData *data = (SyslogData *)arg;
-    char event_string[STD_BUF];
-
-    if (data == NULL)
-        return;
 
     event_string[0] = '\0';
 
-    if ((p != NULL) && IPH_IS_VALID(p))
+    /* Remove this check when we support IPv6 below. */
+    /* sip and dip char arrays need to change size for IPv6. */
+    if (!IS_IP4(p))
     {
-        if (event != NULL)
+        return;
+    }
+
+    if(p && IPH_IS_VALID(p))
+    {
+        if (strlcpy(sip, inet_ntoa(GET_SRC_ADDR(p)), sizeof(sip)) >= sizeof(sip))
+            return;
+
+        if (strlcpy(dip, inet_ntoa(GET_DST_ADDR(p)), sizeof(dip)) >= sizeof(dip))
+            return;
+
+        if(event != NULL)
         {
-            SnortSnprintfAppend(event_string, sizeof(event_string),
-                    "[%lu:%lu:%lu] ",
-                    (unsigned long)event->sig_generator,
-                    (unsigned long)event->sig_id,
-                    (unsigned long)event->sig_rev);
+            if( SnortSnprintf(event_data, STD_BUF, "[%lu:%lu:%lu] ", 
+                              (unsigned long) event->sig_generator,
+                              (unsigned long) event->sig_id, 
+                              (unsigned long) event->sig_rev) != SNORT_SNPRINTF_SUCCESS )
+                return ;
+
+            if(  strlcat(event_string, event_data, SYSLOG_BUF) >= SYSLOG_BUF)
+                return ;
         }
 
-        if (msg != NULL)
-            SnortSnprintfAppend(event_string, sizeof(event_string), "%s ", msg);
-        else
-            SnortSnprintfAppend(event_string, sizeof(event_string), "ALERT ");
-
-        if (otn_tmp != NULL)
+        if(msg != NULL)
         {
-            if ((otn_tmp->sigInfo.classType != NULL)
-                    && (otn_tmp->sigInfo.classType->name != NULL))
-            {
-                SnortSnprintfAppend(event_string, sizeof(event_string),
-                        "[Classification: %s] ",
-                        otn_tmp->sigInfo.classType->name);
-            }
-
-            if (otn_tmp->sigInfo.priority != 0)
-            {
-                SnortSnprintfAppend(event_string, sizeof(event_string),
-                        "[Priority: %d] ", otn_tmp->sigInfo.priority);
-            }
-        }
-
-        if (ScAlertInterface())
-        {
-            SnortSnprintfAppend(event_string, sizeof(event_string),
-                    "<%s> ", PRINT_INTERFACE(DAQ_GetInterfaceSpec()));
-        }
-
-        if (protocol_names[GET_IPH_PROTO(p)] != NULL)
-        {
-            SnortSnprintfAppend(event_string, sizeof(event_string),
-                    "{%s} ", protocol_names[GET_IPH_PROTO(p)]);
+           if( strlcat(event_string, msg, SYSLOG_BUF) >= SYSLOG_BUF )
+                return ;
         }
         else
         {
-            SnortSnprintfAppend(event_string, sizeof(event_string),
-                    "{%d} ", GET_IPH_PROTO(p));
+           if(strlcat(event_string, "ALERT", SYSLOG_BUF) >= SYSLOG_BUF)
+                return ;
         }
 
-        if (p->frag_flag
-                || ((GET_IPH_PROTO(p) != IPPROTO_TCP)
-                    && (GET_IPH_PROTO(p) != IPPROTO_UDP)))
+        if(otn_tmp != NULL)
         {
-            char *ip_fmt = "%s -> %s";
-
-            if (ScObfuscate())
+            if(otn_tmp->sigInfo.classType)
             {
-                SnortSnprintfAppend(event_string, sizeof(event_string), ip_fmt,
-                        ObfuscateIpToText(GET_SRC_ADDR(p)),
-                        ObfuscateIpToText(GET_DST_ADDR(p)));
+                if( otn_tmp->sigInfo.classType->name )
+                {
+                    if( SnortSnprintf(pri_data, STD_BUF-1, " [Classification: %s] "
+                                      "[Priority: %d]:", 
+                                      otn_tmp->sigInfo.classType->name,
+                                      otn_tmp->sigInfo.priority) != SNORT_SNPRINTF_SUCCESS )
+                        return ;
+                }
+                if( strlcat(event_string, pri_data, SYSLOG_BUF) >= SYSLOG_BUF)
+                    return ;
+            }
+            else if(otn_tmp->sigInfo.priority != 0)
+            {
+                if( SnortSnprintf(pri_data, STD_BUF, "[Priority: %d]:", 
+                                  otn_tmp->sigInfo.priority) != SNORT_SNPRINTF_SUCCESS )
+                   return ;
+
+                if( strlcat(event_string, pri_data, SYSLOG_BUF) >= SYSLOG_BUF)
+                    return;
+            }
+        }
+
+        if((GET_IPH_PROTO(p) != IPPROTO_TCP &&
+                    GET_IPH_PROTO(p) != IPPROTO_UDP) || 
+                p->frag_flag)
+        {
+            if(!ScAlertInterface())
+            {
+                if( protocol_names[GET_IPH_PROTO(p)] )
+                {
+                    if( SnortSnprintf(ip_data, STD_BUF, " {%s} %s -> %s",  
+                                      protocol_names[GET_IPH_PROTO(p)],
+                                      sip, dip) != SNORT_SNPRINTF_SUCCESS )
+                        return;
+                }
             }
             else
             {
-                SnortSnprintfAppend(event_string, sizeof(event_string), ip_fmt,
-                        inet_ntoax(GET_SRC_ADDR(p)), inet_ntoax(GET_DST_ADDR(p)));
+                if( protocol_names[GET_IPH_PROTO(p)] && PRINT_INTERFACE(pcap_interface) )
+                {
+                    if( SnortSnprintf(ip_data, STD_BUF, " <%s> {%s} %s -> %s",  
+                                      PRINT_INTERFACE(pcap_interface), 
+                                      protocol_names[GET_IPH_PROTO(p)],
+                                      sip, dip) != SNORT_SNPRINTF_SUCCESS )
+                        return ;
+                }
             }
         }
         else
         {
-            char *ip_fmt = "%s:%d -> %s:%d";
-
-            if (ScObfuscate())
+            if(ScAlertInterface())
             {
-                SnortSnprintfAppend(event_string, sizeof(event_string), ip_fmt,
-                        ObfuscateIpToText(GET_SRC_ADDR(p)), p->sp,
-                        ObfuscateIpToText(GET_DST_ADDR(p)), p->dp);
+               if( protocol_names[GET_IPH_PROTO(p)] && PRINT_INTERFACE(pcap_interface) )
+               {
+                   if( SnortSnprintf(ip_data, STD_BUF, " <%s> {%s} %s:%i -> %s:%i",
+                                     PRINT_INTERFACE(pcap_interface), 
+                                     protocol_names[GET_IPH_PROTO(p)], sip,
+                                     p->sp, dip, p->dp) != SNORT_SNPRINTF_SUCCESS )
+                       return ;
+               }
             }
             else
             {
-                SnortSnprintfAppend(event_string, sizeof(event_string), ip_fmt,
-                        inet_ntoax(GET_SRC_ADDR(p)), p->sp,
-                        inet_ntoax(GET_DST_ADDR(p)), p->dp);
+               if( protocol_names[GET_IPH_PROTO(p)] )
+               {
+                   if( SnortSnprintf(ip_data, STD_BUF, " {%s} %s:%i -> %s:%i",
+                                     protocol_names[GET_IPH_PROTO(p)], sip, p->sp, 
+                                     dip, p->dp) != SNORT_SNPRINTF_SUCCESS )
+                       return ;
+               }
             }
         }
+
+        if( strlcat(event_string, ip_data, SYSLOG_BUF) >= SYSLOG_BUF)
+            return;
 
         syslog(data->priority, "%s", event_string);
+
     }
-    else
+    else  
     {
         syslog(data->priority, "%s", msg == NULL ? "ALERT!" : msg);
     }
+
+    return;
+
 }
 
-static void AlertSyslogCleanExit(int signal, void *arg)
+
+void AlertSyslogCleanExit(int signal, void *arg)
 {
     SyslogData *data = (SyslogData *)arg;
     DEBUG_WRAP(DebugMessage(DEBUG_LOG, "AlertSyslogCleanExit\n"););
@@ -627,7 +666,7 @@ static void AlertSyslogCleanExit(int signal, void *arg)
         free(data);
 }
 
-static void AlertSyslogRestart(int signal, void *arg)
+void AlertSyslogRestart(int signal, void *arg)
 {
     SyslogData *data = (SyslogData *)arg;
     DEBUG_WRAP(DebugMessage(DEBUG_LOG, "AlertSyslogRestartFunc\n"););

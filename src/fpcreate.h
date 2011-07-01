@@ -1,9 +1,9 @@
 /*
-**  $Id: fpcreate.h,v 1.19 2011/02/09 23:22:48 jjordan Exp $
+**  $Id$
 **
 **  fpcreate.h
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Dan Roelker <droelker@sourcefire.com>
 ** Marc Norton <mnorton@sourcefire.com>
 **
@@ -37,7 +37,6 @@
 #endif
 
 #include "rules.h"
-#include "treenodes.h"
 //#include "parser.h"
 #include "pcrm.h"
 
@@ -108,14 +107,9 @@ typedef struct _FastPatternConfig
     int search_method_verbose;
     int debug;
     unsigned int max_queue_events;
+//PORTLISTS
     unsigned int bleedover_port_limit;
-    int configured;
     int portlists_flags;
-    int split_any_any;
-    int max_pattern_len;
-    int num_patterns_truncated;  /* due to max_pattern_len */
-    int num_patterns_trimmed;    /* due to zero byte prefix */
-    int debug_print_fast_pattern;
 
 } FastPatternConfig;
 
@@ -170,10 +164,13 @@ int fpInitDetectionEngine(void);
 **  engine.  It reads in the snort list of RTNs and OTNs and
 **  assigns them to PORT_MAPS.
 */
+#ifdef PORTLISTS
 int fpCreateFastPacketDetection(struct _SnortConfig *);
+#else
+int fpCreateFastPacketDetection(RuleListNode *);
+#endif
 
 FastPatternConfig * FastPatternConfigNew(void);
-void fpSetDefaults(FastPatternConfig *);
 void FastPatternConfigFree(FastPatternConfig *);
 
 /*
@@ -190,8 +187,6 @@ void fpSetDetectSearchOpt(FastPatternConfig *, int flag);
 void fpSetDebugMode(FastPatternConfig *);
 void fpSetStreamInsert(FastPatternConfig *);
 void fpSetMaxQueueEvents(FastPatternConfig *, unsigned int);
-void fpDetectSetSplitAnyAny(FastPatternConfig *, int);
-void fpSetMaxPatternLen(FastPatternConfig *, unsigned int);
 
 void fpDetectSetSingleRuleGroup(FastPatternConfig *);
 void fpDetectSetBleedOverPortLimit(FastPatternConfig *, unsigned int);
@@ -200,7 +195,6 @@ void fpDetectSetDebugPrintNcRules(FastPatternConfig *);
 void fpDetectSetDebugPrintRuleGroupBuildDetails(FastPatternConfig *);
 void fpDetectSetDebugPrintRuleGroupsCompiled(FastPatternConfig *);
 void fpDetectSetDebugPrintRuleGroupsUnCompiled(FastPatternConfig *);
-void fpDetectSetDebugPrintFastPatterns(FastPatternConfig *, int);
 
 int  fpDetectGetSingleRuleGroup(FastPatternConfig *);
 int  fpDetectGetBleedOverPortLimit(FastPatternConfig *);
@@ -209,15 +203,17 @@ int  fpDetectGetDebugPrintNcRules(FastPatternConfig *);
 int  fpDetectGetDebugPrintRuleGroupBuildDetails(FastPatternConfig *);
 int  fpDetectGetDebugPrintRuleGroupsCompiled(FastPatternConfig *);
 int  fpDetectGetDebugPrintRuleGroupsUnCompiled(FastPatternConfig *);
-int  fpDetectSplitAnyAny(FastPatternConfig *);
-int  fpDetectGetDebugPrintFastPatterns(FastPatternConfig *);
 
 void fpDeleteFastPacketDetection(struct _SnortConfig *);
 void free_detection_option_tree(detection_option_tree_node_t *node);
 
+#ifdef PORTLISTS
+int OtnHasContent( OptTreeNode * p );
+int OtnHasUriContent( OptTreeNode * p );
 int OtnFlowDir( OptTreeNode * p );
-#ifdef TARGET_BASED
+# ifdef TARGET_BASED
 PORT_GROUP * fpGetServicePortGroupByOrdinal(sopg_table_t *, int, int, int16_t);
+# endif
 #endif
 
 /*
@@ -231,6 +227,4 @@ void fpWalkOtns(int, OtnWalkFcn);
 void fpDynamicDataFree(void *);
 #endif
 
-const char * PatternRawToContent(const char *pattern, int pattern_len);
-
-#endif  /* __FPCREATE_H__ */
+#endif

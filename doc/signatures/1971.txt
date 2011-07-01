@@ -38,8 +38,7 @@ server and run the command.
 
 --
 Affected Systems:
-This vulnerability affects multiple vendors distributions of wuftpd 
-2.6.1 and earlier.  
+	Multiple vendor distributions of wuftpd  2.6.1 and earlier.  
 
 --
 Attack Scenarios:
@@ -52,9 +51,7 @@ access to the system.
 
 --
 Ease of Attack:
-Simple.
-
-Multiple exploit scripts are available.
+Simple. Exploit scripts are available.
 
 --
 False Positives:
@@ -71,16 +68,12 @@ disallow anonymous access to the server.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Mike Poor <mike.poor@sourcefire.com>
 
 --
 Additional References:
 
-bugtraq,1505
-bugtraq,1387
-cve,CVE-2000-0573
-nessus,10452
 
 --

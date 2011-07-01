@@ -7,7 +7,7 @@ lib_LTLIBRARIES = libsf_engine.la
 
 libdir = ${exec_prefix}/lib/snort_dynamicengine
 
-libsf_engine_la_LDFLAGS = -shared -export-dynamic -module @XCCFLAGS@
+libsf_engine_la_LDFLAGS = -module
 
 BUILT_SOURCES = \
 sfhashfcn.c \
@@ -19,9 +19,8 @@ sfprimetable.h \
 ipv6_port.h \
 sf_ip.c \
 sf_ip.h \
-snort_debug.h \
-sf_types.h \
-sf_protocols.h 
+debug.h \
+sf_types.h
 
 nodist_libsf_engine_la_SOURCES = \
 sfhashfcn.c \
@@ -33,15 +32,13 @@ sfprimetable.h \
 ipv6_port.h \
 sf_ip.c \
 sf_ip.h \
-snort_debug.h \
-sf_types.h \
-sf_protocols.h 
+debug.h \
+sf_types.h
 
 libsf_engine_la_SOURCES = \
 bmh.c \
 bmh.h \
 sf_snort_detection_engine.c \
-sf_snort_detection_engine.h \
 sf_snort_packet.h \
 sf_snort_plugin_api.c \
 sf_snort_plugin_api.h \
@@ -50,9 +47,7 @@ sf_snort_plugin_content.c \
 sf_snort_plugin_hdropts.c \
 sf_snort_plugin_loop.c \
 sf_snort_plugin_pcre.c \
-sf_snort_plugin_rc4.c \
-sf_decompression.c \
-sf_decompression.h
+sf_snort_plugin_rc4.c
 
 copy_files = \
 	if test -f $$dst_file; then \
@@ -131,7 +126,7 @@ massage_ipv6_headers = \
 		$(sed_ipv6_headers); \
 	fi
 
-ipv6_port.h: ../../ipv6_port.h
+ipv6_port.h: ../../ipv6_port.h 
 	@src_header=$?; dst_header=$@; $(massage_ipv6_headers)
 
 sf_ip.h: ../../sfutil/sf_ip.h
@@ -140,7 +135,7 @@ sf_ip.h: ../../sfutil/sf_ip.h
 sf_ip.c: ../../sfutil/sf_ip.c
 	@src_file=$?; dst_file=$@; $(copy_files)
 
-snort_debug.h: ../../snort_debug.h
+debug.h: ../../debug.h
 	@src_file=$?; dst_file=$@; $(copy_debug_header)
 
 sfghash.h: ../../sfutil/sfghash.h
@@ -164,10 +159,7 @@ sfprimetable.c: ../../sfutil/sfprimetable.c
 sf_types.h: ../../sf_types.h
 	@src_file=$?; dst_file=$@; $(copy_files)
 
-sf_protocols.h: ../../sf_protocols.h
-	@src_file=$?; dst_file=$@; $(copy_files)
-
 SUBDIRS = examples
 
 clean-local:
-	rm -rf sfhashfcn.c sfhashfcn.c.new sfghash.c sfprimetable.c sf_ip.c sf_ip.h ipv6_port.h snort_debug.h snort_debug.h.new sfprimetable.h sfghash.h ipv6_port.h.new sfhashfcn.h sf_types.h sf_protocols.h
+	rm -rf sfhashfcn.c sfhashfcn.c.new sfghash.c sfprimetable.c sf_ip.c sf_ip.h ipv6_port.h debug.h debug.h.new sfprimetable.h sfghash.h ipv6_port.h.new sfhashfcn.h sf_types.h

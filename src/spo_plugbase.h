@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_plugbase.h,v 1.12 2011/02/09 23:22:54 jjordan Exp $ */
+/* $Id$ */
 #ifndef __SPO_PLUGBASE_H__
 #define __SPO_PLUGBASE_H__
 
@@ -54,10 +54,7 @@ typedef struct _OutputConfigFuncNode
 {
     char *keyword;
     int output_type_flags;
-    union {
-        OutputConfigFunc fptr;
-        void *void_fptr;
-    } cfptr;
+    OutputConfigFunc func;
     struct _OutputConfigFuncNode *next;
 
 } OutputConfigFuncNode;
@@ -65,10 +62,7 @@ typedef struct _OutputConfigFuncNode
 typedef struct _OutputFuncNode
 {
     void *arg;
-    union {
-        OutputFunc fptr;
-        void *vfptr;
-    } fptr;
+    OutputFunc func;
     struct _OutputFuncNode *next;
 
 } OutputFuncNode;

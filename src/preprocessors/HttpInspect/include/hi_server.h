@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -36,39 +36,14 @@
 #define __HI_SERVER_H__
 
 #include "hi_include.h"
-#include "hi_util.h"
-#include "snort_httpinspect.h"
-#include "hi_client.h"
-
-typedef struct s_HI_SERVER_RESP
-{
-    const u_char *status_code;
-    const u_char *status_msg;
-    const u_char *header_raw;
-    const u_char *header_norm;
-    COOKIE_PTR cookie;
-    const u_char *cookie_norm;
-    const u_char *body;
-
-    u_int body_size;
-    u_int status_code_size;
-    u_int status_msg_size;
-    u_int header_raw_size;
-    u_int header_norm_size;
-    u_int cookie_norm_size;
-
-    uint16_t header_encode_type;
-    uint16_t cookie_encode_type;
-
-} HI_SERVER_RESP;
-
 
 typedef struct s_HI_SERVER
 {
-    HI_SERVER_RESP response;
-    HI_SERVER_EVENTS event_list;
+    const unsigned char *header;
+    int           header_size;
+
 } HI_SERVER;
 
-int hi_server_inspection(void *, Packet *, HttpSessionData *);
+int hi_server_inspection(void *S, const unsigned char *data, int dsize);
 
 #endif

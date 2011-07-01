@@ -54,10 +54,5 @@ Snort documentation contributed by Josh Sakofsky
 -- 
 Additional References:
 
-Bugtraq:
-http://www.securityfocus.com/bid/3009
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2001-0731
 
 --

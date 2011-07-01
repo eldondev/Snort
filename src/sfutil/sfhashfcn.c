@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,27 +18,21 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /*
-     sfhashfcn.c
+     sfhashfcn.c 
 
      Each hash table must allocate it's own SFGHASH struct, this is because
      sfghash_new uses the number of rows in the hash table to modulo the random
      values.
 
      Updates:
-
-     8/31/2006 - man - changed to use sfprimetable.c
+     
+     8/31/2006 - man - changed to use sfprimetable.c 
 */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
-
+ 
 #ifndef MODULUS_HASH
-# include "snort.h"
+# include "snort.h" 
 #endif
 
 #include "sfhashfcn.h"
@@ -109,7 +103,7 @@ unsigned sfhashfcn_hash( SFHASHFCN * p, unsigned char *d, int n )
     return hash ^ p->hardener;
 }
 
-/**
+/** 
  * Make sfhashfcn use a separate set of operators for the backend.
  *
  * @param h sfhashfcn ptr

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -26,6 +26,7 @@
 #include "sfPolicy.h"
 /*SharedObjectAddStarts
 #include "sf_dynamic_preprocessor.h"
+extern DynamicPreprocessorData _dpd;
 SharedObjectAddEnds */
 
 typedef struct
@@ -38,11 +39,11 @@ typedef struct
      */
     unsigned int numAllocatedPolicies;
 
-    /**Number of policies active. Since we use an array of policy pointers,
+    /**Number of policies active. Since we use an array of policy pointers, 
      * number of allocated policies may be more than active policies. */
     unsigned int numActivePolicies;
 
-    /**user configuration for a policy. This is a pointer to an array of pointers
+    /**user configuration for a policy. This is a pointer to an array of pointers 
      * to user configuration.
     */
     void **userConfig;
@@ -55,44 +56,43 @@ typedef tSfPolicyUserContext * tSfPolicyUserContextId;
 extern tSfPolicyId runtimePolicyId;
 extern tSfPolicyId parserPolicyId;
 
-static inline tSfPolicyId getRuntimePolicy(void)
+static INLINE tSfPolicyId getRuntimePolicy(void) 
 {
     return runtimePolicyId;
 }
 
-static inline void setRuntimePolicy(tSfPolicyId id)
+static INLINE void setRuntimePolicy(tSfPolicyId id) 
 {
     runtimePolicyId = id;
 }
 
-static inline int isRuntimePolicyDefault(void)
+static INLINE int isRuntimePolicyDefault(void) 
 {
     return (runtimePolicyId == 0);
 }
 
-static inline tSfPolicyId getParserPolicy(void)
+static INLINE tSfPolicyId getParserPolicy(void) 
 {
     return parserPolicyId;
 }
 
-static inline void setParserPolicy(tSfPolicyId id)
+static INLINE void setParserPolicy(tSfPolicyId id) 
 {
     parserPolicyId = id;
 }
 
-static inline int isParserPolicyDefault(void)
+static INLINE int isParserPolicyDefault(void) 
 {
     return (parserPolicyId == 0);
 }
 
-static inline tSfPolicyId getDefaultPolicy(void)
+static INLINE tSfPolicyId getDefaultPolicy(void) 
 {
     return 0;
 }
 //SharedObjectDeleteEnds
 
 tSfPolicyUserContextId sfPolicyConfigCreate(
-        void
         );
 
 void sfPolicyConfigDelete(
@@ -100,22 +100,22 @@ void sfPolicyConfigDelete(
         );
 
 //Functions for setting, getting and clearing policy ids
-static inline void sfPolicyUserPolicySet (
-        tSfPolicyUserContextId pContext,
-        tSfPolicyId policyId
+static INLINE void sfPolicyUserPolicySet (
+        tSfPolicyUserContextId pContext, 
+        tSfPolicyId policyId 
         )
 {
     pContext->currentPolicyId = policyId;
 }
 
-static inline tSfPolicyId sfPolicyUserPolicyGet (
-        tSfPolicyUserContextId pContext
+static INLINE tSfPolicyId sfPolicyUserPolicyGet (
+        tSfPolicyUserContextId pContext 
         )
 {
     return pContext->currentPolicyId;
 }
 
-static inline unsigned int sfPolicyUserPolicyGetActive (
+static INLINE unsigned int sfPolicyUserPolicyGetActive (
         tSfPolicyUserContextId pContext
         )
 {
@@ -124,12 +124,12 @@ static inline unsigned int sfPolicyUserPolicyGetActive (
 
 //Functions for setting, getting and clearing user data specific to policies.
 int sfPolicyUserDataSet (
-        tSfPolicyUserContextId pContext,
-        tSfPolicyId policyId,
+        tSfPolicyUserContextId pContext, 
+        tSfPolicyId policyId, 
         void *config
         );
-static inline void * sfPolicyUserDataGet (
-        tSfPolicyUserContextId pContext,
+static INLINE void * sfPolicyUserDataGet (
+        tSfPolicyUserContextId pContext, 
         tSfPolicyId policyId
         )
 {
@@ -141,29 +141,29 @@ static inline void * sfPolicyUserDataGet (
     return NULL;
 }
 
-static inline int sfPolicyUserDataSetDefault (
-        tSfPolicyUserContextId pContext,
+static INLINE int sfPolicyUserDataSetDefault (
+        tSfPolicyUserContextId pContext, 
         void *config
         )
 {
     return sfPolicyUserDataSet (pContext, getDefaultPolicy(), config);
 }
 
-static inline void * sfPolicyUserDataGetDefault (
+static INLINE void * sfPolicyUserDataGetDefault (
         tSfPolicyUserContextId pContext
         )
 {
     return sfPolicyUserDataGet (pContext, getDefaultPolicy());
 }
 
-static inline int sfPolicyUserDataSetCurrent (
-        tSfPolicyUserContextId pContext,
+static INLINE int sfPolicyUserDataSetCurrent (
+        tSfPolicyUserContextId pContext, 
         void *config
         )
 {
     return sfPolicyUserDataSet (pContext, pContext->currentPolicyId, config);
 }
-static inline void * sfPolicyUserDataGetCurrent (
+static INLINE void * sfPolicyUserDataGetCurrent (
         tSfPolicyUserContextId pContext
         )
 {

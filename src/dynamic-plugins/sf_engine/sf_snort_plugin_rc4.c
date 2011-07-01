@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2006-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire, Inc.
  *
  * Author: Lurene Grunier
  *         Andy Mullican
@@ -26,16 +26,14 @@
  *
  * RC4 Option operations for dynamic rule engine
  */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_dynamic_define.h"
 #include "sf_snort_packet.h"
 #include "sf_snort_plugin_api.h"
 #include "sfghash.h"
 
 #include "sf_dynamic_engine.h"
+
+extern DynamicEngineData _ded;
+
 
 #define BYTESWAP(x,y) tmp = x; x = y; y = tmp;
 
@@ -44,11 +42,11 @@
 
 /* Decode RC4 data. Return 1 if data matches decoded data. */
 int MatchDecryptedRC4(
-    const u_int8_t *key, u_int16_t keylen, const u_int8_t *encrypted_data,
+    const u_int8_t *key, u_int16_t keylen, const u_int8_t *encrypted_data, 
     u_int8_t *match_data, u_int16_t datalen
 ) {
     u_int16_t   i;
-    u_int8_t    t, tmp;
+    u_int8_t    t, tmp;    
     static char decrypted_data[MAX_DATA_LEN];
     u_int8_t s[256] = {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,

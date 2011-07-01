@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
 
 #ifndef _DCE2_TCP_H_
@@ -29,7 +29,7 @@
 #include "dcerpc.h"
 #include "sf_snort_packet.h"
 #include "sf_types.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 /********************************************************************
  * Structures
@@ -44,7 +44,7 @@ typedef struct _DCE2_TcpSsnData
 /********************************************************************
  * Inline function prototypes
  ********************************************************************/
-static inline DCE2_TransType DCE2_TcpAutodetect(const SFSnortPacket *);
+static INLINE DCE2_TransType DCE2_TcpAutodetect(const SFSnortPacket *);
 
 /********************************************************************
  * Public function prototypes
@@ -68,7 +68,7 @@ void DCE2_TcpSsnFree(void *);
  *  DCE2_TranType
  *
  *********************************************************************/
-static inline DCE2_TransType DCE2_TcpAutodetect(const SFSnortPacket *p)
+static INLINE DCE2_TransType DCE2_TcpAutodetect(const SFSnortPacket *p)
 {
     if (p->payload_size >= sizeof(DceRpcCoHdr))
     {

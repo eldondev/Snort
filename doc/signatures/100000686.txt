@@ -1,0 +1,59 @@
+Rule:
+
+--
+Sid:
+100000686
+
+--
+Summary:
+This event is generated when an empty CTCP NOTICE message is sent to an IRC 
+channel.
+
+--
+Impact:
+If the EnergyMech IRC Bot receives such a message, a denial of service 
+condition will occur.
+
+--
+Detailed Information:
+Whenever the EnergyMech IRC Bot processes a null CTCP NOTICE message, a denial 
+of service condition occurs. Note that this rule is set to examine only default 
+IRC ports, in order to conserve system resources; if you are particularly 
+concerned about this exploit, you may wish to set the ports to "any", as IRC 
+channels can exist on any port.
+
+--
+Affected Systems:
+EnergyMech <= 3.0.1
+
+--
+Attack Scenarios:
+An attacker could exploit this vulnerability via any IRC client, or by using an 
+automated script.
+
+--
+Ease of Attack:
+Simple.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Upgrade to version 3.0.2 or greater.
+
+--
+Contributors:
+VeriSign MSS Operations Team
+Joel Esler <joel.esler@sourcefire.com>
+
+--
+Additional References:
+http://www.energymech.net/versions-3.0.html
+
+--

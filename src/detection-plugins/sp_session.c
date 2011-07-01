@@ -1,7 +1,7 @@
-/* $Id: sp_session.c,v 1.46 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -22,15 +22,15 @@
 
 /* Snort Session Logging Plugin */
 
-/* sp_session
- *
+/* sp_session 
+ * 
  * Purpose:
  *
- * Drops data (printable or otherwise) into a SESSION file.  Useful for
+ * Drops data (printable or otherwise) into a SESSION file.  Useful for 
  * logging user sessions (telnet, http, ftp, etc).
  *
  * Arguments:
- *
+ *   
  * This plugin can take two arguments:
  *    printable => only log the "printable" ASCII characters.
  *    all       => log all traffic in the session, logging non-printable
@@ -67,11 +67,10 @@
 #include <sys/stat.h>
 
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 #include "plugin_enum.h"
 #include "snort.h"
@@ -122,7 +121,7 @@ int SessionCompare(void *l, void *r)
 
     if (!left || !right)
         return DETECTION_OPTION_NOT_EQUAL;
-
+    
     if (left->session_flag == right->session_flag)
     {
         return DETECTION_OPTION_EQUAL;
@@ -133,7 +132,7 @@ int SessionCompare(void *l, void *r)
 
 
 /****************************************************************************
- *
+ * 
  * Function: SetupSession()
  *
  * Purpose: Init the session plugin module.
@@ -146,7 +145,7 @@ int SessionCompare(void *l, void *r)
 void SetupSession(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("session", SessionInit, NULL, OPT_TYPE_LOGGING, NULL);
+    RegisterRuleOption("session", SessionInit, NULL, OPT_TYPE_LOGGING);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("session", &sessionPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
@@ -155,7 +154,7 @@ void SetupSession(void)
 
 
 /**************************************************************************
- *
+ * 
  * Function: SessionInit(char *, OptTreeNode *)
  *
  * Purpose: Initialize the sesion plugin, parsing the rule parameters and
@@ -172,8 +171,8 @@ void SessionInit(char *data, OptTreeNode *otn, int protocol)
     OptFpList *fpl;
 
     /*
-     * Theoretically we should only all this plugin to be used when there's a
-     * possibility of a session happening (i.e. TCP), but I get enough
+     * Theoretically we should only all this plugin to be used when there's a 
+     * possibility of a session happening (i.e. TCP), but I get enough 
      * requests that I'm going to pull the verifier so that things should work
      * for everyone
      */
@@ -183,7 +182,7 @@ void SessionInit(char *data, OptTreeNode *otn, int protocol)
                 file_name, file_line);
     }*/
 
-    /* multiple declaration check */
+    /* multiple declaration check */ 
     if(otn->ds_list[PLUGIN_SESSION])
     {
         FatalError("%s(%d): Multiple session options in rule\n", file_name,
@@ -198,11 +197,11 @@ void SessionInit(char *data, OptTreeNode *otn, int protocol)
     /* be sure to check that the protocol that is passed in matches the
        transport layer protocol that you're using for this rule! */
 
-    /* this is where the keyword arguments are processed and placed into
+    /* this is where the keyword arguments are processed and placed into 
        the rule option's data structure */
     ParseSession(data, otn);
 
-    /* finally, attach the option's detection function to the rule's
+    /* finally, attach the option's detection function to the rule's 
        detect function pointer list */
     fpl = AddOptFuncToList(LogSessionData, otn);
     fpl->context = otn->ds_list[PLUGIN_SESSION];
@@ -212,7 +211,7 @@ void SessionInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: ParseSession(char *, OptTreeNode *)
  *
  * Purpose: Figure out how much of the session data we're collecting
@@ -268,7 +267,7 @@ void ParseSession(char *data, OptTreeNode *otn)
 
 
 /****************************************************************************
- *
+ * 
  * Function: LogSessionData(char *, OptTreeNode *)
  *
  * Purpose: Dumps the session data to the log file.
@@ -289,8 +288,8 @@ int LogSessionData(void *option_data, Packet *p)
     PREPROC_PROFILE_START(sessionPerfStats);
 
     /* if there's data in this packet */
-    if(p != NULL)
-    {
+    if(p != NULL) 
+    { 
         if((p->dsize != 0 && p->data != NULL) || p->frag_flag != 1)
         {
              session = OpenSessionFile(p);
@@ -370,11 +369,11 @@ FILE *OpenSessionFile(Packet *p)
     char session_file[STD_BUF]; /* name of session file */
 #ifdef SUP_IP6
     sfip_t *dst, *src;
-#endif
+#endif        
 
     FILE *ret;
 
-    if(p->frag_flag)
+    if(p->frag_flag)  
     {
         return NULL;
     }
@@ -458,7 +457,7 @@ FILE *OpenSessionFile(Packet *p)
 #endif
     }
 
-
+    
     strncpy(filename, session_file, STD_BUF - 1);
     filename[STD_BUF - 1] = '\0';
 

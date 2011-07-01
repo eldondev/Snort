@@ -44,27 +44,11 @@ option to the TCP configuration.  Some of these anomalies are
 detected on a per-target basis.  For example, a few operating systems
 allow data in TCP SYN packets, while others do not.
 
-Protocol Aware Flushing (PAF)
------------------------------
-Protocol aware flushing of HTTP can be enabled with this option:
-
-config paf_max: <max pdu>
-
-where <max-pdu> is between zero (off) and 65280.  This allows Snort to
-statefully scan a stream and reassemble a complete PDU regardless of 
-segmentation.  For example, multiple PDUs within a single TCP segment,
-as well as one PDU spanning multiple TCP segments will be reassembled 
-into one PDU per packet for each PDU.  PDUs larger than the configured
-maximum will be split into multiple packets.
-
 Rule Options
-============
-Stream5 adds support for a few rule options described below.
-
-stream_size
------------
-The 'stream_size' rule option allows a rule to match traffic according to
-the number of bytes observed, as determined by the TCP sequence numbers.
+------------
+Stream5 adds the 'stream_size' rule option.  The option allows a rule to 
+match traffic according to the number of bytes observed, as determined by the
+TCP sequence numbers.
 
 stream_size takes a number of comma-separated arguments in the following 
 format:
@@ -91,26 +75,6 @@ For example:
 
     stream_size:client,<,6;
 
-stream_reassemble
------------------
-The 'stream_reassemble' rule option allows a rule to enable or disable TCP
-stream reassembly on matching traffic.
-
-stream_reassemble takes a number of comma-separated arguments in the following
-format:
-
-    stream_reassemble:<enable|disable>,<server|client|both> [,noalert] [,fastpath]
-
-- The optional noalert parameter causes the rule to not generate an alert when it matches.
-- The optional fastpath parameter causes Snort to ignore the rest of the connection.
-
-For example:
-
-To disable TCP reassembly for client traffic when we see a HTTP 200 Ok Response message:
-
-    alert tcp any 80 -> any any (flow:to_client,established;  content:"200 OK";
-        stream_reassemble:disable,client,noalert;)
-
 Configuration
 =============
 Global Configuration
@@ -121,16 +85,16 @@ Global settings for the Stream5 preprocessor
 - Options:
     track_tcp <yes|no>      - Track sessions for TCP.  The default is "yes".
     max_tcp <number>        - Max concurrent sessions for TCP.  The default
-                              is "262144", maximum is "1048576", minimum is "1".
+                              is "256000", maximum is "1052672", minimum is "1".
     memcap <bytes>          - Memcap for TCP packet storage.  The default
                               is "8388608" (8MB), maximum is "1073741824" (1GB),
                               minimum is "32768" (32KB).
     track_udp <yes|no>      - Track sessions for UDP.  The default is "yes".
     max_udp <number>        - Max concurrent sessions for UDP.  The default
-                              is "131072", maximum is "1048576", minimum is "1".
-    track_icmp <yes|no>     - Track sessions for ICMP.  The default is "no".
+                              is "128000", maximum is "1052672", minimum is "1".
+    track_icmp <yes|no>     - Track sessions for ICMP.  The default is "yes".
     max_icmp <number>       - Max concurrent sessions for ICMP.  The default
-                              is "65536", maximum is "1048576", minimum is "1".
+                              is "64000", maximum is "1052672", minimum is "1".
     flush_on_alert          - Backwards compatibility.  Flush a TCP stream
                               when an alert is generated on that stream.  The
                               default is set to off.
@@ -139,22 +103,13 @@ Global settings for the Stream5 preprocessor
     prune_log_max <bytes>   - Print a message when a session terminates that
                               was consuming more than the specified number of
                               bytes.  The default is "1048576" (1MB), minimum
-                              can be either "0" (disabled) or if not disabled 
-			      the minimum is "1024" and maximum is "1073741824".
-    disabled		    - This optional keyword is allowed with any policy
-			      to avoid packet processing. This option disables
-			      the preprocessor. When the preprocessor is disabled 
-			      only the options memcap, max_tcp, max_udp and 
-			      max_icmp are applied when specified with the 
-		              configuration. The other options are parsed but 
-		              not used. Any valid configuration may have 
-		              "disabled" added to it.
-			      
+                              is "0" (unlimited), maximum is not bounded, other
+                              than by the memcap.
 
 TCP Configuration
 -----------------
 Provides a means on a per IP address target to configure a TCP policy.
-This can have multiple occurrences, per policy that is bound to an IP
+This can have multiple occurances, per policy that is bound to an IP
 address or network.  One default policy must be specified, and that policy
 is not bound to an IP address or network.
 
@@ -187,6 +142,8 @@ is not bound to an IP address or network.
                                    macos     - MacOS 10.3 and newer
                               The default is "bsd".
 
+    min_ttl <number>        - Minimum Time To Live.  The default is "1", the
+                              minimum is "1" and the maximum is "255".
     overlap_limit <number>  - Limits number of overlapping packets. 
                               The default is "0" (unlimited), the minimum is
                               "0", and the maximum is "255".
@@ -246,22 +203,6 @@ is not bound to an IP address or network.
                               minimum of "2", and a maximum of "1073741824"
                               (1GB).  A message is written to console/syslog
                               when this limit is enforced.
-    small_segments <num1> bytes <num2> [ignore_ports port list]
-                            - Configure the maximum small segments queued.  
-                              This feature requires that detect_anomalies be enabled. 
-                              num1 is the number of consecutive segments that will
-                              trigger the detection rule. The default value is 
-                              "0" (disabled),with a maximum of "2048".  
-                              num2 is the minimum bytes for a segment to be 
-                              considered "small". The default value is "0" (disabled),
-                              with a maximum of "2048".  
-                              ignore_ports is optional, defines the list of
-                              ports in which will be ignored for this rule.
-                              The number of ports can be up to "65535".
-                              Example:
-                                small_segments 3 bytes 15 ignore_ports 33 44 55
-                              A message is written to console/syslog when this 
-                              limit is enforced. The generated alert is 129:12
     ports <client|server|both> [all|space separated port list] 
                             - Specify the client, server, or both and list of
                               ports in which to perform reassembly.  This can
@@ -293,7 +234,7 @@ TCP policy uses all of the default values.
 UDP Configuration
 -----------------
 Configuration for UDP session tracking.  Since there is no target based
-binding, there should be only one occurrence of the UDP configuration.
+binding, there should be only one occurance of the UDP configuration.
 - Preprocessor name: stream5_udp
 - Options:
     timeout <number (secs)> - Session timeout.  The default is "30", the
@@ -327,7 +268,7 @@ NOTE: ICMP is currently untested, in minimal code form and is NOT ready
 for use in production networks.  It is not turned on by default.
 
 Configuration for ICMP session tracking.  Since there is no target based
-binding, there should be only one occurrence of the ICMP configuration.
+binding, there should be only one occurance of the ICMP configuration.
 - Preprocessor name: stream5_icmp
 - Options:
     timeout <number (secs)> - Session timeout.  The default is "30", the
@@ -371,7 +312,3 @@ SID   Description
 8     Data after Reset packet
 9     Possible Hijacked Client
 10    Possible Hijacked Server
-11    TCP packet with any control flags set
-12    Limit on number of consecutive small segments reached
-13    4-way handshake detected
-14    Packet missing timestamp

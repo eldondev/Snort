@@ -1,0 +1,11 @@
+Document: snort-faq
+Title: Snort FAQ
+Author: The Snort Core Team
+Abstract: Frequently Asked Questions for the Snort NIDS
+ This document provides answers to some of the most common
+ (and frequently asked) questions related to the Snort network
+ intrusion detection system.
+Section: Network/Monitoring
+
+Format: pdf
+Files: /usr/share/doc/snort-doc/faq.pdf.gz

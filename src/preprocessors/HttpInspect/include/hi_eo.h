@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -96,18 +96,10 @@ typedef struct s_HI_CLIENT_EVENTS
 
 typedef struct s_HI_ANOM_SERVER_EVENTS
 {
-    int stack[HI_EO_SERVER_EVENT_NUM];
+    int stack[HI_EO_ANOM_SERVER_EVENT_NUM];
     int stack_count;
-    HI_EVENT events[HI_EO_SERVER_EVENT_NUM];
+    HI_EVENT events[HI_EO_ANOM_SERVER_EVENT_NUM];
 
 } HI_ANOM_SERVER_EVENTS;
-
-typedef struct s_HI_SERVER_EVENTS
-{
-    int stack[HI_EO_SERVER_EVENT_NUM];
-    int stack_count;
-    HI_EVENT events[HI_EO_SERVER_EVENT_NUM];
-
-} HI_SERVER_EVENTS;
 
 #endif

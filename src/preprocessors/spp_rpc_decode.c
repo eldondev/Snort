@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,9 +18,9 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spp_rpc_decode.c,v 1.52 2011/06/08 00:33:18 jjordan Exp $ */
-/* spp_rpc_decode
- *
+/* $Id$ */
+/* spp_rpc_decode 
+ * 
  * Purpose:
  *
  * This preprocessor normalizes the RPC requests from remote machines by
@@ -30,7 +30,7 @@
  * string 0186A0 is broken up.
  *
  * Arguments:
- *
+ *   
  * This plugin takes a list of integers representing the TCP ports that the
  * user is interested in having normalized
  *
@@ -43,23 +43,23 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
+#ifdef HAVE_CONFIG_H	 
+#include "config.h"	 
 #endif
 
 #include <sys/types.h>
 #include <stdlib.h>
 #include <ctype.h>
 
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
+#ifdef HAVE_STRINGS_H	 
+#include <strings.h>	 
 #endif
 
 #include "decode.h"
 #include "plugbase.h"
 #include "parser.h"
 #include "log.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "util.h"
 
 #include "mstring.h"
@@ -70,9 +70,8 @@
 #include "event_queue.h"
 
 #include "profiler.h"
-#include "snort_bounds.h"
+#include "bounds.h"
 #include "strlcatu.h"
-#include "detection_util.h"
 
 #include "stream_api.h"
 
@@ -80,6 +79,8 @@
 #include "sftarget_protocol_reference.h"
 #endif
 #include "sfPolicy.h"
+
+extern uint8_t DecodeBuffer[DECODE_BLEN];
 
 #define OPT_ALERT_FRAGMENTS "alert_fragments"
 #define OPT_ALERT_MULTIPLE_REQUESTS "no_alert_multiple_requests"
@@ -118,7 +119,6 @@ typedef struct _RpcBuffer
 typedef struct _RpcSsnData
 {
     int active;
-    int events;
     uint32_t frag_len;
     uint32_t ignore;
     uint32_t nseq;
@@ -152,7 +152,7 @@ PreprocStats rpcdecodePerfStats;
 static void RpcDecodeInit(char *);
 static void PreprocRpcDecode(Packet *, void *);
 static void ParseRpcConfig(RpcDecodeConfig *, char *);
-static int ConvertRPC(RpcDecodeConfig *, RpcSsnData *, Packet *);
+static int ConvertRPC(RpcDecodeConfig *, Packet *);
 static void RpcDecodeFreeConfig(tSfPolicyUserContextId rpc);
 static void RpcDecodeCleanExit(int, void *);
 static void _addPortsToStream5Filter(RpcDecodeConfig *, tSfPolicyId);
@@ -171,23 +171,22 @@ static void RpcDecodeReloadSwapFree(void *);
 
 static RpcSsnData * RpcSsnDataNew(Packet *);
 static void RpcSsnDataFree(void *);
-static inline void RpcSsnClean(RpcSsnData *);
-static inline void RpcSsnSetInactive(RpcSsnData *, Packet *);
-static inline int RpcSsnIsActive(RpcSsnData *);
+static INLINE void RpcSsnClean(RpcSsnData *);
+static INLINE void RpcSsnSetInactive(RpcSsnData *, Packet *);
+static INLINE int RpcSsnIsActive(RpcSsnData *);
 
 static RpcStatus RpcStatefulInspection(RpcDecodeConfig *, RpcSsnData *, Packet *);
-static inline void RpcPreprocEvent(RpcDecodeConfig *, RpcSsnData *, int);
 static RpcStatus RpcHandleFrag(RpcDecodeConfig *, RpcSsnData *, const uint8_t *);
 static RpcStatus RpcPrepRaw(const uint8_t *, uint32_t, Packet *);
 static RpcStatus RpcPrepFrag(RpcSsnData *, Packet *);
 static RpcStatus RpcPrepSeg(RpcSsnData *, Packet *);
-static inline uint32_t RpcBufLen(RpcBuffer *);
-static inline uint8_t * RpcBufData(RpcBuffer *);
+static INLINE uint32_t RpcBufLen(RpcBuffer *);
+static INLINE uint8_t * RpcBufData(RpcBuffer *);
 static RpcStatus RpcBufAdd(RpcBuffer *, const uint8_t *, uint32_t);
-static inline void RpcBufClean(RpcBuffer *);
+static INLINE void RpcBufClean(RpcBuffer *);
 
-static inline void * RpcAlloc(uint32_t);
-static inline void RpcFree(void *, uint32_t);
+static INLINE void * RpcAlloc(uint32_t);
+static INLINE void RpcFree(void *, uint32_t);
 
 
 //function to assign the RpcDecodePorts array
@@ -230,7 +229,7 @@ static void RpcDecodePortsAssign(uint8_t *RpcDecodePorts, char *portlist)
 /*
  * Function: SetupRpcDecode()
  *
- * Purpose: Registers the preprocessor keyword and initialization
+ * Purpose: Registers the preprocessor keyword and initialization 
  *          function into the preprocessor list.
  *
  * Arguments: None.
@@ -240,7 +239,7 @@ static void RpcDecodePortsAssign(uint8_t *RpcDecodePorts, char *portlist)
  */
 void SetupRpcDecode(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
 #ifndef SNORT_RELOAD
     RegisterPreprocessor("rpc_decode", RpcDecodeInit);
@@ -272,11 +271,12 @@ void RpcDecodeInit(char *args)
 
     if (rpc_decode_config == NULL)
     {
-        rpc_decode_config = sfPolicyConfigCreate();
+        rpc_decode_config = sfPolicyConfigCreate(); 
 
         AddFuncToPreprocCleanExitList(RpcDecodeCleanExit, NULL, PRIORITY_LAST, PP_RPCDECODE);
+        AddFuncToPreprocRestartList(RpcDecodeCleanExit, NULL, PRIORITY_LAST, PP_RPCDECODE);
 
-#ifdef PERF_PROFILING
+#ifdef PREF_PROFILING
         RegisterPreprocessorProfile("rpcdecode", &rpcdecodePerfStats, 0, &totalPerfStats);
 #endif
 
@@ -353,7 +353,7 @@ void ParseRpcConfig(RpcDecodeConfig *rpc, char *portlist)
     toks = mSplit(portlist, " \t", 0, &num_toks, 0);
 
     LogMessage("rpc_decode arguments:\n");
-
+    
     /* convert the tokens and place them into the port list */
     for(num = 0; num < num_toks; num++)
     {
@@ -418,30 +418,30 @@ void ParseRpcConfig(RpcDecodeConfig *rpc, char *portlist)
     {
         RpcDecodePortsAssign(rpc->RpcDecodePorts, RPC_DECODE_DEFAULT_PORTS);
     }
-
+	
     /* print out final port list */
-    LogMessage("    Ports to decode RPC on: %s\n", is_reset ? portstr : RPC_DECODE_DEFAULT_PORTS);
+    LogMessage("    Ports to decode RPC on: %s\n", is_reset ? portstr : RPC_DECODE_DEFAULT_PORTS); 
     LogMessage("    %s: %s\n", OPT_ALERT_FRAGMENTS, rpc->alert_fragments ? "ACTIVE": "INACTIVE");
     LogMessage("    %s: %s\n", TEXT_ALERT_LARGE_FRAGMENTS, rpc->alert_large ? "ACTIVE": "INACTIVE");
     LogMessage("    %s: %s\n", TEXT_ALERT_INCOMPLETE, rpc->alert_incomplete ? "ACTIVE": "INACTIVE");
     LogMessage("    %s: %s\n", TEXT_ALERT_MULTIPLE_REQUESTS, rpc->alert_multi ? "ACTIVE": "INACTIVE");
-}
-
+}                                                                               
+   
 
 /*
  * Function: PreprocRpcDecode(Packet *)
  *
- * Purpose: Inspects the packet's payload for fragment records and
+ * Purpose: Inspects the packet's payload for fragment records and 
  *          converts them into one infragmented record.
  *
- * Arguments: p => pointer to the current packet data struct
+ * Arguments: p => pointer to the current packet data struct 
  *
  * Returns: void function
  *
  */
 static void PreprocRpcDecode(Packet *p, void *context)
 {
-    RpcDecodeConfig *rconfig = NULL;
+    RpcDecodeConfig *rconfig = NULL; 
     RpcSsnData *rsdata = NULL;
     PROFILE_VARS;
 
@@ -495,66 +495,43 @@ static void PreprocRpcDecode(Packet *p, void *context)
 
     DEBUG_WRAP(DebugMessage(DEBUG_RPC,"Stateless inspection\n"););
 
-    RpcPreprocEvent(rconfig, rsdata, ConvertRPC(rconfig, rsdata, p));
-
-    PREPROC_PROFILE_END(rpcdecodePerfStats);
-    return;
-}
-
-static inline void RpcPreprocEvent(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, int event)
-{
-    if (rconfig == NULL)
-        return;
-
-    if (rsdata != NULL)
+    switch (ConvertRPC(rconfig, p))
     {
-        /* Only log one event of the same type per session */
-        if (rsdata->events & (1 << event))
-            return;
-
-        rsdata->events |= (1 << event);
-    }
-
-    switch (event)
-    {
-        case RPC_FRAG_TRAFFIC:
-            if (rconfig->alert_fragments)
-            {
-                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_FRAG_TRAFFIC,
-                        1, RPC_CLASS, 3, RPC_FRAG_TRAFFIC_STR, 0);
-            }
-            break;
         case RPC_MULTIPLE_RECORD:
-            if (rconfig->alert_multi)
+            if(rconfig->alert_multi)
             {
-                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_MULTIPLE_RECORD,
+                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_MULTIPLE_RECORD, 
                         1, RPC_CLASS, 3, RPC_MULTIPLE_RECORD_STR, 0);
             }
             break;
         case RPC_LARGE_FRAGSIZE:
-            if (rconfig->alert_large)
+            if(rconfig->alert_large)
             {
-                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_LARGE_FRAGSIZE,
+                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_LARGE_FRAGSIZE, 
                         1, RPC_CLASS, 3, RPC_LARGE_FRAGSIZE_STR, 0);
             }
             break;
         case RPC_INCOMPLETE_SEGMENT:
-            if (rconfig->alert_incomplete)
+            if(rconfig->alert_incomplete)
             {
-                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_INCOMPLETE_SEGMENT,
+                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_INCOMPLETE_SEGMENT, 
                         1, RPC_CLASS, 3, RPC_INCOMPLETE_SEGMENT_STR, 0);
             }
             break;
         case RPC_ZERO_LENGTH_FRAGMENT:
-            if (rconfig->alert_multi)
+            if(rconfig->alert_multi)
             {
-                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_ZERO_LENGTH_FRAGMENT,
+                SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_ZERO_LENGTH_FRAGMENT, 
                         1, RPC_CLASS, 3, RPC_ZERO_LENGTH_FRAGMENT_STR, 0);
             }
             break;
+        case 0:
         default:
             break;
     }
+
+    PREPROC_PROFILE_END(rpcdecodePerfStats);
+    return;    
 }
 
 static int RpcDecodeIsEligible(RpcDecodeConfig *rconfig, Packet *p)
@@ -618,7 +595,7 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
         }
 
         data += overlap;
-        dsize -= (uint16_t)overlap;
+        dsize -= overlap;
 
         seq += overlap;
     }
@@ -643,15 +620,10 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
         DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                     "STATEFUL: Ignoring %u bytes\n", rsdata->ignore););
 
-        dsize -= (uint16_t)rsdata->ignore;
+        dsize -= rsdata->ignore;
         data += rsdata->ignore;
         rsdata->ignore = 0;
     }
-
-    /* Might need to evaluate same packet, different decode buffer
-     * more than once and detection option tree won't let us do that
-     * by default */
-    p->packet_flags |= PKT_RPC_PKT;
 
     while (dsize > 0)
     {
@@ -662,8 +634,6 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
                 DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                             "STATEFUL: Not enough data for frag header: %u\n",
                             dsize););
-
-                RpcPreprocEvent(rconfig, rsdata, RPC_INCOMPLETE_SEGMENT);
 
                 if (RpcBufAdd(&rsdata->seg, data, dsize) != RPC_STATUS__SUCCESS)
                     return RPC_STATUS__ERROR;
@@ -681,8 +651,6 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
                 DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                             "STATEFUL: Not enough data for fragment: %u\n",
                             dsize););
-
-                RpcPreprocEvent(rconfig, rsdata, RPC_INCOMPLETE_SEGMENT);
 
                 if (RpcBufAdd(&rsdata->seg, data, dsize) != RPC_STATUS__SUCCESS)
                     return RPC_STATUS__ERROR;
@@ -708,12 +676,9 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
                      * the data we got */
                     if (RpcPrepRaw(data, rsdata->frag_len, p) != RPC_STATUS__SUCCESS)
                         return RPC_STATUS__ERROR;
-
-                    Detect(p);
                 }
 
-                if ((dsize > 0) && rconfig->alert_multi)
-                    RpcPreprocEvent(rconfig, rsdata, RPC_MULTIPLE_RECORD);
+                Detect(p);
             }
 
             data += (RPC_FRAG_HDR_SIZE + rsdata->frag_len);
@@ -728,8 +693,6 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
                     DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                                 "STATEFUL: Not enough data for frag header "
                                 "(%u): %u\n", need, dsize););
-
-                    RpcPreprocEvent(rconfig, rsdata, RPC_INCOMPLETE_SEGMENT);
 
                     if (RpcBufAdd(&rsdata->seg, data, dsize) != RPC_STATUS__SUCCESS)
                         return RPC_STATUS__ERROR;
@@ -755,8 +718,6 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
                 DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                             "STATEFUL: Not enough data for fragment (%u): %u\n",
                             need, dsize););
-
-                RpcPreprocEvent(rconfig, rsdata, RPC_INCOMPLETE_SEGMENT);
 
                 if (RpcBufAdd(&rsdata->seg, data, dsize) != RPC_STATUS__SUCCESS)
                     return RPC_STATUS__ERROR;
@@ -790,9 +751,6 @@ static RpcStatus RpcStatefulInspection(RpcDecodeConfig *rconfig,
 
                 DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                             "STATEFUL: Last frag - calling detect\n"););
-
-                if ((dsize > 0) && rconfig->alert_multi)
-                    RpcPreprocEvent(rconfig, rsdata, RPC_MULTIPLE_RECORD);
 
                 Detect(p);
                 RpcBufClean(&rsdata->frag);
@@ -831,8 +789,8 @@ static RpcStatus RpcPrepRaw(const uint8_t *data, uint32_t fraglen, Packet *p)
 {
     int status;
 
-    status = SafeMemcpy(DecodeBuffer.data, data, RPC_FRAG_HDR_SIZE + fraglen,
-            DecodeBuffer.data, DecodeBuffer.data + sizeof(DecodeBuffer.data));
+    status = SafeMemcpy(DecodeBuffer, data, RPC_FRAG_HDR_SIZE + fraglen,
+            DecodeBuffer, DecodeBuffer + sizeof(DecodeBuffer));
 
     if (status != SAFEMEM_SUCCESS)
     {
@@ -841,7 +799,8 @@ static RpcStatus RpcPrepRaw(const uint8_t *data, uint32_t fraglen, Packet *p)
         return RPC_STATUS__ERROR;
     }
 
-    SetAltDecode(RPC_FRAG_HDR_SIZE + fraglen);
+    p->alt_dsize = RPC_FRAG_HDR_SIZE + fraglen;
+    p->packet_flags |= PKT_ALT_DECODE;
 
     return RPC_STATUS__SUCCESS;
 }
@@ -851,16 +810,16 @@ static RpcStatus RpcPrepFrag(RpcSsnData *rsdata, Packet *p)
     int status;
     uint32_t fraghdr = htonl(RpcBufLen(&rsdata->frag));
 
-    DecodeBuffer.data[0] = *((uint8_t *) &fraghdr);
-    DecodeBuffer.data[1] = *(((uint8_t *) &fraghdr) + 1);
-    DecodeBuffer.data[2] = *(((uint8_t *) &fraghdr) + 2);
-    DecodeBuffer.data[3] = *(((uint8_t *) &fraghdr) + 3);
+    DecodeBuffer[0] = *((uint8_t *) &fraghdr);
+    DecodeBuffer[1] = *(((uint8_t *) &fraghdr) + 1);
+    DecodeBuffer[2] = *(((uint8_t *) &fraghdr) + 2);
+    DecodeBuffer[3] = *(((uint8_t *) &fraghdr) + 3);
 
-    DecodeBuffer.data[0] |= 0x80;
+    DecodeBuffer[0] |= 0x80;
 
-    status = SafeMemcpy(DecodeBuffer.data+4, RpcBufData(&rsdata->frag),
-            RpcBufLen(&rsdata->frag), DecodeBuffer.data+4,
-            DecodeBuffer.data + sizeof(DecodeBuffer.data));
+    status = SafeMemcpy(DecodeBuffer+4, RpcBufData(&rsdata->frag),
+            RpcBufLen(&rsdata->frag), DecodeBuffer+4, 
+            DecodeBuffer + sizeof(DecodeBuffer));
 
     if (status != SAFEMEM_SUCCESS)
     {
@@ -870,7 +829,8 @@ static RpcStatus RpcPrepFrag(RpcSsnData *rsdata, Packet *p)
         return RPC_STATUS__ERROR;
     }
 
-    SetAltDecode((uint16_t)RpcBufLen(&rsdata->frag));
+    p->alt_dsize = RpcBufLen(&rsdata->frag);
+    p->packet_flags |= PKT_ALT_DECODE;
 
     if (RpcBufLen(&rsdata->frag) > RPC_MAX_BUF_SIZE)
         RpcBufClean(&rsdata->frag);
@@ -882,9 +842,9 @@ static RpcStatus RpcPrepSeg(RpcSsnData *rsdata, Packet *p)
 {
     int status;
 
-    status = SafeMemcpy(DecodeBuffer.data, RpcBufData(&rsdata->seg),
-            RpcBufLen(&rsdata->seg), DecodeBuffer.data,
-            DecodeBuffer.data + sizeof(DecodeBuffer.data));
+    status = SafeMemcpy(DecodeBuffer, RpcBufData(&rsdata->seg),
+            RpcBufLen(&rsdata->seg), DecodeBuffer,
+            DecodeBuffer + sizeof(DecodeBuffer));
 
     if (status != SAFEMEM_SUCCESS)
     {
@@ -894,7 +854,8 @@ static RpcStatus RpcPrepSeg(RpcSsnData *rsdata, Packet *p)
         return RPC_STATUS__ERROR;
     }
 
-    SetAltDecode((uint16_t)RpcBufLen(&rsdata->seg));
+    p->alt_dsize = RpcBufLen(&rsdata->seg);
+    p->packet_flags |= PKT_ALT_DECODE;
 
     if (RpcBufLen(&rsdata->seg) > RPC_MAX_BUF_SIZE)
     {
@@ -913,11 +874,11 @@ static RpcStatus RpcHandleFrag(RpcDecodeConfig *rconfig,
     int last_frag = fragment[0] & 0x80;
     uint32_t frag_len = RPC_FRAG_LEN(fragment);
 
-    if (frag_len == 0)
-        RpcPreprocEvent(rconfig, rsdata, RPC_ZERO_LENGTH_FRAGMENT);
-
-    if (!last_frag)
-        RpcPreprocEvent(rconfig, rsdata, RPC_FRAG_TRAFFIC);
+    if ((frag_len == 0) && rconfig->alert_multi)
+    {
+        SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_ZERO_LENGTH_FRAGMENT, 
+                1, RPC_CLASS, 3, RPC_ZERO_LENGTH_FRAGMENT_STR, 0);
+    }
 
     if ((RpcBufLen(&rsdata->frag) == 0) && last_frag)
         return RPC_STATUS__DEFRAG;
@@ -937,12 +898,12 @@ static RpcStatus RpcHandleFrag(RpcDecodeConfig *rconfig,
     return RPC_STATUS__SUCCESS;
 }
 
-static inline uint32_t RpcBufLen(RpcBuffer *buf)
+static INLINE uint32_t RpcBufLen(RpcBuffer *buf)
 {
     return buf == NULL ? 0 : buf->len;
 }
 
-static inline uint8_t * RpcBufData(RpcBuffer *buf)
+static INLINE uint8_t * RpcBufData(RpcBuffer *buf)
 {
     return buf == NULL ? NULL : buf->data;
 }
@@ -1016,7 +977,7 @@ static RpcStatus RpcBufAdd(RpcBuffer *buf, const uint8_t *data, uint32_t dsize)
     return RPC_STATUS__SUCCESS;
 }
 
-static inline void RpcBufClean(RpcBuffer *buf)
+static INLINE void RpcBufClean(RpcBuffer *buf)
 {
     if (buf->data != NULL)
     {
@@ -1028,7 +989,7 @@ static inline void RpcBufClean(RpcBuffer *buf)
     buf->size = 0;
 }
 
-static inline void * RpcAlloc(uint32_t size)
+static INLINE void * RpcAlloc(uint32_t size)
 {
     if ((rpc_memory + size) > rpc_memcap)
     {
@@ -1040,7 +1001,7 @@ static inline void * RpcAlloc(uint32_t size)
     return SnortAlloc(size);
 }
 
-static inline void RpcFree(void *data, uint32_t size)
+static INLINE void RpcFree(void *data, uint32_t size)
 {
     if (data == NULL)
         return;
@@ -1053,7 +1014,7 @@ static inline void RpcFree(void *data, uint32_t size)
     free(data);
 }
 
-static inline void RpcSsnSetInactive(RpcSsnData *rsdata, Packet *p)
+static INLINE void RpcSsnSetInactive(RpcSsnData *rsdata, Packet *p)
 {
     if (rsdata == NULL)
         return;
@@ -1065,14 +1026,14 @@ static inline void RpcSsnSetInactive(RpcSsnData *rsdata, Packet *p)
     RpcSsnClean(rsdata);
 }
 
-static inline int RpcSsnIsActive(RpcSsnData *rsdata)
+static INLINE int RpcSsnIsActive(RpcSsnData *rsdata)
 {
     if (rsdata == NULL)
         return 0;
     return rsdata->active;
 }
 
-static inline void RpcSsnClean(RpcSsnData *rsdata)
+static INLINE void RpcSsnClean(RpcSsnData *rsdata)
 {
     if (rsdata == NULL)
         return;
@@ -1131,7 +1092,7 @@ static void RpcSsnDataFree(void *data)
 
 /*
  * For proto ref, see rfc1831 section 10 and page 445 UNP vol2
- *
+ *  
  * check to make sure we've got enough data to process a record
  *
  * Where did the original 16 come from?  It seems that it could be
@@ -1154,10 +1115,10 @@ static void RpcSsnDataFree(void *data)
  *
  *  Fragment Header ( 1 flag bit, 31 bit uint )
  *     RPC Body
- *
- *        unsigned int xid
+ *  
+ *        unsigned int xid 
  *        struct call_body {
- *             unsigned int rpcvers;  // must be equal to two (2)
+ *             unsigned int rpcvers;  // must be equal to two (2) 
  *             unsigned int prog;
  *             unsigned int vers;
  *             unsigned int proc;
@@ -1166,7 +1127,7 @@ static void RpcSsnDataFree(void *data)
  *        }
  */
 
-static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
+static int ConvertRPC(RpcDecodeConfig *rconfig, Packet *p)
 {
     const uint8_t *data = p->data;
     uint32_t psize = p->dsize;
@@ -1179,8 +1140,8 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
     uint32_t fraghdr;   /* Used to store the RPC fragment header data */
     int fragcount = 0;   /* How many fragment counters have we seen? */
     int ret;
-    uint8_t *decode_buf_start = DecodeBuffer.data;
-    uint8_t *decode_buf_end = decode_buf_start + sizeof(DecodeBuffer.data);
+    uint8_t *decode_buf_start = DecodeBuffer;
+    uint8_t *decode_buf_end = decode_buf_start + sizeof(DecodeBuffer);
 
     if (psize < 32)
     {
@@ -1197,12 +1158,12 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
     *(((uint8_t *) &fraghdr) + 1) = data[1];
     *(((uint8_t *) &fraghdr) + 2) = data[2];
     *(((uint8_t *) &fraghdr) + 3) = data[3];
-
+    
 
     /* The fragment header is 4 bytes in network byte order */
     fraghdr = ntohl(fraghdr);
     length = fraghdr & 0x7FFFFFFF;
-
+    
     /* Check to see if we are on the last fragment */
     if(fraghdr & MSB)
     {
@@ -1212,34 +1173,36 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
         if((length + 4 != psize) && !(p->packet_flags & PKT_REBUILT_STREAM))
         {
             DEBUG_WRAP(DebugMessage(DEBUG_RPC, "It's not the only thing in this buffer!"
-                                    " length: %d psize: %d!\n", length, psize););
+                                    " length: %d psize: %d!\n", length, psize););            
             return RPC_MULTIPLE_RECORD;
         }
         else if ( length == 0 )
         {
             DEBUG_WRAP(DebugMessage(DEBUG_RPC, "Zero-length RPC fragment detected."
-                                    " length: %d psize: %d.\n", length, psize););
+                                    " length: %d psize: %d.\n", length, psize););            
             return RPC_ZERO_LENGTH_FRAGMENT;
         }
         return 0;
     }
-    else if (rconfig->alert_fragments)
+    else if(rconfig->alert_fragments)
     {
-        RpcPreprocEvent(rconfig, rsdata, RPC_FRAG_TRAFFIC);
+        /* Log alert but continue processing */
+        SnortEventqAdd(GENERATOR_SPP_RPC_DECODE, RPC_FRAG_TRAFFIC, 
+                       1, RPC_CLASS, 3, RPC_FRAG_TRAFFIC_STR, 0);
     }
 
-    norm_index = DecodeBuffer.data;
+    norm_index = &DecodeBuffer[0]; 
     data_index = (uint8_t *)data;
     data_end = (uint8_t *)data + psize;
 
-    /* now we know it's in fragmented records, 4 bytes of
-     * header(of which the most sig bit fragment (0=yes 1=no).
-     * The header is followed by the value move pointer up 4
-     * bytes, we need to stuff header in first 4 bytes.
-     * But the header has the total length...we don't know
-     * until the end
+    /* now we know it's in fragmented records, 4 bytes of 
+     * header(of which the most sig bit fragment (0=yes 1=no). 
+     * The header is followed by the value move pointer up 4 
+     * bytes, we need to stuff header in first 4 bytes.  
+     * But the header has the total length...we don't know 
+     * until the end 
      */
-
+    
     /* This is where decoded data will be written */
     norm_index += 4;
     decoded_len = 4;
@@ -1247,7 +1210,7 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
     /* always make sure that we have enough data to process atleast
      * the header and that we only process at most, one fragment
      */
-
+    
     while(((data_end - data_index) >= 4) && (last_fragment == 0))
     {
         /* get the fragment length (31 bits) and move the pointer to
@@ -1263,11 +1226,11 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
 
         if (length == 0)
             break;
-
+        
         /* move the current index into the packet past the
            fragment header */
-        data_index += 4;
-
+        data_index += 4; 
+        
         if(fraghdr & MSB)
         {
             DEBUG_WRAP(DebugMessage(DEBUG_RPC, "Last Fragment detected\n"););
@@ -1279,7 +1242,7 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
             /* don't allow integer overflow to confuse us.  Should be
              * caught by length > psize but who knows when weird
              * psize's might be allowed */
-
+            
             DEBUG_WRAP(DebugMessage(DEBUG_RPC, "Integer Overflow"
                                     " field(%d) exceeds packet size(%d)\n",
                                     length, psize););
@@ -1315,10 +1278,10 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
         else
         {
             fragcount++;
-
+            
             DEBUG_WRAP(DebugMessage(DEBUG_RPC,
                                     "length: %d size: %d decoded_len: %d\n",
-                                    length, psize, decoded_len););
+                                    length, psize, decoded_len););                        
 
             ret = SafeMemcpy(norm_index, data_index, length, decode_buf_start, decode_buf_end);
             if (ret != SAFEMEM_SUCCESS)
@@ -1333,15 +1296,15 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
 
     /* rewrite the header on the request packet */
     /* move the fragment header back onto the data */
-
+    
     fraghdr = ntohl(decoded_len); /* size */
 
-    DecodeBuffer.data[0] = *((uint8_t *) &fraghdr);
-    DecodeBuffer.data[1] = *(((uint8_t *) &fraghdr) + 1);
-    DecodeBuffer.data[2] = *(((uint8_t *) &fraghdr) + 2);
-    DecodeBuffer.data[3] = *(((uint8_t *) &fraghdr) + 3);
-
-    DecodeBuffer.data[0] |=  0x80;             /* Mark as unfragmented */
+    DecodeBuffer[0] = *((uint8_t *) &fraghdr);
+    DecodeBuffer[1] = *(((uint8_t *) &fraghdr) + 1);
+    DecodeBuffer[2] = *(((uint8_t *) &fraghdr) + 2);
+    DecodeBuffer[3] = *(((uint8_t *) &fraghdr) + 3);
+    
+    DecodeBuffer[0] |=  0x80;             /* Mark as unfragmented */
 
     /* is there another request encoded that is trying to evade us by doing
      *
@@ -1359,7 +1322,8 @@ static int ConvertRPC(RpcDecodeConfig *rconfig, RpcSsnData *rsdata, Packet *p)
                //PrintNetData(stdout, data, decoded_len);
                );
 
-    SetAltDecode((uint16_t)decoded_len);
+    p->alt_dsize = decoded_len;
+    p->packet_flags |= PKT_ALT_DECODE;
 
     return 0;
 }
@@ -1421,7 +1385,7 @@ static void RpcDecodeCleanExit(int signal, void *unused)
 static void RpcDecodeReload(char *args)
 {
     int policy_id = (int)getParserPolicy();
-    RpcDecodeConfig *pPolicyConfig = NULL;
+    RpcDecodeConfig *pPolicyConfig = NULL;	
 
     if (rpc_decode_swap_config == NULL)
     {

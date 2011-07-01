@@ -1,4 +1,4 @@
-/* $Id: spp_template.h,v 1.4 2004/02/13 16:19:03 roesch Exp $ */
+/* $Id$ */
 /* Snort Preprocessor Plugin Header File Template */
 
 /* This file gets included in plugbase.h when it is integrated into the rest 

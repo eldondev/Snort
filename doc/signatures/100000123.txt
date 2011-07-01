@@ -1,0 +1,56 @@
+Rule:
+
+--
+Sid:
+100000123
+
+--
+Summary:
+This event is generated when inappropriate content is detected in network 
+traffic.
+
+--
+Impact:
+Possible policy violation.
+
+--
+Detailed Information:
+This event is generated when inappropriate content is detected in network 
+traffic. Specifically, the content "pre-teen" was observed.
+
+--
+Affected Systems:
+ All systems.
+
+--
+Attack Scenarios:
+This event indicates that inappropriate content may have been accessed from a 
+host on the protected network.
+
+--
+Ease of Attack:
+Simple.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+This may be a policy violation, refer to the appropriate internal policy.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+--
+Additional References:
+
+--

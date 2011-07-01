@@ -6,28 +6,35 @@ Sid:
 
 --
 Summary:
-This event is generated when an attempt is made to exploit a buffer overflow associated with the Remote Procedure Call (RPC) sadmind.
-
+This event is generated when an attempt is made to exploit a buffer
+overflow associated with the Remote Procedure Call (RPC) sadmind.
 
 --
 Impact:
-Remote root access.  This attack may permit execution of arbitrary commands with the privileges of root.
+Remote root access. This attack may permit execution of arbitrary
+commands with the privileges of root.
 
 --
 Detailed Information:
-The sadmind RPC service is used by Solaris Solstice AdminSuite applications to perform remote distributed system administration tasks such as adding new users.  A buffer overflow associated with the NETMGT_PROC_SERVICE request of sadmind exists because of improper bounds checking.  This may permit execution of arbitrary commands with the privileges of root.
+The sadmind RPC service is used by Solaris Solstice AdminSuite
+applications to perform remote distributed system administration tasks
+such as adding new users. A buffer overflow associated with the
+NETMGT_PROC_SERVICE request of sadmind exists because of improper bounds
+checking. This may permit execution of arbitrary commands with the
+privileges of root.
 
 --
 Affected Systems:
-Sun Solaris 2.5, 2.5.1, 2.6, 7.0
+	Sun Solaris 2.5, 2.5.1, 2.6, 7.0
 
 --
 Attack Scenarios:
-Exploit code can be used to attack a vulnerable sadmind to obtain root access to the remote host.
+Exploit code can be used to attack a vulnerable sadmind to obtain root
+access to the remote host.
 
 --
 Ease of Attack:
-Simple.  Exploit scripts are freely available. 
+Simple. Exploit scripts are freely available. 
 
 --
 False Positives:
@@ -41,23 +48,18 @@ None Known.
 Corrective Action:
 Limit remote access to RPC services.
 
-Filter RPC ports at the firewall to ensure access is denied to RPC-enabled machines. 
+Filter RPC ports at the firewall to ensure access is denied to
+RPC-enabled machines.
 
 Disable unneeded RPC services.
 
 --
 Contributors:
-Original rule written by Brian Caswell <bmc@sourcefire.com>
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
+Brian Caswell <bmc@sourcefire.com>
 Judy Novak <judy.novak@sourcefire.com>
 
 --
 Additional References:
-
-Bugtraq
-http://www.securityfocus.com/bid/866
-
-CVE
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-1999-0977
 
 --

@@ -1,0 +1,59 @@
+Rule: 
+
+--
+Sid: 
+100000160
+
+-- 
+Summary: 
+This event is generated when an abnormally larger number of packets are 
+received from a single source by an SIP-enabled host in a short period of time.
+
+--
+Impact:
+This can be an indication of a denial of service attack in progress.
+
+--
+Detailed Information:
+This rule is designed to detect overly large amounts of traffic coming from a 
+single host to the SIP port on an internal host, as it is possible to cause a 
+denial of service by sending a large number of packets with invalid data.
+
+--
+Affected Systems:
+Any which implement the SIP protocol.
+
+--
+Attack Scenarios:
+An attacker could use a script to flood a system with invalid messages, causing 
+a denial of service.
+
+--
+Ease of Attack:
+Simple, as it is trivial to write a script to generate random data.
+
+--
+False Positives:
+Known SIP proxies may receive a high volume of legitimate data, and NAT devices 
+may appear to be sending a larger amount of data than a regular host. It is 
+recommended that users whitelist known SIP proxies and NAT devices.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Use a firewall or other access-restriction device to block unwanted messages at 
+your network's border.
+
+--
+Contributors:
+Jiri Markl <jiri.markl@nextsoft.cz>
+Sourcefire Research Team
+
+--
+Additional References
+Other:
+
+--

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 /**
 **  @file       hi_mi.c
 **
@@ -35,13 +35,12 @@
 **    - 3.2.03:  Initial development.  DJR
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "sys/types.h"
 
 #include "hi_si.h"
 #include "hi_client.h"
 #include "hi_server.h"
+#include "hi_ad.h"
 #include "hi_return_codes.h"
 
 /*
@@ -66,15 +65,24 @@
 **  @retval HI_INVALID_ARG  argument(s) was invalid or NULL
 */
 
-int hi_mi_mode_inspection(HI_SESSION *Session, int iInspectMode,
-        Packet *p, HttpSessionData *hsd)
+int hi_mi_mode_inspection(HI_SESSION *Session, int iInspectMode, 
+        const u_char *data, int dsize)
 {
     int iRet;
-    if (!Session || !p->data || (p->dsize == 0))
+
+    
+    if(!Session || !data || dsize < 0)
+    {
         return HI_INVALID_ARG;
+    }
 
     /*
     **  Depending on the mode, we inspect the packet differently.
+    **  
+    **  HI_SI_NO_MODE:
+    **    This means that the packet is neither an HTTP client or server,
+    **    so we can do what we want with the packet, like look for rogue
+    **    HTTP servers or HTTP tunneling.
     **
     **  HI_SI_CLIENT_MODE:
     **    Inspect for HTTP client communication.
@@ -82,22 +90,32 @@ int hi_mi_mode_inspection(HI_SESSION *Session, int iInspectMode,
     **  HI_SI_SERVER_MODE:
     **    Inspect for HTTP server communication.
     */
-    if(iInspectMode == HI_SI_CLIENT_MODE)
+    if(iInspectMode == HI_SI_NO_MODE)
     {
-#ifdef ENABLE_PAF
-        if ( ScPafEnabled() )
-            iRet = hi_client_inspection((void *)Session, p->data, p->dsize, hsd, !PacketHasStartOfPDU(p));
-        else
-#endif
-            iRet = hi_client_inspection((void *)Session, p->data, p->dsize, hsd, p->packet_flags & PKT_STREAM_INSERT);
+        /*
+        **  Let's look for rogue HTTP servers and stuff
+        */
+        iRet = hi_server_anomaly_detection(Session, data, dsize);
         if (iRet)
+        {
             return iRet;
+        }
     }
-    else if( hsd && iInspectMode == HI_SI_SERVER_MODE )
+    else if(iInspectMode == HI_SI_CLIENT_MODE)
     {
-        iRet = hi_server_inspection((void *)Session, p, hsd);
+        iRet = hi_client_inspection((void *)Session, data, dsize);
         if (iRet)
+        {
             return iRet;
+        }
+    }
+    else if(iInspectMode == HI_SI_SERVER_MODE)
+    {
+        iRet = hi_server_inspection((void *)Session, data, dsize);
+        if (iRet)
+        {
+            return iRet;
+        }
     }
     else
     {

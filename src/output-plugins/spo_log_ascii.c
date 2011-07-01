@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **           (C) 2002 Sourcefire, Inc.
 **
@@ -21,16 +21,16 @@
 ** along with this program; if not, write to the Free Software
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
-/* $Id: spo_log_ascii.c,v 1.28 2011/06/08 00:33:16 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_log_ascii
- *
+ * 
  * Purpose:
  *
  * This output module provides the default packet logging funtionality
  *
  * Arguments:
- *
+ *   
  * None.
  *
  * Effect:
@@ -59,11 +59,10 @@
 #include <arpa/inet.h>
 #endif /* ! WIN32 */
 
-#include "spo_log_ascii.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
 #include "parser.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "decode.h"
 #include "event.h"
 #include "log.h"
@@ -75,11 +74,11 @@
 extern OptTreeNode *otn_tmp;
 
 /* internal functions */
-static void LogAsciiInit(char *args);
-static void LogAscii(Packet *p, char *msg, void *arg, Event *event);
-static void LogAsciiCleanExit(int signal, void *arg);
-static void LogAsciiRestart(int signal, void *arg);
-static char *IcmpFileName(Packet * p);
+void LogAsciiInit(char *args);
+void LogAscii(Packet *p, char *msg, void *arg, Event *event);
+void LogAsciiCleanExit(int signal, void *arg);
+void LogAsciiRestart(int signal, void *arg);
+char *IcmpFileName(Packet * p);
 static FILE *OpenLogFile(int mode, Packet * p);
 
 
@@ -91,14 +90,14 @@ static FILE *OpenLogFile(int mode, Packet * p);
 
 void LogAsciiSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("log_ascii", OUTPUT_TYPE_FLAG__LOG, LogAsciiInit);
 
     DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Output: LogAscii is setup\n"););
 }
 
-static void LogAsciiInit(char *args)
+void LogAsciiInit(char *args)
 {
     DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN, "Output: Ascii logging initialized\n"););
 
@@ -108,12 +107,12 @@ static void LogAsciiInit(char *args)
     AddFuncToRestartList(LogAsciiRestart, NULL);
 }
 
-static void LogAscii(Packet *p, char *msg, void *arg, Event *event)
+void LogAscii(Packet *p, char *msg, void *arg, Event *event)
 {
     FILE *log_ptr = NULL;
     DEBUG_WRAP(DebugMessage(DEBUG_LOG, "LogPkt started\n"););
     if(p)
-    {
+    { 
         if(IPH_IS_VALID(p))
             log_ptr = OpenLogFile(0, p);
 #ifndef NO_NON_ETHER_DECODER
@@ -128,14 +127,14 @@ static void LogAscii(Packet *p, char *msg, void *arg, Event *event)
 
     if(!log_ptr)
         FatalError("Unable to open packet log file\n");
-
+    
     if(msg)
     {
         fwrite("[**] ", 5, 1, log_ptr);
 
         /*
          * Protect against potential log injection,
-         * check for delimiters and newlines in msg
+         * check for delimiters and newlines in msg 
          */
         if(  !strstr(msg,"[**]") && !strchr(msg,'\n') )
         {
@@ -157,12 +156,12 @@ static void LogAscii(Packet *p, char *msg, void *arg, Event *event)
 }
 
 
-static void LogAsciiCleanExit(int signal, void *arg)
+void LogAsciiCleanExit(int signal, void *arg)
 {
     return;
 }
 
-static void LogAsciiRestart(int signal, void *arg)
+void LogAsciiRestart(int signal, void *arg)
 {
     return;
 }
@@ -181,7 +180,7 @@ static char *logfile[] =
  *
  * Returns: FILE pointer on success, else NULL
  */
-static FILE *OpenLogFile(int mode, Packet * p)
+FILE *OpenLogFile(int mode, Packet * p)
 {
     char log_path[STD_BUF]; /* path to log file */
     char log_file[STD_BUF]; /* name of log file */
@@ -227,7 +226,7 @@ static FILE *OpenLogFile(int mode, Packet * p)
             log_ptr = fopen(log_file, "a");
             if (!log_ptr)
             {
-                FatalError("OpenLogFile() => fopen(%s) log file: %s\n",
+                FatalError("OpenLogFile() => fopen(%s) log file: %s\n", 
                            log_file, strerror(errno));
             }
             return log_ptr;
@@ -246,19 +245,19 @@ static FILE *OpenLogFile(int mode, Packet * p)
         if((p->iph->ip_src.s_addr & snort_conf->netmask) != snort_conf->homenet)
 #endif
         {
-            SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+            SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                     inet_ntoa(GET_SRC_ADDR(p)));
         }
         else
         {
             if(p->sp >= p->dp)
             {
-                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                         inet_ntoa(GET_SRC_ADDR(p)));
             }
             else
             {
-                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                         inet_ntoa(GET_DST_ADDR(p)));
             }
         }
@@ -272,19 +271,19 @@ static FILE *OpenLogFile(int mode, Packet * p)
         if((p->iph->ip_src.s_addr & snort_conf->netmask) == snort_conf->homenet)
 #endif
         {
-            SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+            SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                     inet_ntoa(GET_DST_ADDR(p)));
         }
         else
         {
             if(p->sp >= p->dp)
             {
-                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                         inet_ntoa(GET_SRC_ADDR(p)));
             }
             else
             {
-                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir,
+                SnortSnprintf(log_path, STD_BUF, "%s/%s", snort_conf->log_dir, 
                         inet_ntoa(GET_DST_ADDR(p)));
             }
         }
@@ -345,7 +344,7 @@ static FILE *OpenLogFile(int mode, Packet * p)
         }
         else
         {
-            if (GET_IPH_PROTO(p) == IPPROTO_ICMP)
+            if(GET_IPH_PROTO(p) == IPPROTO_ICMP)
             {
                 SnortSnprintf(log_file, STD_BUF, "%s/%s_%s%s", log_path, "ICMP",
                               IcmpFileName(p), suffix);
@@ -385,7 +384,7 @@ static FILE *OpenLogFile(int mode, Packet * p)
  * Returns: the name of the file to set
  *
  ***************************************************************************/
-static char *IcmpFileName(Packet * p)
+char *IcmpFileName(Packet * p)
 {
     if(p->icmph == NULL)
     {

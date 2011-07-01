@@ -1,12 +1,12 @@
 /*
  * ftpp_ui_client_lookup.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -37,10 +37,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "hi_util_kmap.h"
 #include "ftpp_ui_config.h"
@@ -108,9 +104,9 @@ int ftpp_ui_client_lookup_cleanup(CLIENT_LOOKUP **ClientLookup)
 
 /*
  * Function: ftpp_ui_client_lookup_add(CLIENT_LOOKUP *ClientLookup,
- *                                 char *ip, int len,
+ *                                 char *ip, int len, 
  *                                 FTP_CLIENT_PROTO_CONF *ClientConf)
- *
+ * 
  * Purpose: Add a client configuration to the list.
  *          We add these keys like you would normally think to add
  *          them, because on low endian machines the least significant
@@ -120,16 +116,16 @@ int ftpp_ui_client_lookup_cleanup(CLIENT_LOOKUP **ClientLookup)
  *
  * Arguments: ClientLookup => a pointer to the lookup structure
  *            IP           => the ftp client address
- *            len          => Length of the address
+ *            len          => Length of the address 
  *            ClientConf   => a pointer to the client configuration structure
  *
  * Returns: int => return code indicating error or success
  *
  */
 int ftpp_ui_client_lookup_add(
-    CLIENT_LOOKUP *ClientLookup,
+    CLIENT_LOOKUP *ClientLookup, 
     sfip_t* Ip, FTP_CLIENT_PROTO_CONF *ClientConf
-)
+) 
 {
     int iRet;
 
@@ -186,7 +182,7 @@ int ftpp_ui_client_lookup_add(
  *
  */
 
-FTP_CLIENT_PROTO_CONF *ftpp_ui_client_lookup_find(CLIENT_LOOKUP *ClientLookup,
+FTP_CLIENT_PROTO_CONF *ftpp_ui_client_lookup_find(CLIENT_LOOKUP *ClientLookup, 
                                             snort_ip_p Ip, int *iError)
 {
     FTP_CLIENT_PROTO_CONF *ClientConf = NULL;
@@ -218,7 +214,7 @@ FTP_CLIENT_PROTO_CONF *ftpp_ui_client_lookup_find(CLIENT_LOOKUP *ClientLookup,
 }
 
 #if 0
-/** Obsoleted. After changing underlying KMAP to SFRT. SFRT provides an iterator with
+/** Obsoleted. After changing underlying KMAP to SFRT. SFRT provides an iterator with 
  * a callback function but does not support getFirst, getNext operations.
  */
 /*
@@ -305,11 +301,11 @@ FTP_CLIENT_PROTO_CONF *ftpp_ui_client_lookup_next(CLIENT_LOOKUP *ClientLookup,
 
     return ClientConf;
 }
-#endif
+#endif    
 
-/**Free pData buffer, which may be referenced multiple times. ReferenceCount
- * is the number of times the buffer is referenced.  For freeing the buffer,
- * we just decrement referenceCount till it reaches 0, at which time the
+/**Free pData buffer, which may be referenced multiple times. ReferenceCount 
+ * is the number of times the buffer is referenced.  For freeing the buffer, 
+ * we just decrement referenceCount till it reaches 0, at which time the 
  * buffer is also freed.
  */
 static void clientConfFree(void *pData)

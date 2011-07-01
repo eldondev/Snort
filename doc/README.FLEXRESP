@@ -1,0 +1,55 @@
+FlexResp allows snort to actively close offending connections.  To use FlexResp
+you must build and install LibNet, which is available from:
+
+ http://www.packetfactory.net
+
+Just add the following to a rule:
+
+    resp=<resp_modifier>[,<resp_modifier>...]
+
+where resp_modifier is one or more of
+
+    rst_snd    send TCP-RST packets to the sending socket
+    rst_rcv    send TCP-RST packets to the receiving socket
+    rst_all    send TCP_RST packets in both directions
+
+    icmp_net   send a ICMP_NET_UNREACH to the sender
+    icmp_host  send a ICMP_HOST_UNREACH to the sender
+    icmp_port  send a ICMP_PORT_UNREACH to the sender
+    icmp_all   send all above ICMP packets to the sender
+
+All these options can be combined (e.g. resp=rst_snd,icmp_all). The
+default is rst_snd.
+
+Rules can be written like this:
+
+    # just stop the offender
+    var RESP_TCP resp:rst_snd;
+
+    # also kill a possible local counterpart
+    var RESP_TCP_URG resp:rst_all;
+
+    # tell'em we're gone ...
+    var RESP_UDP resp:icmp_port,icmp_host;
+
+      .
+      .
+      .
+
+	alert tcp !$HOME_NET any -> $HOME_NET 1524 (msg: "default Backdoor access!"; flags: S; $RESP_TCP_URG)
+	alert udp any any -> $HOME_NET 31 (msg:"Hackers Paradise"; $RESP_UDP)
+	alert udp any any -> $HOME_NET 456 (msg:"Hackers Paradise"; $RESP_UDP)
+	alert udp any any -> $HOME_NET 555 (msg:"iNi Killer/Phase Zero/Stealth Spy"; $RESP_UDP)
+	alert tcp any any -> $HOME_NET 10752 (msg:"Linux mountd backdoor"; $RESP_TCP)
+
+      .
+      .
+      .
+
+
+To enable this feature, use 'configure' with --enable-flexresp
+
+Consider this code as ALPHA. Heavy testing is needed.
+
+
+Christian Lademann <cal@zls.de>

@@ -17,7 +17,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_arubaaction.h,v 1.3 2007/07/06 15:57:52 ssturges Exp $ */
+/* $Id$ */
 
 #ifndef __SPO_ALERT_ARUBAACTION_H__
 #define __SPO_ALERT_ARUBAACTION_H__

@@ -2,7 +2,8 @@
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,13 +15,12 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
 
 /* Error messages for MySQL clients */
-/* (Error messages for the daemon are in sql/share/errmsg.txt) */
+/* (Error messages for the daemon are in share/language/errmsg.sys) */
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 void	init_client_errs(void);
-void	finish_client_errs(void);
 extern const char *client_errors[];	/* Error messages */
 #ifdef	__cplusplus
 }
@@ -28,14 +28,13 @@ extern const char *client_errors[];	/* Error messages */
 
 #define CR_MIN_ERROR		2000	/* For easier client code */
 #define CR_MAX_ERROR		2999
-#if !defined(ER)
+#if defined(OS2) && defined(MYSQL_SERVER)
+#define CER(X) client_errors[(X)-CR_MIN_ERROR]
+#elif !defined(ER)
 #define ER(X) client_errors[(X)-CR_MIN_ERROR]
 #endif
 #define CLIENT_ERRMAP		2	/* Errormap used by my_error() */
 
-/* Do not add error numbers before CR_ERROR_FIRST. */
-/* If necessary to add lower numbers, change CR_ERROR_FIRST accordingly. */
-#define CR_ERROR_FIRST  	2000 /*Copy first error nr.*/
 #define CR_UNKNOWN_ERROR	2000
 #define CR_SOCKET_CREATE_ERROR	2001
 #define CR_CONNECTION_ERROR	2002
@@ -92,11 +91,3 @@ extern const char *client_errors[];	/* Error messages */
 #define CR_FETCH_CANCELED                       2050
 #define CR_NO_DATA                              2051
 #define CR_NO_STMT_METADATA                     2052
-#define CR_NO_RESULT_SET                        2053
-#define CR_NOT_IMPLEMENTED                      2054
-#define CR_SERVER_LOST_EXTENDED			2055
-#define CR_STMT_CLOSED				2056
-#define CR_NEW_STMT_METADATA                    2057
-#define CR_ERROR_LAST  /*Copy last error nr:*/  2057
-/* Add error numbers before CR_ERROR_LAST and change it accordingly. */
-

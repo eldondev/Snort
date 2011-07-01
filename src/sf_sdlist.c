@@ -1,6 +1,6 @@
-/* $Id: sf_sdlist.c,v 1.14 2011/06/08 00:33:07 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -20,10 +20,6 @@
 */
 
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "sf_sdlist.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,13 +27,13 @@
 #include "util.h"
 
 /* Function: int sf_sdlist_init(sfSDlist *list, void (*destroy)(void *data))
- *
+ * 
  * Purpose: initialize an dlist
  * Args: list - pointer to a dlist structure
  *       destroy - free function ( use NULL for none )
  * Returns:
  *     1 on failure , 0 on success
- */
+ */ 
 
 int sf_sdlist_init(sfSDList *list, void (*destroy)(void *data))
 {
@@ -50,40 +46,40 @@ int sf_sdlist_init(sfSDList *list, void (*destroy)(void *data))
 }
 
 
-/* Function: int sf_sdlist_delete(sfSDList *list)
- *
+/* Function: int sf_sdlist_delete(sfSDList *list) 
+ * 
  * Purpose: delete every item of a list
  * Args: list -> pointer to a dlist structure
- *
+ * 
  * Returns: 1 on failure , 0 on success
- */
+ */ 
 int sf_sdlist_delete(sfSDList *list)
 {
     while(list->head != NULL)
     {
         sf_sdlist_remove_next(list, NULL);
     }
-
+    
     return 0;
 }
 
 /*
  * Function: int sf_sdlist_insert_next(sfSDList *list, SDListItem *item,
- *                                    void *data, SDListItem *container)
+ *                                    void *data, SDListItem *container) 
  *
  * Purpose: insert data in container in the list after the item
  * Args: list - dlist structure
  *       item - current position in list structure
  *       data - current data to insert
- *       container - place to put the data
+ *       container - place to put the data 
  *
  * Returns: 0 on sucess,  1 on failure
- */
+ */ 
 int sf_sdlist_insert_next(sfSDList *list, SDListItem *item, void *data,
-                          SDListItem *container)
+                          SDListItem *container) 
 {
     SDListItem *new = container;
-
+    
     if(!new) return -1;
 
     new->data = data;
@@ -96,7 +92,7 @@ int sf_sdlist_insert_next(sfSDList *list, SDListItem *item, void *data,
         {
             list->tail = new;
         }
-
+        
         new->next = list->head;
         list->head = new;
     }
@@ -109,7 +105,7 @@ int sf_sdlist_insert_next(sfSDList *list, SDListItem *item, void *data,
         }
 
         new->next = item->next;
-        item->next = new;
+        item->next = new;        
     }
 
     new->prev = item;
@@ -117,12 +113,12 @@ int sf_sdlist_insert_next(sfSDList *list, SDListItem *item, void *data,
     return 0;
 }
 
-int sf_sdlist_append(sfSDList *list, void *data, SDListItem *container)
+int sf_sdlist_append(sfSDList *list, void *data, SDListItem *container) 
 {
     return sf_sdlist_insert_next(list, list->tail, data, container);
 }
 
-int sf_sdlist_remove_next(sfSDList *list, SDListItem *item)
+int sf_sdlist_remove_next(sfSDList *list, SDListItem *item) 
 {
     SDListItem *li = NULL;
     void *data;
@@ -141,7 +137,7 @@ int sf_sdlist_remove_next(sfSDList *list, SDListItem *item)
     }
     else
     {
-        data = item->data;
+        data = item->data;        
         if(item->next == NULL)
         {
             return -1;
@@ -159,9 +155,9 @@ int sf_sdlist_remove_next(sfSDList *list, SDListItem *item)
 
     if(list->destroy != NULL)
         list->destroy(data);
-
+    
     list->size--;
-
+    
     if(list->size == 0) {
         list->tail = NULL;
     }
@@ -178,8 +174,8 @@ int sf_sdlist_remove_next(sfSDList *list, SDListItem *item)
  *       item - item to unlink from the list
  *
  * Returns: 0 on success , 1 on exception
- *
- */
+ *  
+ */ 
 int sf_sdlist_remove(sfSDList *list, SDListItem *item)
 {
     SDListItem *next_item;
@@ -202,7 +198,7 @@ int sf_sdlist_remove(sfSDList *list, SDListItem *item)
 
     if(prev_item != NULL)
     {
-        prev_item->next = next_item;
+        prev_item->next = next_item;       
     } else {
         /* HEAD */
         list->head = next_item;
@@ -214,7 +210,7 @@ int sf_sdlist_remove(sfSDList *list, SDListItem *item)
 
 
     list->size--;
-
+    
     if(list->size == 0)
     {
         list->head = NULL;
@@ -245,19 +241,19 @@ int main(void) {
 
     SDListItem *li;
     SDListItem listpool[1000];
-
+    
     sf_sdlist_init(&a, &bad);
     if(sf_sdlist_append(&a, (char *) SnortStrdup("hello"), &listpool[0]))
     {
         printf("error appending!\n");
     }
-
+    
     sf_sdlist_append(&a, (char *)SnortStrdup("goodbye"), &listpool[1]);
 
     sf_sdlist_insert_next(&a, NULL, (char *)SnortStrdup("woo"), &listpool[2]);
 
     printf("list size %d\n", a.size);
-
+    
     for(li = a.head; li != NULL; li = li->next)
     {
         printf("%s\n", (char *) li->data);

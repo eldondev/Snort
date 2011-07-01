@@ -1,9 +1,9 @@
 /*
-** $Id: sfprocpidstats.h,v 1.10 2011/02/09 23:23:28 jjordan Exp $
+** $Id$
 **
 ** sfprocpidstats.h
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Dan Roelker <droelker@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -52,7 +52,6 @@ typedef struct _SFPROCPIDSTATS {
 
 int sfInitProcPidStats(SFPROCPIDSTATS *sfProcPidStats);
 int sfProcessProcPidStats(SFPROCPIDSTATS *sfProcPidStats);
-void FreeProcPidStats(SFPROCPIDSTATS *sfProcPidStats);
 
 #endif
 

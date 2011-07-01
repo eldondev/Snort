@@ -1,12 +1,12 @@
 /*
  * spp_ftptelnet.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -50,7 +50,7 @@
 
 //#include "decode.h"
 //#include "plugbase.h"
-#include "snort_debug.h"
+#include "debug.h"
 //#include "util.h"
 
 #include "ftpp_ui_config.h"
@@ -59,25 +59,15 @@
 #include "ftp_norm.h"
 #endif
 #include "snort_ftptelnet.h"
-#include "spp_ftptelnet.h"
-#include "sf_preproc_info.h"
 
 #include "profiler.h"
 
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
 
-const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 2;
-const int BUILD_VERSION = 13;
-#ifdef SUP_IP6
-const char *PREPROC_NAME = "SF_FTPTELNET (IPV6)";
-#else
-const char *PREPROC_NAME = "SF_FTPTELNET";
+#ifdef DYNAMIC_PLUGIN
+//#include "dynamic-plugins/sp_preprocopt.h"
 #endif
-
-#define SetupFTPTelnet DYNAMIC_PREPROC_SETUP
-
 
 /*
  * Defines for preprocessor initialization
@@ -114,7 +104,6 @@ FTPTELNET_GLOBAL_CONF *ftp_telnet_eval_config = NULL;
 
 #ifdef TARGET_BASED
 int16_t ftp_app_id = 0;
-int16_t ftp_data_app_id = 0;
 int16_t telnet_app_id = 0;
 #endif
 
@@ -262,7 +251,6 @@ static void FTPTelnetInit(char *args)
         {
             /* Find and store the application ID for FTP & Telnet */
             ftp_app_id = _dpd.addProtocolReference("ftp");
-            ftp_data_app_id = _dpd.addProtocolReference("ftp-data");
             telnet_app_id = _dpd.addProtocolReference("telnet");
         }
 #endif
@@ -278,7 +266,7 @@ static void FTPTelnetInit(char *args)
     pPolicyConfig = (FTPTELNET_GLOBAL_CONF *)sfPolicyUserDataGetCurrent(ftp_telnet_config);
     if (pPolicyConfig == NULL)
     {
-        if (strcasecmp(pcToken, GLOBAL) != 0)
+        if (strcasecmp(pcToken, GLOBAL) != 0) 
         {
             DynamicPreprocessorFatalMessage("%s(%d) Must configure the "
                 "ftptelnet global configuration first.\n",
@@ -301,17 +289,16 @@ static void FTPTelnetInit(char *args)
 
         if (iRet == 0)
         {
-            iRet = ProcessFTPGlobalConf(pPolicyConfig,
+            iRet = ProcessGlobalConf(pPolicyConfig,
                                      ErrorString, iErrStrLen);
 
             if (iRet == 0)
             {
-                PrintFTPGlobalConf(pPolicyConfig);
+                PrintGlobalConf(pPolicyConfig);
 
                 /* Add FTPTelnet into the preprocessor list */
                 _dpd.addPreproc(FTPTelnetChecks, PRIORITY_APPLICATION, PP_FTPTELNET, PROTO_BIT__TCP);
-                _dpd.preprocOptRegister("ftp.bounce", &FTPPBounceInit, &FTPPBounceEval,
-                        NULL, NULL, NULL, NULL, NULL);
+                _dpd.preprocOptRegister("ftp.bounce", &FTPPBounceInit, &FTPPBounceEval, NULL, NULL, NULL);
 
 #ifdef TARGET_BASED
                 if (_dpd.streamAPI != NULL)
@@ -369,7 +356,7 @@ static void FTPTelnetInit(char *args)
              */
             if(*ErrorString)
             {
-                _dpd.errMsg("WARNING: %s(%d) => %s\n",
+                _dpd.errMsg("WARNING: %s(%d) => %s\n", 
                             *(_dpd.config_file), *(_dpd.config_line), ErrorString);
             }
         }
@@ -380,7 +367,7 @@ static void FTPTelnetInit(char *args)
              */
             if(*ErrorString)
             {
-                DynamicPreprocessorFatalMessage("%s(%d) => %s\n",
+                DynamicPreprocessorFatalMessage("%s(%d) => %s\n", 
                                                 *(_dpd.config_file), *(_dpd.config_line), ErrorString);
             }
             else
@@ -390,12 +377,12 @@ static void FTPTelnetInit(char *args)
                  */
                 if(iRet == -2)
                 {
-                    DynamicPreprocessorFatalMessage("%s(%d) => ErrorString is undefined.\n",
+                    DynamicPreprocessorFatalMessage("%s(%d) => ErrorString is undefined.\n", 
                                                     *(_dpd.config_file), *(_dpd.config_line));
                 }
                 else
                 {
-                    DynamicPreprocessorFatalMessage("%s(%d) => Undefined Error.\n",
+                    DynamicPreprocessorFatalMessage("%s(%d) => Undefined Error.\n", 
                                                     *(_dpd.config_file), *(_dpd.config_line));
                 }
             }
@@ -498,7 +485,7 @@ static void FtpTelnetReload(char *args)
 
     if (pPolicyConfig == NULL)
     {
-        if (strcasecmp(pcToken, GLOBAL) != 0)
+        if (strcasecmp(pcToken, GLOBAL) != 0) 
         {
             DynamicPreprocessorFatalMessage("%s(%d) Must configure the "
                 "ftptelnet global configuration first.\n",
@@ -521,17 +508,16 @@ static void FtpTelnetReload(char *args)
 
         if (iRet == 0)
         {
-            iRet = ProcessFTPGlobalConf(pPolicyConfig,
+            iRet = ProcessGlobalConf(pPolicyConfig,
                                      ErrorString, iErrStrLen);
 
             if (iRet == 0)
             {
-                PrintFTPGlobalConf(pPolicyConfig);
+                PrintGlobalConf(pPolicyConfig);
 
                 /* Add FTPTelnet into the preprocessor list */
                 _dpd.addPreproc(FTPTelnetChecks, PRIORITY_APPLICATION, PP_FTPTELNET, PROTO_BIT__TCP);
-                _dpd.preprocOptRegister("ftp.bounce", &FTPPBounceInit, &FTPPBounceEval,
-                        NULL, NULL, NULL, NULL, NULL);
+                _dpd.preprocOptRegister("ftp.bounce", &FTPPBounceInit, &FTPPBounceEval, NULL, NULL, NULL);
             }
         }
     }
@@ -578,7 +564,7 @@ static void FtpTelnetReload(char *args)
              */
             if(*ErrorString)
             {
-                _dpd.errMsg("WARNING: %s(%d) => %s\n",
+                _dpd.errMsg("WARNING: %s(%d) => %s\n", 
                             *(_dpd.config_file), *(_dpd.config_line), ErrorString);
             }
         }
@@ -589,7 +575,7 @@ static void FtpTelnetReload(char *args)
              */
             if(*ErrorString)
             {
-                DynamicPreprocessorFatalMessage("%s(%d) => %s\n",
+                DynamicPreprocessorFatalMessage("%s(%d) => %s\n", 
                                                 *(_dpd.config_file), *(_dpd.config_line), ErrorString);
             }
             else
@@ -599,12 +585,12 @@ static void FtpTelnetReload(char *args)
                  */
                 if(iRet == -2)
                 {
-                    DynamicPreprocessorFatalMessage("%s(%d) => ErrorString is undefined.\n",
+                    DynamicPreprocessorFatalMessage("%s(%d) => ErrorString is undefined.\n", 
                                                     *(_dpd.config_file), *(_dpd.config_line));
                 }
                 else
                 {
-                    DynamicPreprocessorFatalMessage("%s(%d) => Undefined Error.\n",
+                    DynamicPreprocessorFatalMessage("%s(%d) => Undefined Error.\n", 
                                                     *(_dpd.config_file), *(_dpd.config_line));
                 }
             }
@@ -614,7 +600,7 @@ static void FtpTelnetReload(char *args)
 
 static int FtpTelnetReloadVerifyPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -634,7 +620,7 @@ static int FtpTelnetReloadVerify(void)
 
 static int FtpTelnetReloadSwapPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {

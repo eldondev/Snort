@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_tcp_win_check.h,v 1.14 2011/02/09 23:23:07 jjordan Exp $ */
+/* $Id$ */
 #ifndef __SP_TCP_WIN_CHECK_H__
 #define __SP_TCP_WIN_CHECK_H__
 

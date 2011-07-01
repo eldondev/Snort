@@ -1,7 +1,7 @@
-/* $Id: hi_client.h,v 1.16 2011/06/08 00:33:18 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -30,13 +30,9 @@
 
 #include <sys/types.h>
 
-#include "snort_httpinspect.h"
 #include "hi_include.h"
 #include "hi_eo.h"
 #include "hi_eo_events.h"
-#define URI_END  99
-#define POST_END 100
-#define NO_URI   101
 
 typedef struct s_COOKIE_PTR
 {
@@ -45,7 +41,6 @@ typedef struct s_COOKIE_PTR
     struct s_COOKIE_PTR *next;
 } COOKIE_PTR;
 
-
 typedef struct s_CONTLEN_PTR
 {
     const u_char *cont_len_start;
@@ -53,62 +48,11 @@ typedef struct s_CONTLEN_PTR
     int len;
 }CONTLEN_PTR;
 
-typedef struct s_CONT_ENCODING_PTR
-{
-    const u_char *cont_encoding_start;
-    const u_char *cont_encoding_end;
-    uint16_t compress_fmt;
-}CONT_ENCODING_PTR;
-
 typedef struct s_HEADER_FIELD_PTR
 {
     COOKIE_PTR *cookie;
     CONTLEN_PTR *content_len;
-    CONT_ENCODING_PTR *content_encoding;
 } HEADER_FIELD_PTR;
-
-/* These numbers were chosen to avoid conflicting with 
- * the return codes in hi_return_codes.h */
-
-/**
- **  This structure holds pointers to the different sections of an HTTP
- **  request.  We need to track where whitespace begins and ends, so we
- **  can evaluate the placement of the URI correctly.
- **
- **  For example,
- **
- **  GET     / HTTP/1.0
- **     ^   ^          
- **   start end
- **
- **  The end space pointers are set to NULL if there is space until the end
- **  of the buffer.
- */
-
-typedef struct s_URI_PTR
-{
-    const u_char *uri;                /* the beginning of the URI */
-    const u_char *uri_end;            /* the end of the URI */
-    const u_char *norm;               /* ptr to first normalization occurence */
-    const u_char *ident;              /* ptr to beginning of the HTTP identifier */
-    const u_char *first_sp_start;     /* beginning of first space delimiter */
-    const u_char *first_sp_end;       /* end of first space delimiter */
-    const u_char *second_sp_start;    /* beginning of second space delimiter */
-    const u_char *second_sp_end;      /* end of second space delimiter */
-    const u_char *param;              /* '?' (beginning of parameter field) */
-    const u_char *delimiter;          /* HTTP URI delimiter (\r\n\) */
-    const u_char *last_dir;           /* ptr to last dir, so we catch long dirs */
-    const u_char *proxy;              /* ptr to the absolute URI */
-}  URI_PTR;
-
-typedef struct s_HEADER_PTR
-{
-    URI_PTR header;
-    COOKIE_PTR cookie;
-    CONTLEN_PTR content_len;
-    CONT_ENCODING_PTR content_encoding;
-} HEADER_PTR;
-
 
 typedef struct s_HI_CLIENT_REQ
 {
@@ -155,11 +99,6 @@ typedef struct s_HI_CLIENT_REQ
 
     const u_char *pipeline_req;
     u_char method;
-    uint16_t uri_encode_type;
-    uint16_t header_encode_type;
-    uint16_t cookie_encode_type;
-    uint16_t post_encode_type;
-
 
 }  HI_CLIENT_REQ;
 
@@ -171,7 +110,7 @@ typedef struct s_HI_CLIENT
 
 }  HI_CLIENT;
 
-int hi_client_inspection(void *Session, const unsigned char *data, int dsize, HttpSessionData *hsd, int stream_ins);
+int hi_client_inspection(void *Session, const unsigned char *data, int dsize);
 int hi_client_init(HTTPINSPECT_GLOBAL_CONF *GlobalConf);
 
 #endif 

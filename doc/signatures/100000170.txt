@@ -1,0 +1,61 @@
+Rule: 
+
+--
+Sid: 
+100000170
+
+-- 
+Summary: 
+This event is generated when an overly long Host: parameter is sent in an HTTP 
+request, which will cause a buffer overflow to occur in the GFI MailSecurity 
+for Exchange/SMTP web interface.
+
+--
+Impact:
+A denial of service will occur in the vulnerable application, and remote code 
+may be executed with the priviliges of the user running the application.
+
+--
+Detailed Information:
+GFI MailSecurity for Exchange/SMTP is an anti-virus program that integrates 
+with Microsoft Exchange servers. Its web interface is vulnerable to a buffer 
+overflow attack, which may be triggered by sending a Host: parameter of 100 or 
+more bytes in an HTTP request. Vulnerable versions of the application will 
+crash, and code may be executed with the priviliges of the user running the 
+program.
+
+--
+Affected Systems:
+GFI MailSecurity for Exchange/SMTP 8.1
+
+--
+Attack Scenarios:
+Attackers will likley exploit this with a script.
+
+--
+Ease of Attack:
+Simple, as no authentication is required, and HTTP is a well-documented 
+protocol, which allows for easy creation of malicious packets.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Download and apply the patch referenced below.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+ftp://ftp.gfi.com/patches/MSEC8_PATCH_20050919_01.zip
+
+--

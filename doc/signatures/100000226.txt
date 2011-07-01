@@ -1,0 +1,66 @@
+Rule:
+
+--
+Sid:
+100000226
+
+--
+Summary:
+This event is generated when a host connected to the Internet is first infected 
+with the BlackWorm/Nyxem virus.
+
+--
+Impact:
+The system generating the alert has likely been infected with the 
+BlackWorm/Nyxem virus.
+
+--
+Detailed Information:
+When a system is first infected with the BlackWorm/Nyxem virus, the malicious 
+program attempts to access 
+http://207.172.16.155/cgi-bin/Count.cgi?df=76547 in order to report a 
+successful installation. Numerous sources, including the Sourcefire VRT, have 
+confirmed that this URL is static.
+
+--
+Affected Systems:
+All Windows systems.
+
+--
+Attack Scenarios:
+The virus may arrive by e-mail, in which case a user must execute the file in 
+order to be infected. Once infected, hosts conduct NetBIOS scans and attempt to 
+infect other hosts via publicly accessible shares; in this method, no user 
+interaction is required.
+
+--
+Ease of Attack:
+Simple
+
+--
+False Positives:
+Any user who directs a web browser to 
+http://207.172.16.155/cgi-bin/Count.cgi?df=76547 will trigger this rule.
+
+--
+False Negatives:
+Hosts without Internet access which become infected (i.e. by another infected 
+system on their local network) will not trigger this rule until they connect to 
+the Internet, as they will be unable toaccess this web page.
+
+--
+Corrective Action:
+Several antivirus vendors have detection and removal capabilities. 
+Additionally, Microsoft has detailed instructions for manual removal on their 
+web site.
+
+--
+Contributors:
+Sourcefire Vulnerability Research Team
+Matthew Watchinski <mwatchinski@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+--
+Additional References:
+
+--

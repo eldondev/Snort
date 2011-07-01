@@ -1,0 +1,66 @@
+Rule: 
+
+--
+Sid: 
+100000111
+
+-- 
+Summary: 
+This event is generated when the Dabber virus attempts to exploit a 
+vulnerability in the FTP server installed by the Sasser virus.
+
+-- 
+
+Impact: 
+If the Sasser virus is currently running on the affected system, then the 
+Dabber virus will be able to install itself as well.
+
+--
+Detailed Information:
+Some variants of the Sasser virus install an FTP server that listens on port 
+1023. However, this FTP server suffers from a buffer overflow in the PORT 
+command, which can be exploited with a command of 100 or more characters. The 
+Dabber virus makes use of this vulnerability as an infection vetor.
+
+--
+Affected Systems:
+Any machine with a variant of the Sasser virus whose FTP server listens on port 
+1023. 
+
+--
+
+Attack Scenarios: 
+A known virus scans the Internet in search of vulnerable systems.
+
+-- 
+
+Ease of Attack: 
+Simple, as the virus is in the wild.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Users should employ a virus removal tool to clean their system of both Dabber 
+and Sasser, and then apply the latest security patches from Microsoft to 
+prevent further infections.
+
+--
+Contributors: 
+Matt Watchinski <mwatchinski@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+http://www.microsoft.com/technet/security/bulletin/MS04-011.mspx
+
+--

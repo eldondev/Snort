@@ -1,0 +1,63 @@
+Rule: 
+
+--
+Sid: 
+100000133
+
+-- 
+Summary: 
+This event is generated when an attempt is made to cause a denial of service 
+against the Xeneo web server by sending it a request with an overly large 
+number of "?" characters.
+
+-- 
+
+Impact: 
+A denial of service will occur, and it may be possible to execute arbitrary 
+code with the privileges of the user running the web server.
+
+--
+Detailed Information:
+The denial of service is triggered when a GET request is made with more than 
+4096 "?" characters. The rule actually looks for 250 consecutive "?" 
+characters, as even that should never occur, and looking for a smaller number 
+increases the rule's performance.
+
+--
+Affected Systems:
+Northern Solutions Xeneo Web Server 2.2.10
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or an automated script.
+
+-- 
+
+Ease of Attack: 
+Simple, as a web browser can be used.
+
+-- 
+
+False Positives:
+If a valid request contains more than 250 and less than 4096 consecutive "?" 
+characters, a false positive will be generated.
+
+--
+False Negatives:
+None Known
+
+-- 
+
+Corrective Action: 
+Currently, no patches or upgrades are available from the vendor, and no 
+workarounds are known.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

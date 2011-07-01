@@ -1,4 +1,4 @@
-/*  $Id: pmap_clnt.h,v 1.3 2003/10/20 15:03:44 chrisgreen Exp $ */
+/*  $Id$ */
 /*	$OpenBSD: pmap_clnt.h,v 1.3 1998/08/29 18:57:14 deraadt Exp $	*/
 /*	$NetBSD: pmap_clnt.h,v 1.5 1994/12/04 01:12:42 cgd Exp $	*/
 

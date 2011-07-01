@@ -1,4 +1,4 @@
-/* $Id: snprintf.h,v 1.9 2007/07/06 15:57:48 ssturges Exp $ */
+/* $Id$ */
 /*
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **

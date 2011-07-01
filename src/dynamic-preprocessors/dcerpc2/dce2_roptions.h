@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -57,7 +57,6 @@ typedef struct _DCE2_Roptions
  ********************************************************************/
 void DCE2_RegRuleOptions(void);
 void DCE2_PrintRoptions(DCE2_Roptions *);
-int DCE2_GetByteOrder(void *, int32_t);
 
 #endif  /* _DCE2_ROPTIONS_H_ */
 

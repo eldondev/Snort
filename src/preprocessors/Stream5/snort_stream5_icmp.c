@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,12 +18,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "snort_debug.h"
+ 
+#include "debug.h"
 #include "decode.h"
 #include "mstring.h"
 #include "sfxhash.h"
@@ -46,6 +42,9 @@ PreprocStats s5IcmpPerfStats;
 /* client/server ip/port dereference */
 #define icmp_sender_ip lwSsn->client_ip
 #define icmp_responder_ip lwSsn->server_ip
+
+extern Stream5Config *s5_current_config;
+
 
 /*  D A T A  S T R U C T U R E S  ***********************************/
 typedef struct _IcmpSession
@@ -74,7 +73,7 @@ void Stream5InitIcmp(Stream5GlobalConfig *gconfig)
     if (gconfig == NULL)
         return;
 
-    /* Finally ICMP */
+    /* Finally ICMP */ 
     if((icmp_lws_cache == NULL) && gconfig->track_icmp_sessions)
     {
         icmp_lws_cache = InitLWSessionCache(gconfig->max_icmp_sessions,
@@ -139,7 +138,7 @@ static void Stream5ParseIcmpArgs(char *args, Stream5IcmpPolicy *s5IcmpPolicy)
                 {
                     s5IcmpPolicy->session_timeout = strtoul(stoks[1], &endPtr, 10);
                 }
-
+                
                 if (!stoks[1] || (endPtr == &stoks[1][0]))
                 {
                     FatalError("%s(%d) => Invalid timeout in config file.  Integer parameter required.\n",
@@ -162,7 +161,7 @@ static void Stream5ParseIcmpArgs(char *args, Stream5IcmpPolicy *s5IcmpPolicy)
             }
             else
             {
-                FatalError("%s(%d) => Invalid Stream5 ICMP policy option\n",
+                FatalError("%s(%d) => Invalid Stream5 ICMP policy option\n", 
                             file_name, file_line);
             }
 
@@ -185,7 +184,7 @@ static void Stream5PrintIcmpConfig(Stream5IcmpPolicy *s5IcmpPolicy)
 void IcmpSessionCleanup(Stream5LWSession *ssn)
 {
     IcmpSession *icmpssn = NULL;
-
+    
     if (ssn->proto_specific_data)
         icmpssn = ssn->proto_specific_data->data;
 
@@ -199,20 +198,7 @@ void IcmpSessionCleanup(Stream5LWSession *ssn)
     mempool_free(&icmp_session_mempool, ssn->proto_specific_data);
     ssn->proto_specific_data = NULL;
 
-    Stream5ResetFlowBits(ssn);
-
     s5stats.icmp_sessions_released++;
-}
-
-uint32_t Stream5GetIcmpPrunes(void)
-{
-    return icmp_lws_cache ? icmp_lws_cache->prunes : s5stats.icmp_prunes;
-}
-
-void Stream5ResetIcmpPrunes(void)
-{
-    if ( icmp_lws_cache )
-        icmp_lws_cache->prunes = 0;
 }
 
 void Stream5ResetIcmp(void)
@@ -223,9 +209,6 @@ void Stream5ResetIcmp(void)
 
 void Stream5CleanIcmp(void)
 {
-    if ( icmp_lws_cache )
-        s5stats.icmp_prunes = icmp_lws_cache->prunes;
-
     /* Clean up hash table -- delete all sessions */
     DeleteLWSessionCache(icmp_lws_cache);
     icmp_lws_cache = NULL;
@@ -270,7 +253,7 @@ int Stream5ProcessIcmp(Packet *p)
         /* We only handle the above ICMP messages with stream5 */
         break;
     }
-
+    
     return 0;
 }
 

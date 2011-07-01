@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -17,10 +17,10 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_test.c,v 1.11 2011/06/08 00:33:16 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_alert_test_
- *
+ * 
  * Purpose:  output plugin for test alerting
  *
  * Arguments: file <file>, stdout, rebuilt, session, msg
@@ -31,7 +31,7 @@
  *           S - Stream rebuilt
  *           F - IP frag rebuilt
  *           outputs: <rebuilt type>:<rebuilt count>
- * session - include src/dst IPs and ports
+ * session - include src/dst IPs and ports  
  *           outputs: <sip>:<sport>-<dip>:<dport>
  * msg - include alert message
  *
@@ -45,7 +45,7 @@
  * output alert_test: rebuilt, session, msg
  * output alert_test: stdout, rebuilt, session, msg
  * output alert_test: file test.alert, rebuilt, session, msg
- *
+ *   
  * Effect:
  *
  * Alerts are written to a file in the snort test alert format
@@ -59,10 +59,9 @@
 #include "config.h"
 #endif
 
-#include "sf_types.h"
 #include "event.h"
 #include "decode.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
 #include "parser.h"
@@ -88,6 +87,8 @@
 
 #include <sys/types.h>
 
+extern SnortConfig *snort_conf_for_parsing;
+
 #define TEST_FLAG_FILE     0x01
 #define TEST_FLAG_STDOUT   0x02
 #define TEST_FLAG_MSG      0x04
@@ -107,13 +108,13 @@ void AlertTestCleanExitFunc(int, void *);
 void AlertTestRestartFunc(int, void *);
 void AlertTest(Packet *, char *, void *, Event *);
 
-extern PacketCount pc;
+extern PacketCount pc; 
 
 
 /*
  * Function: SetupAlertTest()
  *
- * Purpose: Registers the output plugin keyword and initialization
+ * Purpose: Registers the output plugin keyword and initialization 
  *          function into the output plugin list.  This is the function that
  *          gets called from InitOutputPlugins() in plugbase.c.
  *
@@ -124,7 +125,7 @@ extern PacketCount pc;
  */
 void AlertTestSetup(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
     RegisterOutputPlugin("alert_test", OUTPUT_TYPE_FLAG__ALERT, AlertTestInit);
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Output plugin: AlertTest is setup...\n"););
@@ -152,7 +153,7 @@ void AlertTestInit(char *args)
     data = ParseAlertTestArgs(args);
 
     DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Linking AlertTest functions to call lists...\n"););
-
+    
     /* Set the preprocessor function into the function list */
     AddFuncToOutputList(AlertTest, OUTPUT_TYPE__ALERT, data);
     AddFuncToCleanExitList(AlertTestCleanExitFunc, data);
@@ -168,43 +169,60 @@ void AlertTest(Packet *p, char *msg, void *arg, Event *event)
 
     data = (SpoAlertTestData *)arg;
 
-    fprintf(data->file, "" STDu64 "\t", pc.total_from_daq);
+    fprintf(data->file, "" STDu64 "\t", pc.total_from_pcap);
 
-    if (event != NULL)
+    if(event != NULL)
     {
         fprintf(data->file, "%lu\t%lu\t%lu\t",
                 (unsigned long) event->sig_generator,
                 (unsigned long) event->sig_id,
                 (unsigned long) event->sig_rev);
     }
-
+    
     if (data->flags & TEST_FLAG_MSG)
     {
-        if (msg != NULL)
-            fprintf(data->file, "%s\t", msg);
+        if(msg != NULL)
+        {
+            fprintf(data->file, "%s\t", msg); 
+        }
     }
 
     if (data->flags & TEST_FLAG_SESSION)
-        PrintIpAddrs(data->file, p);
+    {
+        if (IPH_IS_VALID(p))
+        {
+            fprintf(data->file, "%s:%d",
+                    inet_ntoa(GET_SRC_ADDR(p)), p->sp);
+            fprintf(data->file, "-%s:%d\t",
+                    inet_ntoa(GET_DST_ADDR(p)), p->dp);
+        }
+    }
 
     if (data->flags & TEST_FLAG_REBUILT)
     {
         if (p->packet_flags & PKT_REBUILT_FRAG)
+        {
             fprintf(data->file, "F:" STDu64 "\t", pc.rebuilt_frags);
+        }
         else if (p->packet_flags & PKT_REBUILT_STREAM)
+        {
             fprintf(data->file, "S:" STDu64 "\t", pc.rebuilt_tcp);
+        }
     }
 
     fprintf(data->file, "\n");
+
     fflush(data->file);
+
+    return;
 }
 
 /*
  * Function: ParseAlertTestArgs(char *)
  *
- * Purpose: Process the preprocessor arguements from the rules file and
+ * Purpose: Process the preprocessor arguements from the rules file and 
  *          initialize the preprocessor's data struct.  This function doesn't
- *          have to exist if it makes sense to parse the args in the init
+ *          have to exist if it makes sense to parse the args in the init 
  *          function.
  *
  * Arguments: args => argument list
@@ -215,13 +233,14 @@ void AlertTest(Packet *p, char *msg, void *arg, Event *event)
 SpoAlertTestData * ParseAlertTestArgs(char *args)
 {
     char **toks;
+    char *option;
     int num_toks;
     SpoAlertTestData *data;
     int i;
 
     data = (SpoAlertTestData *)SnortAlloc(sizeof(SpoAlertTestData));
 
-    if (args == NULL)
+    if(args == NULL)
     {
         data->file = OpenAlertFile(NULL);
         data->flags |= TEST_FLAG_FILE;
@@ -230,65 +249,86 @@ SpoAlertTestData * ParseAlertTestArgs(char *args)
 
     DEBUG_WRAP(DebugMessage(DEBUG_LOG, "ParseAlertTestArgs: %s\n", args););
 
-    toks = mSplit(args, ",", 0, &num_toks, 0);
+    toks = mSplit(args, ",", 5, &num_toks, 0);
 
     for (i = 0; i < num_toks; i++)
     {
-        char *option;
-        char **atoks;
-        int num_atoks;
+        option = toks[i];
 
-        atoks = mSplit(toks[i], " ", 0, &num_atoks, 0);
-        option = atoks[0];
+        while (isspace((int)*option))
+            option++;
 
-        if (!strcasecmp("stdout", option))
+        if(strncasecmp("stdout", option, strlen("stdout")) == 0)
         {
             if (data->flags & TEST_FLAG_FILE)
-                ParseError("alert_test: cannot specify both stdout and file\n");
+            {
+                FatalError("alert_test: cannot specify both stdout and file\n");
+            }
 
             data->file = stdout;
             data->flags |= TEST_FLAG_STDOUT;
         }
-        else if (!strcasecmp("session", option))
+        else if (strncasecmp("session", option, strlen("session")) == 0)
         {
             data->flags |= TEST_FLAG_SESSION;
         }
-        else if (!strcasecmp("rebuilt", option))
+        else if (strncasecmp("rebuilt", option, strlen("rebuilt")) == 0)
         {
             data->flags |= TEST_FLAG_REBUILT;
         }
-        else if (!strcasecmp("msg", option))
+        else if (strncasecmp("msg", option, strlen("msg")) == 0)
         {
             data->flags |= TEST_FLAG_MSG;
         }
-        else if (!strcasecmp("file", option))
+        else if (strncasecmp("file", option, strlen("file")) == 0)
         {
+            char *filename;
+
             if (data->flags & TEST_FLAG_STDOUT)
-                ParseError("alert_test: cannot specify both stdout and file\n");
+            {
+                FatalError("alert_test: cannot specify both stdout and file\n");
+            }
+                
+            filename = strstr(option, " ");
 
-            data->flags |= TEST_FLAG_FILE;
-
-            if (num_atoks == 1)
+            if (filename == NULL)
             {
                 data->file = OpenAlertFile(NULL);
-            }
-            else if (num_atoks == 2)
-            {
-                char *outfile = ProcessFileOption(snort_conf_for_parsing, atoks[1]);
-                data->file = OpenAlertFile(outfile);
-                free(outfile);
+                data->flags |= TEST_FLAG_FILE;
             }
             else
             {
-                ParseError("Invalid \"file\" argument to alert_test: %s", option);
+                while (isspace((int)*filename))
+                    filename++;
+
+                if (*filename == '\0')
+                {
+                    data->file = OpenAlertFile(NULL);
+                    data->flags |= TEST_FLAG_FILE;
+                }
+                else
+                {
+                    char *filename_end;
+                    char *outfile;
+
+                    filename_end = filename + strlen(filename) - 1;
+                    while (isspace((int)*filename_end))
+                        filename_end--;
+
+                    filename_end++;
+                    filename_end = '\0';
+
+                    outfile = ProcessFileOption(snort_conf_for_parsing, filename);
+                    data->file = OpenAlertFile(outfile);
+                    data->flags |= TEST_FLAG_FILE;
+                    free(outfile);
+                }
             }
         }
         else
         {
-            ParseError("Unrecognized alert_test option: %s\n", option);
+            FatalError("Unrecognized alert_test option: %s\n", option);
         }
-
-        mSplitFree(&atoks, num_atoks);
     }
 
     /* free toks */

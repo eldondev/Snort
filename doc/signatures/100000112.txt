@@ -1,0 +1,68 @@
+Rule: 
+
+--
+Sid: 
+100000112
+
+-- 
+Summary: 
+This event is generated when the readfile.tcl script on a Nokia IPSO device is 
+accessed.
+
+-- 
+
+Impact: 
+Since the script does not perform any input validation, users can read any file 
+on the host operating system for which the script has permissions. 
+
+--
+Detailed Information:
+An attacker may specify any file on the host operating system, and if the 
+script has read permissions for that file, it will be displayed in the web 
+browser. Users must be able to log into the Nokia web gui to perform this 
+attack.
+
+--
+Affected Systems:
+Nokia IPSO 3.3 SP4
+Nokia IPSO 3.3 SP3
+Nokia IPSO 3.3 SP2
+Nokia IPSO 3.3 SP1
+Nokia IPSO 3.3
+Nokia IPSO 3.3.1
+Nokia IPSO 3.4
+Nokia IPSO 3.4.1
+Nokia IPSO 3.4.2
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited using a web browser, or an automated script.
+
+-- 
+
+Ease of Attack: 
+Simple, as attacks may be performed via a web browser.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Currently, no workarounds or patches are available.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 #ifndef __HI_EO_LOG_H__
 #define __HI_EO_LOG_H__
 
@@ -26,7 +26,7 @@
 #include "hi_si.h"
 #include "hi_return_codes.h"
 
-static inline int hi_eo_generate_event(HI_SESSION *Session, int iAlert)
+static INLINE int hi_eo_generate_event(HI_SESSION *Session, int iAlert)
 {
     if(iAlert && !(Session->norm_flags & HI_BODY) &&
        !Session->server_conf->no_alerts)
@@ -40,8 +40,6 @@ static inline int hi_eo_generate_event(HI_SESSION *Session, int iAlert)
 int hi_eo_client_event_log(HI_SESSION *Session, int iEvent, void *data,
         void (*free_data)(void *));
 
-int hi_eo_server_event_log(HI_SESSION *Session, int iEvent, void *data,
-        void (*free_data)(void *));
 int hi_eo_anom_server_event_log(HI_SESSION *Session, int iEvent, void *data,
         void (*free_data)(void *));
 

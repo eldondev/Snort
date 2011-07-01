@@ -1,4 +1,4 @@
-/*  $Id: svc_auth.h,v 1.3 2003/10/20 15:03:45 chrisgreen Exp $ */
+/*  $Id$ */
 /*	$OpenBSD: svc_auth.h,v 1.2 1997/09/21 10:46:16 niklas Exp $	*/
 /*	$NetBSD: svc_auth.h,v 1.4 1994/10/26 00:57:07 cgd Exp $	*/
 

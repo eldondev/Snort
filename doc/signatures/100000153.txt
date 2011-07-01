@@ -1,0 +1,63 @@
+Rule: 
+
+--
+Sid: 
+100000153
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a
+buffer overflow associated with MDaemon IMAP authentication
+processing.
+
+--
+Impact:
+A successful attack can permit a buffer overflow and the
+subsequent execution of arbitrary code on a vulnerable
+server.
+
+--
+Detailed Information:
+The MDaemon IMAP server allows basic authentication to be
+exchanged between the client and server.  A vulnerability
+exists allowing an unauthenticated user to cause a buffer
+overflow by crafting an overly long authentication reply
+to a server challenge.  This can allow execution of arbitrary
+code on a vulnerable server.
+
+--
+Affected Systems:
+Alt-N MDaemon prior to 8.0.4
+
+--
+Attack Scenarios:
+An attacker can request IMAP authentication and reply to
+a server challenge with an overly long response, causing
+a buffer overflow.
+
+--
+Ease of Attack:
+Simple.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Upgrade to the most current non-affected version of the product.
+
+--
+Contributors:
+Sourcefire Research Team
+Judy Novak <judy.novak@sourcefire.com>
+
+--
+Additional References
+Other:
+
+--

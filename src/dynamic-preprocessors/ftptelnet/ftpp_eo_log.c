@@ -1,7 +1,7 @@
 /*
  * ftpp_eo_log.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Daniel J. Roelker <droelker@sourcefire.com>
  * Marc A. Norton <mnorton@sourcefire.com>
@@ -23,13 +23,13 @@
  *
  * Description:
  *
- * This file contains the event output functionality that
+ * This file contains the event output functionality that 
  * FTPTelnet uses to log events and data associated with
  * the events.
  *
  * Log events, retrieve events, and select events that HttpInspect
  * generates.
- *
+ * 
  * Logging Events:
  *   Since the object behind this is no memset()s, we have to rely on the
  *   stack interface to make sure we don't log the same event twice.  So
@@ -43,10 +43,6 @@
  *
  */
 #include <stdlib.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "ftpp_si.h"
 #include "ftpp_eo.h"
@@ -68,7 +64,7 @@ typedef struct _ClassInfo
  * Any time that a new client event is added, we have to
  * add the event id and the priority here.  If you want to
  * change either of those characteristics, you have to change
- * them here.
+ * them here. 
  */
 static FTPP_EVENT_INFO ftp_event_info[FTP_EO_EVENT_NUM] = {
     { FTP_EO_TELNET_CMD,
@@ -206,9 +202,9 @@ void ftpp_eo_event_log_init(void)
                 type->id;
             telnet_event_info[TELNET_EO_AYT_OVERFLOW].priority =
                 type->priority;
-            telnet_event_info[TELNET_EO_SB_NO_SE].classification =
+            telnet_event_info[TELNET_EO_SB_NO_SE].classification = 
                 type->id;
-            telnet_event_info[TELNET_EO_SB_NO_SE].priority=
+            telnet_event_info[TELNET_EO_SB_NO_SE].priority= 
                 type->priority;
         }
         log_initialized = 1;
@@ -318,7 +314,7 @@ int telnet_eo_event_log(TELNET_SESSION *Session, int iEvent, void *data,
     gen_events.events = (FTPP_EVENT *)&(telnet_events->events);
     gen_events.stack = (int *)&(telnet_events->stack);
     gen_events.stack_count = telnet_events->stack_count;
-    event_info = &telnet_event_info[iEvent];
+    event_info = &telnet_event_info[iEvent]; 
 
     iRet = ftpp_eo_event_log(&gen_events, event_info, iEvent, data, free_data);
 
@@ -366,7 +362,7 @@ int ftp_eo_event_log(FTP_SESSION *Session, int iEvent, void *data,
     gen_events.events = (FTPP_EVENT *)&(ftp_events->events);
     gen_events.stack = (int *)&(ftp_events->stack);
     gen_events.stack_count = ftp_events->stack_count;
-    event_info = &ftp_event_info[iEvent];
+    event_info = &ftp_event_info[iEvent]; 
 
     iRet = ftpp_eo_event_log(&gen_events, event_info, iEvent, data, free_data);
 

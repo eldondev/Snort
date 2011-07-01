@@ -1,9 +1,9 @@
 /*
-**  $Id: perf-event.c,v 1.13 2011/06/08 00:33:16 jjordan Exp $
+**  $Id$
 **
 **  perf-event.c
 **
-**  Copyright (C) 2002-2011 Sourcefire, Inc.
+**  Copyright (C) 2002-2009 Sourcefire, Inc.
 **  Marc Norton <mnorton@sourcefire.com>
 **  Dan Roelker <droelker@sourcefire.com>
 **
@@ -28,13 +28,10 @@
 **
 */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "snort.h"
 #include "util.h"
+
+extern SFPERF *perfmon_config;
 
 int DisplayEventPerfStats(SFEVENT_STATS *sfEventStats);
 
@@ -90,9 +87,9 @@ int ProcessEventStats(SFEVENT *sfEvent)
 
     if(sfEvent->TotalEvents)
     {
-        sfEventStats.NQPercent = 100.0 * (double)sfEvent->NQEvents /
+        sfEventStats.NQPercent = 100.0 * (double)sfEvent->NQEvents / 
                                  (double)sfEvent->TotalEvents;
-        sfEventStats.QPercent  = 100.0 * (double)sfEvent->QEvents /
+        sfEventStats.QPercent  = 100.0 * (double)sfEvent->QEvents / 
                                  (double)sfEvent->TotalEvents;
     }
     else
@@ -126,5 +123,5 @@ int DisplayEventPerfStats(SFEVENT_STATS *sfEventStats)
 
     return 0;
 }
-
+    
 

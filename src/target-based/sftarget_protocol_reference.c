@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2006-2011 Sourcefire, Inc.
+** Copyright (C) 2006-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -22,10 +22,6 @@
  * sftarget_protocol_reference.c
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #ifdef TARGET_BASED
 
 #include "sftarget_protocol_reference.h"
@@ -33,7 +29,7 @@
 
 #include "log.h"
 #include "util.h"
-#include "snort_debug.h"
+#include "debug.h"
 
 #include "stream_api.h"
 #include "spp_frag3.h"
@@ -71,7 +67,6 @@ static char *standard_protocols[] =
     "snmp",
     "tftp",
     "x11",
-    "ftp-data",
     NULL
 };
 
@@ -211,7 +206,7 @@ int16_t GetProtocolReference(Packet *p)
             }
         }
 
-        switch (GET_IPH_PROTO(p))
+        switch (p->iph->ip_proto)
         {
         case IPPROTO_TCP:
             ipprotocol = FindProtocolReference("tcp");
@@ -238,7 +233,7 @@ int16_t GetProtocolReference(Packet *p)
 
         if (protocol != 0)
         {
-
+            
             break;
         }
 

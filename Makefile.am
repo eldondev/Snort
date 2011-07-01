@@ -1,6 +1,6 @@
-## $Id: Makefile.am,v 1.82 2010/12/20 17:14:37 jjordan Exp $
+## $Id$
 AUTOMAKE_OPTIONS=foreign no-dependencies
-SUBDIRS = src doc etc templates contrib rpm schemas m4 preproc_rules tools
+SUBDIRS = src doc etc templates contrib schemas rpm m4 preproc_rules
 
 INCLUDES = @INCLUDES@
 

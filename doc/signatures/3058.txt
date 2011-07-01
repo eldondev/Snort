@@ -22,6 +22,8 @@ COPY command, a buffer overflow condition may occur. This can allow the
 attacker to execute arbitrary code, which may allow the attacker to gain
 root access to the compromised server.
 
+The attacker must use a valid IMAP account to exploit this condition.
+
 --
 Affected Systems:
 	IMAP servers
@@ -53,7 +55,7 @@ Check the host for signs of compromise.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Nigel Houghton <nigel.houghton@sourcefire.com>
 

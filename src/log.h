@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: log.h,v 1.39 2011/02/09 23:22:49 jjordan Exp $ */
+/* $Id$ */
 #ifndef __LOG_H__
 #define __LOG_H__
 
@@ -41,18 +41,13 @@
 /*  P R O T O T Y P E S  ******************************************************/
 
 
-void PrintIpAddrs(FILE *, Packet *);
 void PrintIPPkt(FILE *, int,Packet*);
-void PrintNetData(FILE *, const u_char *, const int, Packet *);
+void PrintNetData(FILE *, const u_char *, const int);
 void ClearDumpBuf(void);
 void Print2ndHeader(FILE *, Packet *);
 void PrintEthHeader(FILE *, Packet *);
 #ifdef MPLS
 void PrintMPLSHeader(FILE *, Packet *);
-#endif
-#ifdef GRE
-void PrintGREHeader(FILE *, Packet *);
-void PrintOuterIPHeader(FILE *, Packet *);
 #endif
 void PrintIPHeader(FILE *, Packet *);
 void PrintTCPHeader(FILE *, Packet *);

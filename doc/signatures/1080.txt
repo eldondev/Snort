@@ -63,9 +63,5 @@ Alex Kirk <alex.kirk@sourcefire.com>
 
 --
 Additional References:
-Bugtraq:  BID 1868
-Bugtraq:  BID 1876
-CVE:  CVE-2000-1024
-CVE:  CVE-2000-1025
 
 --

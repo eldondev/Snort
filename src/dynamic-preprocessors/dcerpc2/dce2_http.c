@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,16 +18,11 @@
  *
  ****************************************************************************
  * Provides session handling of an RPC over HTTP transport.
- *
+ * 
  * 8/17/2008 - Initial implementation ... Todd Wease <twease@sourcefire.com>
  *
  ****************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "dce2_http.h"
 #include "snort_dce2.h"
 #include "dce2_co.h"
@@ -39,6 +34,7 @@
 /********************************************************************
  * Extern variables
  ********************************************************************/
+extern DynamicPreprocessorData _dpd;
 extern DCE2_Stats dce2_stats;
 
 /********************************************************************
@@ -78,7 +74,7 @@ static DCE2_HttpSsnData * DCE2_HttpSsnInit(void)
 /********************************************************************
  * Function: DCE2_HttpProxySsnInit()
  *
- * Wrapper around main session data initialization.  Adds
+ * Wrapper around main session data initialization.  Adds 
  * statistical info for a proxy specific rpc over http session.
  *
  * Arguments: None
@@ -104,7 +100,7 @@ DCE2_HttpSsnData * DCE2_HttpProxySsnInit(void)
 /********************************************************************
  * Function: DCE2_HttpServerSsnInit()
  *
- * Wrapper around main session data initialization.  Adds
+ * Wrapper around main session data initialization.  Adds 
  * statistical info for a server specific rpc over http session.
  *
  * Arguments: None

@@ -1,7 +1,7 @@
-/* $Id: stream_api.h,v 1.29 2011/06/08 00:33:18 jjordan Exp $ */
+/* $Id$ */
 
 /*
- * ** Copyright (C) 2005-2011 Sourcefire, Inc.
+ * ** Copyright (C) 2005-2009 Sourcefire, Inc.
  * ** AUTHOR: Steven Sturges
  * **
  * ** This program is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 /* stream_api.h
  *
  * Purpose: Definition of the StreamAPI.  To be used as a common interface
- *          for TCP (and later UDP & ICMP) Stream access for other
+ *          for TCP (and later UDP & ICMP) Stream access for other 
  *          preprocessors and detection plugins.
  *
  * Arguments:
@@ -46,7 +46,6 @@
 #include "bitop.h"
 #include "decode.h"
 #include "sfPolicy.h"
-#include "sf_types.h"
 
 #define IGNORE_FLAG_ALWAYS 0x01
 
@@ -89,23 +88,17 @@
 #define SSNFLAG_ALL                 0xFFFFFFFF /* all that and a bag of chips */
 #define SSNFLAG_NONE                0x00000000 /* nothing, an MT bag of chips */
 
-typedef enum {
-    STREAM_FLPOLICY_NONE,
-    STREAM_FLPOLICY_FOOTPRINT,       /* size-based footprint flush */
-    STREAM_FLPOLICY_LOGICAL,         /* queued bytes-based flush */
-    STREAM_FLPOLICY_RESPONSE,        /* flush when we see response */
-    STREAM_FLPOLICY_SLIDING_WINDOW,  /* flush on sliding window */
-#if 0   
-    STREAM_FLPOLICY_CONSUMED,        /* purge consumed bytes */
-#endif  
-    STREAM_FLPOLICY_IGNORE,          /* ignore this traffic */
-    STREAM_FLPOLICY_PROTOCOL,        /* protocol aware flushing (PAF) */
-#ifdef NORMALIZER
-    STREAM_FLPOLICY_FOOTPRINT_IPS,   /* protocol agnostic ips */
-    STREAM_FLPOLICY_PROTOCOL_IPS,    /* protocol aware ips */
+#define STREAM_FLPOLICY_NONE            0x00
+#define STREAM_FLPOLICY_FOOTPRINT       0x01 /* size-based footprint flush */
+#define STREAM_FLPOLICY_LOGICAL         0x02 /* queued bytes-based flush */
+#define STREAM_FLPOLICY_RESPONSE        0x03 /* flush when we see response */
+#define STREAM_FLPOLICY_SLIDING_WINDOW  0x04 /* flush on sliding window */
+#if 0
+#define STREAM_FLPOLICY_CONSUMED        0x05 /* purge consumed bytes */
 #endif
-    STREAM_FLPOLICY_MAX
-} FlushPolicy;
+#define STREAM_FLPOLICY_IGNORE          0x06 /* ignore this traffic */
+
+#define STREAM_FLPOLICY_MAX STREAM_FLPOLICY_IGNORE
 
 #define STREAM_FLPOLICY_SET_ABSOLUTE    0x01
 #define STREAM_FLPOLICY_SET_APPEND      0x02
@@ -114,47 +107,16 @@ typedef enum {
 
 #define STREAM_API_VERSION5 5
 
-typedef void (*LogExtraData)(void *ssnptr, void *config, LogFunction *funcs, uint16_t count, uint32_t id, uint32_t sec);
 typedef void (*StreamAppDataFree)(void *);
-typedef int (*PacketIterator)
-    (
-     DAQ_PktHdr_t *,
-     uint8_t *,  /* pkt pointer */
-     void *      /* user-defined data pointer */
-    );
-
-typedef int (*StreamSegmentIterator)
-    (
-     DAQ_PktHdr_t *,
-     uint8_t *,  /* pkt pointer */
-     uint8_t *,  /* payload pointer */
-     uint32_t,   /* sequence number */
-     void *      /* user-defined data pointer */
-    );
+typedef int (*PacketIterator)(struct pcap_pkthdr *,
+                              uint8_t *,
+                              void *); /* user-defined data pointer */
 
 typedef struct _StreamFlowData
 {
     BITOP boFlowbits;
     unsigned char flowb[1];
 } StreamFlowData;
-
-// for protocol aware flushing (PAF):
-typedef enum {
-    PAF_ABORT,   // non-paf operation
-    PAF_START,   // internal use only
-    PAF_SEARCH,  // searching for next flush point
-    PAF_FLUSH,   // flush at given offset
-    PAF_SKIP     // skip ahead to given offset
-} PAF_Status;
-
-typedef PAF_Status (*PAF_Callback)(  // return your scan state
-    void* session,         // session pointer
-    void** user,           // arbitrary user data hook
-    const uint8_t* data,   // in order segment data as it arrives
-    uint32_t len,          // length of data
-    uint32_t flags,        // packet flags indicating direction of data
-    uint32_t* fp           // flush point (offset) relative to data
-);
 
 typedef struct _stream_api
 {
@@ -164,7 +126,7 @@ typedef struct _stream_api
      * Drop on Inline Alerts for Midstream pickups
      *
      * Parameters
-     *,
+     *
      * Returns
      *     0 if not alerting
      *     !0 if alerting
@@ -225,13 +187,6 @@ typedef struct _stream_api
     int (*ignore_session)(snort_ip_p, uint16_t, snort_ip_p, uint16_t,
                           char, char, char);
 
-    /* Get direction that data is being ignored.
-     *
-     * Parameters
-     *     Session Ptr
-     */
-    int (*get_ignore_direction)(void *);
-
     /* Resume inspection for session.
      *
      * Parameters
@@ -246,7 +201,7 @@ typedef struct _stream_api
      *     Session Ptr
      *     Direction
      */
-    void (*drop_traffic)(Packet *, void *, char);
+    void (*drop_traffic)(void *, char);
 
     /* Drop retransmitted packet arriving on session.
      *
@@ -262,12 +217,8 @@ typedef struct _stream_api
      *     Application Protocol
      *     Application Data reference (pointer)
      *     Application Data free function
-     *
-     * Returns
-     *     0 on success
-     *     -1 on failure
      */
-    int (*set_application_data)(void *, uint32_t, void *, StreamAppDataFree);
+    void (*set_application_data)(void *, uint32_t, void *, StreamAppDataFree);
 
     /* Set a reference to application data for a session
      *
@@ -282,7 +233,7 @@ typedef struct _stream_api
 
     /* Sets the flags for a session
      * This ORs the supplied flags with the previous values
-     *
+     * 
      * Parameters
      *     Session Ptr
      *     Flags
@@ -329,20 +280,6 @@ typedef struct _stream_api
      */
     int (*traverse_reassembled)(Packet *, PacketIterator, void *userdata);
 
-    /* Calls user-provided callback function for each segment of
-     * a reassembled stream.  If the callback function returns non-zero,
-     * iteration ends.
-     *
-     * Parameters
-     *     Packet
-     *     StreamSegmentIterator Function (called for each packet in the stream)
-     *     user data (may be NULL)
-     *
-     * Returns
-     *     number of packets
-     */
-    int (*traverse_stream_segments)(Packet *, StreamSegmentIterator, void *userdata);
-
     /* Add session alert
      *
      * Parameters
@@ -355,7 +292,7 @@ typedef struct _stream_api
      *     -1 failure (max alerts reached)
      *
      */
-    int (*add_session_alert)(void *, Packet *p, uint32_t, uint32_t, int);
+    int (*add_session_alert)(void *, Packet *p, uint32_t, uint32_t);
 
     /* Check session alert
      *
@@ -371,20 +308,6 @@ typedef struct _stream_api
      */
     int (*check_session_alerted)(void *, Packet *p, uint32_t, uint32_t);
 
-    /* Set Extra Data Logging
-     * 
-     * Parameters
-     *      Session Ptr
-     *      Packet
-     *      gen ID
-     *      sig ID
-     * Returns
-     *      0 success
-     *      -1 failure ( no alerts )
-     *
-     */
-    int (*log_session_extra_data)(void *, void *, Packet *p, uint32_t, uint32_t, uint32_t, uint32_t, LogExtraData);
-
     /* Get Flowbits data
      *
      * Parameters
@@ -393,7 +316,6 @@ typedef struct _stream_api
      * Returns
      *     Ptr to Flowbits Data
      */
-
     StreamFlowData *(*get_flow_data)(Packet *p);
 
     /* Set reassembly flush policy/direction for given session
@@ -474,7 +396,7 @@ typedef struct _stream_api
      *
      * Parameters
      *     Session Ptr
-     *
+     * 
      * Returns
      *     integer protocol identifier
      */
@@ -485,7 +407,7 @@ typedef struct _stream_api
      * Parameters
      *     Session Ptr
      *     ID
-     *
+     * 
      * Returns
      *     integer protocol identifier
      */
@@ -498,20 +420,11 @@ typedef struct _stream_api
     void (*set_service_filter_status)(int service, int status, tSfPolicyId policyId, int parsing);
 #endif
 
-    /** Set port to either ignore, inspect or maintain session state.
+    /** Set port to either ignore, inspect or maintain session state. 
      *  If this is called during parsing a preprocessor configuration, make
      *  sure to set the parsing argument to 1.
      */
     void (*set_port_filter_status)(int protocol, uint16_t port, int status, tSfPolicyId policyId, int parsing);
-
-#ifdef ACTIVE_RESPONSE
-    // initialize response count and expiration time
-    void (*init_active_response)(Packet *, void *);
-#endif
-
-    // Get the TTL value used at session setup
-    // outer=0 to get inner ip ttl for ip in ip; else outer=1
-    uint8_t (*get_session_ttl)(void *ssnptr, char direction, int outer);
 
     /* Get the current flush point
      *
@@ -533,33 +446,6 @@ typedef struct _stream_api
      */
     void (*set_flush_point)(void *, char, uint32_t);
 
-#ifdef TARGET_BASED
-    /* Turn off inspection for potential session.
-     * Adds session identifiers to a hash table.
-     * TCP only.
-     *
-     * Parameters
-     *     IP addr #1
-     *     Port #1
-     *     IP addr #2
-     *     Port #2
-     *     Protocol
-     *     ID
-     *
-     * Returns
-     *     0 on success
-     *     -1 on failure
-     */
-    int (*set_application_protocol_id_expected)(snort_ip_p, uint16_t, snort_ip_p, uint16_t,
-                          char, int16_t);
-#endif
-
-    // register for stateful scanning of in-order payload to determine flush points
-    bool (*register_paf_cb)(tSfPolicyId, uint16_t server_port, int toServer, PAF_Callback);
-
-    // get any paf user data stored for this session
-    void** (*get_paf_user_data)(void* ssnptr, int toServer);
-
 } StreamAPI;
 
 /* To be set by Stream5 (or Stream4) */
@@ -568,9 +454,9 @@ extern StreamAPI *stream_api;
 /**Port Inspection States. Port can be either ignored,
  * or inspected or session tracked. The values are bitmasks.
  */
-typedef enum {
+typedef enum { 
     /**Dont monitor the port. */
-    PORT_MONITOR_NONE = 0x00,
+    PORT_MONITOR_NONE = 0x00, 
 
     /**Inspect the port. */
     PORT_MONITOR_INSPECT = 0x01,

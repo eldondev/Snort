@@ -1,17 +1,17 @@
 /*
-*  $Id: mpse.c,v 1.29 2011/06/08 00:33:20 jjordan Exp $
+*  $Id$
 *
 *   mpse.c
-*
+*    
 *   An abstracted interface to the Multi-Pattern Matching routines,
 *   thats why we're passing 'void *' objects around.
 *
-*   Copyright (C) 2002-2011 Sourcefire, Inc.
+*   Copyright (C) 2002-2009 Sourcefire, Inc.
 *   Marc A Norton <mnorton@sourcefire.com>
 *
 *   Updates:
 *   3/06 - Added AC_BNFA search
-**
+**  
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
 ** published by the Free Software Foundation.  You may not use, modify or
@@ -37,14 +37,11 @@
 #include "acsmx.h"
 #include "acsmx2.h"
 #include "sfksearch.h"
-#include "mpse.h"
-#include "snort_debug.h"
+#include "mpse.h"  
+#include "debug.h"  
 #include "sf_types.h"
 #include "util.h"
 
-#ifdef INTEL_SOFT_CPM
-#include "intel-soft-cpm.h"
-#endif
 
 #include "profiler.h"
 #ifdef PERF_PROFILING
@@ -78,7 +75,7 @@ void * mpseNew( int method, int use_global_counter_flag,
     p->verbose = 0;
     p->obj = NULL;
     p->bcnt = 0;
-    p->inc_global_counter = (char)use_global_counter_flag;
+    p->inc_global_counter = use_global_counter_flag;
 
     switch( method )
     {
@@ -121,11 +118,7 @@ void * mpseNew( int method, int use_global_counter_flag,
         case MPSE_LOWMEM_Q:
             p->obj = KTrieNew(1,userfree, optiontreefree, neg_list_free);
             break;
-#ifdef INTEL_SOFT_CPM
-        case MPSE_INTEL_CPM:
-            p->obj=IntelPmNew(userfree, optiontreefree, neg_list_free);
-            break;
-#endif
+
         default:
             /* p is free'd below if no case */
             break;
@@ -144,7 +137,7 @@ void   mpseVerbose( void * pvoid )
 {
     MPSE * p = (MPSE*)pvoid;
     p->verbose = 1;
-}
+} 
 
 void   mpseSetOpt( void * pvoid, int flag )
 {
@@ -158,11 +151,6 @@ void   mpseSetOpt( void * pvoid, int flag )
         case MPSE_AC_BNFA:
             if (p->obj)
                 bnfaSetOpt((bnfa_struct_t*)p->obj,flag);
-            break;
-        case MPSE_ACF:
-        case MPSE_ACF_Q:
-            if (p->obj)
-                acsmCompressStates((ACSM_STRUCT2*)p->obj, flag);
             break;
         default:
             break;
@@ -208,20 +196,12 @@ void   mpseFree( void * pvoid )
             free(p);
             return;
 
-#ifdef INTEL_SOFT_CPM
-        case MPSE_INTEL_CPM:
-            if (p->obj)
-                IntelPmDelete((IntelPm *)p->obj);
-            free(p);
-            break;
-#endif
-
         default:
             return;
     }
 }
 
-int  mpseAddPattern ( void * pvoid, void * P, int m,
+int  mpseAddPattern ( void * pvoid, void * P, int m, 
                       unsigned noCase, unsigned offset, unsigned depth,
                       unsigned negative, void* ID, int IID )
 {
@@ -250,11 +230,7 @@ int  mpseAddPattern ( void * pvoid, void * P, int m,
      case MPSE_LOWMEM_Q:
        return KTrieAddPattern( (KTRIE_STRUCT *)p->obj, (unsigned char *)P, m,
                                 noCase, negative, ID );
-#ifdef INTEL_SOFT_CPM
-     case MPSE_INTEL_CPM:
-       return IntelPmAddPattern((IntelPm *)p->obj, (unsigned char *)P, m,
-               noCase, negative, ID, IID);
-#endif
+
      default:
        return -1;
    }
@@ -263,7 +239,7 @@ int  mpseAddPattern ( void * pvoid, void * P, int m,
 void mpseLargeShifts   ( void * pvoid, int flag )
 {
   MPSE * p = (MPSE*)pvoid;
-
+ 
   switch( p->method )
    {
      default:
@@ -284,11 +260,11 @@ int  mpsePrepPatterns  ( void * pvoid,
      case MPSE_AC_BNFA_Q:
        retv = bnfaCompile( (bnfa_struct_t*) p->obj, build_tree, neg_list_func );
      break;
-
+     
      case MPSE_AC:
        retv = acsmCompile( (ACSM_STRUCT*) p->obj, build_tree, neg_list_func );
      break;
-
+     
      case MPSE_ACF:
      case MPSE_ACF_Q:
      case MPSE_ACS:
@@ -296,21 +272,16 @@ int  mpsePrepPatterns  ( void * pvoid,
      case MPSE_ACSB:
        retv = acsmCompile2( (ACSM_STRUCT2*) p->obj, build_tree, neg_list_func );
      break;
-
+     
      case MPSE_LOWMEM:
      case MPSE_LOWMEM_Q:
        return KTrieCompile( (KTRIE_STRUCT *)p->obj, build_tree, neg_list_func );
 
-#ifdef INTEL_SOFT_CPM
-     case MPSE_INTEL_CPM:
-       return IntelPmFinishGroup((IntelPm *)p->obj, build_tree, neg_list_func);
-#endif
-
      default:
        retv = 1;
-     break;
+     break; 
    }
-
+  
   return retv;
 }
 
@@ -346,7 +317,7 @@ int mpsePrintInfo( void *pvoid )
      case MPSE_ACB:
      case MPSE_ACSB:
       return acsmPrintDetailInfo2( (ACSM_STRUCT2*) p->obj );
-
+     
      default:
        return 1;
    }
@@ -356,45 +327,23 @@ int mpsePrintInfo( void *pvoid )
  return 0;
 }
 
-int mpsePrintSummary(int method)
+int mpsePrintSummary(void )
 {
-    switch (method)
-    {
-        case MPSE_AC_BNFA:
-        case MPSE_AC_BNFA_Q:
-            bnfaPrintSummary();
-            break;
-        case MPSE_AC:
-            acsmPrintSummaryInfo();
-            break;
-        case MPSE_ACF:
-        case MPSE_ACF_Q:
-        case MPSE_ACS:
-        case MPSE_ACB:
-        case MPSE_ACSB:
-            acsmPrintSummaryInfo2();
-            break;
-        case MPSE_LOWMEM:
-        case MPSE_LOWMEM_Q:
-            if( KTrieMemUsed() )
-            {
-                double x;
-                x = (double) KTrieMemUsed();
-                LogMessage("[ LowMem Search-Method Memory Used : %g %s ]\n",
-                        (x > 1.e+6) ?  x/1.e+6 : x/1.e+3,
-                        (x > 1.e+6) ? "MBytes" : "KBytes" );
+   acsmPrintSummaryInfo();
+   acsmPrintSummaryInfo2();
+   bnfaPrintSummary();
+  
+   if( KTrieMemUsed() )
+   {
+     double x;
+     x = (double) KTrieMemUsed();
+     LogMessage("[ LowMem Search-Method Memory Used : %g %s ]\n",
+     (x > 1.e+6) ?  x/1.e+6 : x/1.e+3,
+     (x > 1.e+6) ? "MBytes" : "KBytes" );
+     
+   }
 
-            }
-            break;
-        default:
-            break;
-    }
-
-#ifdef INTEL_SOFT_CPM
-    IntelPmPrintSummary();
-#endif
-
-    return 0;
+   return 0;
 }
 
 void mpseInitSummary(void)
@@ -404,9 +353,9 @@ void mpseInitSummary(void)
     KTrieInitMemUsed();
 }
 
-int mpseSearch( void *pvoid, const unsigned char * T, int n,
-                int ( *action )(void* id, void * tree, int index, void *data, void *neg_list),
-                void * data, int* current_state )
+int mpseSearch( void *pvoid, const unsigned char * T, int n, 
+                int ( *action )(void* id, void * tree, int index, void *data, void *neg_list), 
+                void * data, int* current_state ) 
 {
   MPSE * p = (MPSE*)pvoid;
   int ret;
@@ -418,7 +367,7 @@ int mpseSearch( void *pvoid, const unsigned char * T, int n,
 
   if(p->inc_global_counter)
     s_bcnt += n;
-
+  
   switch( p->method )
    {
      case MPSE_AC_BNFA:
@@ -433,7 +382,7 @@ int mpseSearch( void *pvoid, const unsigned char * T, int n,
       ret = acsmSearch( (ACSM_STRUCT*) p->obj, (unsigned char *)T, n, action, data, current_state );
       PREPROC_PROFILE_END(mpsePerfStats);
       return ret;
-
+     
      case MPSE_ACF:
      case MPSE_ACF_Q:
      case MPSE_ACS:
@@ -450,14 +399,6 @@ int mpseSearch( void *pvoid, const unsigned char * T, int n,
         PREPROC_PROFILE_END(mpsePerfStats);
         return ret;
 
-#ifdef INTEL_SOFT_CPM
-     case MPSE_INTEL_CPM:
-        ret = IntelPmSearch((IntelPm *)p->obj, (unsigned char *)T, n, action, data);
-        *current_state = 0;
-        PREPROC_PROFILE_END(mpsePerfStats);
-        return ret;
-#endif
-
      default:
        PREPROC_PROFILE_END(mpsePerfStats);
        return 1;
@@ -469,36 +410,33 @@ int mpseGetPatternCount(void *pvoid)
 {
     MPSE * p = (MPSE*)pvoid;
 
-    if (p == NULL)
-        return 0;
-
     switch( p->method )
     {
         case MPSE_AC_BNFA:
         case MPSE_AC_BNFA_Q:
             return bnfaPatternCount((bnfa_struct_t *)p->obj);
+            break;
         case MPSE_AC:
             return acsmPatternCount((ACSM_STRUCT*)p->obj);
+            break;
         case MPSE_ACF:
         case MPSE_ACF_Q:
         case MPSE_ACS:
         case MPSE_ACB:
         case MPSE_ACSB:
             return acsmPatternCount2((ACSM_STRUCT2*)p->obj);
+            break;
         case MPSE_LOWMEM:
         case MPSE_LOWMEM_Q:
             return KTriePatternCount((KTRIE_STRUCT*)p->obj);
-#ifdef INTEL_SOFT_CPM
-        case MPSE_INTEL_CPM:
-            return IntelGetPatternCount((IntelPm *)p->obj);
-#endif
+            break;
     }
     return 0;
 }
 
 uint64_t mpseGetPatByteCount(void)
 {
-    return s_bcnt;
+    return s_bcnt; 
 }
 
 void mpseResetByteCount(void)

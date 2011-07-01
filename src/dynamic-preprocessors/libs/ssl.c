@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1998-2011 Sourcefire, Inc.
+ * Copyright (C) 1998-2009 Sourcefire, Inc.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -70,7 +70,7 @@ static uint32_t SSL_decode_version_v3(uint8_t major, uint8_t minor)
     return SSL_BAD_VER_FLAG;
 }
 
-static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , int size, 
+static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , uint32_t size, 
                                          uint32_t cur_flags, uint32_t pkt_flags) 
 {
     SSL_handshake_t *handshake;
@@ -80,7 +80,7 @@ static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , int size,
 
     while (size > 0)
     {
-        if (size < (int)SSL_HS_PAYLOAD_OFFSET)
+        if (size < SSL_HS_PAYLOAD_OFFSET)
         {
             retval |= SSL_TRUNCATED_FLAG;
             break;
@@ -99,24 +99,31 @@ static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , int size,
          * It was written this way for performance */
         hs_len = THREE_BYTE_LEN(handshake->length);
 
+        if(size < hs_len) 
+        {
+            retval |= SSL_TRUNCATED_FLAG;
+            break;
+        }
+
         switch(handshake->type)
         {
             case SSL_HS_CHELLO:
-                if(pkt_flags & FLAG_FROM_SERVER)
-                    retval |= SSL_BOGUS_HS_DIR_FLAG;
-                else
-                    retval |= SSL_CLIENT_HELLO_FLAG | SSL_CUR_CLIENT_HELLO_FLAG;
-
                 /* This type of record contains a version string. */
                 /* Make sure there is room for a version. */
-                if (size < (int)sizeof(uint16_t))
+                if(size < sizeof(uint16_t))
                 {
                     retval |= SSL_TRUNCATED_FLAG;
                     break;
                 }
 
                 hello = (SSL_handshake_hello_t *)handshake;
+
                 retval |= SSL_decode_version_v3(hello->major, hello->minor);
+
+                if(pkt_flags & FLAG_FROM_SERVER)
+                    retval |= SSL_BOGUS_HS_DIR_FLAG;
+                else
+                    retval |= SSL_CLIENT_HELLO_FLAG | SSL_CUR_CLIENT_HELLO_FLAG;
 
                 /* Compare version of record with version of handshake */
                 if((cur_flags & SSL_VERFLAGS) != (retval & SSL_VERFLAGS))
@@ -125,20 +132,21 @@ static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , int size,
                 break;
 
             case SSL_HS_SHELLO:
-                if(pkt_flags & FLAG_FROM_SERVER)
-                    retval |= SSL_SERVER_HELLO_FLAG | SSL_CUR_SERVER_HELLO_FLAG;
-                else
-                    retval |= SSL_BOGUS_HS_DIR_FLAG;
-
                 /* This type of record contains a version string. */
-                if (size < (int)sizeof(uint16_t))
+                if(size < sizeof(uint16_t))
                 {
                     retval |= SSL_TRUNCATED_FLAG;
                     break;
                 }
 
                 hello = (SSL_handshake_hello_t *)handshake;
+
                 retval |= SSL_decode_version_v3(hello->major, hello->minor);
+
+                if(pkt_flags & FLAG_FROM_SERVER)
+                    retval |= SSL_SERVER_HELLO_FLAG | SSL_CUR_SERVER_HELLO_FLAG;
+                else
+                    retval |= SSL_BOGUS_HS_DIR_FLAG;
 
                 /* Compare version of record with version of handshake */
                 if((cur_flags & SSL_VERFLAGS) != (retval & SSL_VERFLAGS))
@@ -191,22 +199,19 @@ static uint32_t SSL_decode_handshake_v3(const uint8_t *pkt , int size,
         pkt += hs_len;
     }
 
-    if (size < 0)
-        retval |= SSL_TRUNCATED_FLAG;
-
     return retval;
 }
 
-static uint32_t SSL_decode_v3(const uint8_t *pkt, int size, uint32_t pkt_flags)
+static uint32_t SSL_decode_v3(const uint8_t *pkt, uint32_t size, uint32_t pkt_flags)
 {
     SSL_record_t *record;
     uint32_t retval = 0;
-    uint16_t reclen;
+    uint32_t reclen;
     int ccs = 0;   /* Set if we see a Change Cipher Spec and reset after the next record */
 
     while(size > 0)
     {
-        if (size < (int)SSL_REC_PAYLOAD_OFFSET)
+        if(size < SSL_REC_PAYLOAD_OFFSET)
         {
             retval |= SSL_TRUNCATED_FLAG;
             break;
@@ -216,9 +221,17 @@ static uint32_t SSL_decode_v3(const uint8_t *pkt, int size, uint32_t pkt_flags)
         pkt += SSL_REC_PAYLOAD_OFFSET;
         size -= SSL_REC_PAYLOAD_OFFSET;
 
-        retval |= SSL_decode_version_v3(record->major, record->minor);
-
         reclen = ntohs(record->length);
+
+        if (size < reclen)
+        {
+            if (record->type != SSL_APPLICATION_REC)
+                retval |= SSL_TRUNCATED_FLAG; 
+
+            break;
+        }
+
+        retval |= SSL_decode_version_v3(record->major, record->minor);
 
         switch (record->type)
         {
@@ -226,7 +239,7 @@ static uint32_t SSL_decode_v3(const uint8_t *pkt, int size, uint32_t pkt_flags)
                 retval |= SSL_CHANGE_CIPHER_FLAG;
                 
                 /* If there is another record, mark it as possibly encrypted */
-                if((size - (int)reclen) > 0)
+                if((size - reclen) > 0)
                     retval |= SSL_POSSIBLY_ENC_FLAG;
 
                 ccs = 1;
@@ -242,8 +255,7 @@ static uint32_t SSL_decode_v3(const uint8_t *pkt, int size, uint32_t pkt_flags)
                  * record should be encrypted */
                 if(!(retval & SSL_CHANGE_CIPHER_FLAG)) 
                 {
-                    int hsize = size < (int)reclen ? size : (int)reclen;
-                    retval |= SSL_decode_handshake_v3(pkt, hsize, retval, pkt_flags);
+                    retval |= SSL_decode_handshake_v3(pkt, reclen, retval, pkt_flags);
                 }
                 else if (ccs)
                 {
@@ -275,16 +287,13 @@ static uint32_t SSL_decode_v3(const uint8_t *pkt, int size, uint32_t pkt_flags)
         pkt += reclen;
     }
 
-    if (size < 0)
-        retval |= SSL_TRUNCATED_FLAG; 
-
     if(!(retval & SSL_VERFLAGS) || (retval & SSL_BAD_VER_FLAG))
         return retval | SSL_UNKNOWN_FLAG;
 
     return retval;
 }
 
-static uint32_t SSL_decode_v2(const uint8_t *pkt, int size, uint32_t pkt_flags)
+static uint32_t SSL_decode_v2(const uint8_t *pkt, uint32_t size, uint32_t pkt_flags)
 {
     uint16_t reclen;
     SSLv2_chello_t *chello;
@@ -304,6 +313,15 @@ static uint32_t SSL_decode_v2(const uint8_t *pkt, int size, uint32_t pkt_flags)
          * with the length */
         reclen = ntohs(record->length) & 0x7fff;
 
+        /* Validate length */
+        if(size < (uint32_t)(reclen + 2))  /* 2 is for the size of the length field */
+        {
+            /* reclen is too long for the packet, but the packet is large enough 
+             * for our purposes.  Don't return */
+            retval |= SSL_TRUNCATED_FLAG;
+            break;
+        }
+
         switch(record->type)
         {
             case SSL_V2_CHELLO:
@@ -312,7 +330,7 @@ static uint32_t SSL_decode_v2(const uint8_t *pkt, int size, uint32_t pkt_flags)
                 else
                     retval |= SSL_CLIENT_HELLO_FLAG | SSL_CUR_CLIENT_HELLO_FLAG ;
 
-                if (size < (int)sizeof(SSLv2_chello_t))
+                if(size < sizeof(SSLv2_chello_t))
                 {
                     retval |= SSL_TRUNCATED_FLAG | SSL_UNKNOWN_FLAG;
                     break;
@@ -334,7 +352,7 @@ static uint32_t SSL_decode_v2(const uint8_t *pkt, int size, uint32_t pkt_flags)
                 else
                     retval |= SSL_SERVER_HELLO_FLAG | SSL_CUR_SERVER_HELLO_FLAG;
 
-                if (size < (int)sizeof(SSLv2_shello_t))
+                if(size < sizeof(SSLv2_shello_t))
                 {
                     retval |= SSL_TRUNCATED_FLAG | SSL_UNKNOWN_FLAG;
                     break;
@@ -362,13 +380,10 @@ static uint32_t SSL_decode_v2(const uint8_t *pkt, int size, uint32_t pkt_flags)
         pkt += (reclen + 2);
     }
 
-    if (size < 0)
-        retval |= SSL_TRUNCATED_FLAG;
-
     return retval | SSL_VER_SSLV2_FLAG;
 }
 
-uint32_t SSL_decode(const uint8_t *pkt, int size, uint32_t pkt_flags)
+uint32_t SSL_decode(const uint8_t *pkt, uint32_t size, uint32_t pkt_flags)
 {
     SSL_record_t *record;
     uint16_t reclen;
@@ -377,7 +392,7 @@ uint32_t SSL_decode(const uint8_t *pkt, int size, uint32_t pkt_flags)
     if(!pkt || !size) 
         return SSL_ARG_ERROR_FLAG;
 
-    if (size < (int)SSL_REC_PAYLOAD_OFFSET)
+    if(size < SSL_REC_PAYLOAD_OFFSET)
         return SSL_TRUNCATED_FLAG | SSL_UNKNOWN_FLAG;
 
     /* Determine the protocol type. */

@@ -100,7 +100,7 @@ relating to bsd-based implementations of telnet.
 In order to support certain options, Telnet supports subnegotiation. Per the 
 Telnet RFC, subnegotiation begins with SB (subnegotiation begin) and must
 end with an SE (subnegotiation end). However, certain implementations of
-Telnet servers will ignore the SB without a corresponding SE. This is
+Telnet servers will ignore the SB without a cooresponding SE. This is
 anomalous behavior which could be an evasion case. Being that FTP uses the
 Telnet protocol on the control connection, it is also susceptible to this
 behavior. The detect_anomalies option enables alerting on Telnet SB without
@@ -287,9 +287,6 @@ the use of PORT 192,168,1,1,78,xx, where xx is 52 through 72, inclusive.
   bounce_to { 192.168.1.1,20020,20040 } 
 3) This allows bounces to 192.168.1.1 port 20020 and 192.168.1.2 port 20030
   bounce_to { 192.168.1.1,20020 192.168.1.2,20030 }
-4) This allows bounces to IPv6 address fe8::5 port 59340.  NOTE: IPv6 support
-  must be enabled.
-  bounce_to { fe8::5,59340 } 
 
 * telnet_cmds yes/no *
 Detect and alert when telnet cmds are seen on the FTP command channel.

@@ -1,7 +1,7 @@
-/* $Id: stream_ignore.c,v 1.16 2011/06/08 00:33:18 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 ** AUTHOR: Steven Sturges
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -21,12 +21,12 @@
 */
 
 /* stream_ignore.c
- *
+ * 
  * Purpose: Handle hash table storage and lookups for ignoring
  *          entire data streams.
  *
  * Arguments:
- *
+ *   
  * Effect:
  *
  * Comments:
@@ -45,11 +45,7 @@
 #endif /* WIN32 */
 #include <time.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "snort_debug.h"
+#include "debug.h"
 #include "decode.h"
 #include "stream_api.h"
 #include "sfghash.h"
@@ -71,7 +67,6 @@ typedef struct _IgnoreNode
     int direction;
     int numOccurances;
     tSfPolicyId policyId;
-    int16_t appId;
 } IgnoreNode;
 
 typedef struct _IgnoreHashKey
@@ -90,7 +85,7 @@ static SFGHASH *channelHash = NULL;
 int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
                   snort_ip_p srvIP, uint16_t srvPort,
                   char protocol, char direction, char flags,
-                  uint32_t timeout, int16_t appId)
+                  uint32_t timeout)
 {
     IgnoreHashKey hashKey;
     time_t now;
@@ -112,11 +107,11 @@ int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
         channelHash = sfghash_new(IGNORE_HASH_SIZE,
                                   sizeof(IgnoreHashKey), 0, free);
     }
-
+   
     time(&now);
 
     /* Add the info to a tree that marks this channel as one to ignore.
-     * Only one of the port values may be UNKNOWN_PORT.
+     * Only one of the port values may be UNKNOWN_PORT.  
      * As a sanity check, the IP addresses may not be 0 or 255.255.255.255.
      */
     if ((cliPort == UNKNOWN_PORT) && (srvPort == UNKNOWN_PORT))
@@ -174,7 +169,6 @@ int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
             node->direction = direction;
             node->protocol = protocol;
             node->policyId = getRuntimePolicy();
-            node->appId = appId;
         }
         else
         {
@@ -217,7 +211,6 @@ int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
         else
             node->expires = now + timeout;
         node->numOccurances = 1;
-        node->appId = appId;
 
         /* Add it to the table */
         if (sfghash_add(channelHash, &hashKey, (void *)node)
@@ -238,55 +231,7 @@ int IgnoreChannel(snort_ip_p cliIP, uint16_t cliPort,
     return 0;
 }
 
-int isIgnored(Packet *p)
-{
-    snort_ip_p srcIP, dstIP;
-    short srcPort, dstPort;
-    char protocol;
-
-    IgnoreHashKey hashKey;
-    int retVal = 0;
-    IgnoreNode *node = NULL;
-
-    /* No hash table, or its empty?  Get out of dodge.  */
-    if (!channelHash || channelHash->count == 0)
-        return retVal;
-
-    srcIP = GET_SRC_IP(p);
-    dstIP = GET_DST_IP(p);
-    srcPort = p->sp;
-    dstPort = p->dp;
-    protocol = GET_IPH_PROTO(p);
-
-
-    if (IP_LESSER(dstIP,srcIP))
-    {
-        IP_COPY_VALUE(hashKey.ip1, dstIP);
-        IP_COPY_VALUE(hashKey.ip2, srcIP);
-    }
-    else
-    {
-        IP_COPY_VALUE(hashKey.ip1, srcIP);
-        IP_COPY_VALUE(hashKey.ip2, dstIP);
-    }
-    hashKey.port = dstPort;
-    hashKey.protocol = protocol;
-    hashKey.pad = 0;
-    hashKey.policyId = getRuntimePolicy();
-
-    node = sfghash_find(channelHash, &hashKey);
-    if (!node)
-    {
-
-        hashKey.port = srcPort;
-        node = sfghash_find(channelHash, &hashKey);
-    }
-    if (node)
-        retVal = 1;
-    return retVal;
-}
-
-char CheckIgnoreChannel(Packet *p, int16_t *appId)
+char CheckIgnoreChannel(Packet *p)
 {
     snort_ip_p srcIP, dstIP;
     short srcPort, dstPort;
@@ -309,7 +254,7 @@ char CheckIgnoreChannel(Packet *p, int16_t *appId)
     srcPort = p->sp;
     dstPort = p->dp;
     protocol = GET_IPH_PROTO(p);
-
+    
     /* First try the hash table using the dstPort.
      * For FTP data channel this would be the client's port when the PORT
      * command is used and the server is initiating the connection.
@@ -341,18 +286,18 @@ char CheckIgnoreChannel(Packet *p, int16_t *appId)
         hashKey.port = srcPort;
         node = sfghash_find(channelHash, &hashKey);
 
-        /* We could also check the reverses of these, ie. use
+        /* We could also check the reverses of these, ie. use 
          * srcIP then dstIP in the hashKey.  Don't need to, though.
          *
          * Here's why:
-         *
+         * 
          * Since there will be an ACK that comes back from the server
          * side, we don't need to look for the hash entry the other
          * way -- it will be found when we get the ACK.  This approach
          * results in 2 checks per packet -- and 2 checks on the ACK.
          * If we find a match, cool.  If not we've done at most 4 checks
          * between the packet and the ACK.
-         *
+         * 
          * Whereas, if we check the reverses, we do 4 checks on each
          * side, or 8 checks between the packet and the ACK.  While
          * this would more quickly find the channel to ignore, it is
@@ -422,12 +367,9 @@ char CheckIgnoreChannel(Packet *p, int16_t *appId)
             {
                 node->numOccurances--;
                 /* Matched & Still valid --> ignore it! */
+                retVal = node->direction;
 
-                if (node->appId) /* If this is 0, we're ignoring, otherwise setting id of new session */
-                    *appId = node->appId;
-                else
-                    retVal = node->direction;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
                 {
                     /* Have to allocate & copy one of these since inet_ntoa
                      * clobbers the info from the previous call. */
@@ -458,6 +400,7 @@ char CheckIgnoreChannel(Packet *p, int16_t *appId)
 
         if (((node->numOccurances <= 0) || (expired)) &&
                 (node->expires != 0))
+
         {
             /* Either expired or was the only one in the hash
              * table.  Remove this node.  */

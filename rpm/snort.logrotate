@@ -1,5 +1,5 @@
 # /etc/logrotate.d/snort
-# $Id: snort.logrotate,v 1.4 2005/05/05 18:23:44 jhewlett Exp $
+# $Id$
 
 /var/log/snort/alert /var/log/snort/*log /var/log/snort/*/alert /var/log/snort/*/*log  {
     daily

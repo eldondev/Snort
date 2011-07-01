@@ -17,10 +17,10 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: spo_alert_arubaaction.c,v 1.6 2011/06/08 00:33:15 jjordan Exp $ */
+/* $Id$ */
 
 /* spo_alert_arubaaction
- *
+ * 
  * Purpose: output plugin for dynamically changing station access status on
  *          an Aruba switch.
  *
@@ -30,7 +30,7 @@
  * 			"cleartext"
  *	secret		The shared secret configured on the Aruba switch
  *	action		The action the switch should take with the target user
- *
+ *   
  * Effect:
  *
  * When an alert is passed to this output plugin, the plugin connects to the
@@ -46,10 +46,9 @@
 #include "config.h"
 #endif
 
-#include "sf_types.h"
 #include "event.h"
 #include "decode.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "plugbase.h"
 #include "spo_plugbase.h"
 #include "parser.h"
@@ -128,7 +127,7 @@ const ArubaActionType action_lookup[] = {
 };
 
 
-#define ArubaResponseCode ArubaSecretType
+#define ArubaResponseCode ArubaSecretType 
 
 #define ARUBA_RESP_SUCCESS 0
 #define ARUBA_RESP_UNKN_USER 1
@@ -147,7 +146,7 @@ const ArubaResponseCode response_lookup[] = {
 	{ ARUBA_RESP_UNKN_EXT_AGENT,   "unknown external agent" },
 	{ ARUBA_RESP_AUTH_FAILED,      "authentication failed" },
 	{ ARUBA_RESP_INVAL_CMD,        "invalid command" },
-	{ ARUBA_RESP_INVAL_AUTH_METHOD,
+	{ ARUBA_RESP_INVAL_AUTH_METHOD, 
 			"invalid message authentication method" },
 	{ ARUBA_RESP_INVAL_MSG_DGST,   "invalid message digest" },
 	{ ARUBA_RESP_MSSNG_MSG_AUTH,   "missing message authentication" },
@@ -167,7 +166,7 @@ int ArubaSwitchRecv(SpoAlertArubaActionData *data, uint8_t *recv, int maxlen);
 /*
  * Function: SetupAlertArubaAction()
  *
- * Purpose: Registers the output plugin keyword and initialization
+ * Purpose: Registers the output plugin keyword and initialization 
  *          function into the output plugin list.  This is the function that
  *          gets called from InitOutputPlugins() in plugbase.c.
  *
@@ -178,7 +177,7 @@ int ArubaSwitchRecv(SpoAlertArubaActionData *data, uint8_t *recv, int maxlen);
  */
 void AlertArubaActionSetup(void)
 {
-	/* link the preprocessor keyword to the init function in
+	/* link the preprocessor keyword to the init function in 
 	   the preproc list */
     RegisterOutputPlugin("alert_aruba_action", OUTPUT_TYPE_FLAG__ALERT,
                          AlertArubaActionInit);
@@ -211,7 +210,7 @@ void AlertArubaActionInit(char *args)
 
 	DEBUG_WRAP(DebugMessage(DEBUG_INIT,"Linking AlertArubaAction functions "
 			"to call lists...\n"););
-
+	
 	/* Set the preprocessor function into the function list */
 	AddFuncToOutputList(AlertArubaAction, OUTPUT_TYPE__ALERT, data);
 	AddFuncToCleanExitList(AlertArubaActionCleanExitFunc, data);
@@ -369,7 +368,7 @@ void AlertArubaAction(Packet *p, char *msg, void *arg, Event *event)
 #endif
 			(unsigned long)strlen(cmdbuf), cmdbuf
         );
-
+	
 	/* Send the action command to the switch */
 	if (ArubaSwitchSend(data, (uint8_t *)post, postlen) != postlen) {
 		ErrorMessage("aruba_action: Error sending data to Aruba "
@@ -431,7 +430,7 @@ void AlertArubaAction(Packet *p, char *msg, void *arg, Event *event)
 
 
 	close(data->fd);
-
+		
 	return;
 }
 
@@ -472,7 +471,7 @@ int ArubaSwitchConnect(SpoAlertArubaActionData *data)
     		return -1;
     	}
 #ifdef SUP_IP6
-    }
+    } 
     else {
 	    memcpy(&sa6.sin6_addr, data->aswitch.ip8, 16);
     	sa6.sin6_family = AF_INET6;
@@ -484,7 +483,7 @@ int ArubaSwitchConnect(SpoAlertArubaActionData *data)
     		close(data->fd);
     		return -1;
     	}
-    }
+    }  
 #endif
 
 
@@ -501,7 +500,7 @@ int ArubaSwitchConnect(SpoAlertArubaActionData *data)
     		close(data->fd);
     		return -1;
     	}
-    }
+    } 
     else {
 	    memcpy(&sa6.sin6_addr, data->aswitch.ip8, 16);
 #else
@@ -517,9 +516,9 @@ int ArubaSwitchConnect(SpoAlertArubaActionData *data)
     		return -1;
     	}
 #ifdef SUP_IP6
-    }
+    }  
 #endif
-
+     
 	return data->fd;
 }
 
@@ -527,9 +526,9 @@ int ArubaSwitchConnect(SpoAlertArubaActionData *data)
 /*
  * Function: ParseAlertArubaActionArgs(char *)
  *
- * Purpose: Process the preprocessor arguments from the rules file and
+ * Purpose: Process the preprocessor arguments from the rules file and 
  *          initialize the preprocessor's data struct.  This function doesn't
- *          have to exist if it makes sense to parse the args in the init
+ *          have to exist if it makes sense to parse the args in the init 
  *          function.
  *
  * Arguments: args => argument list
@@ -565,9 +564,9 @@ SpoAlertArubaActionData *ParseAlertArubaActionArgs(char *args)
 	}
 
 #ifdef SUP_IP6 // XXX could probably be changed to a macro
-	if (sfip_pton(toks[0], &data->aswitch) == 0)
+	if (sfip_pton(toks[0], &data->aswitch) == 0) 
 #else
-	if (inet_aton(toks[0], &data->aswitch) == 0)
+	if (inet_aton(toks[0], &data->aswitch) == 0) 
 #endif
     {
 		ErrorMessage("aruba_action: invalid Aruba switch address "
@@ -577,7 +576,7 @@ SpoAlertArubaActionData *ParseAlertArubaActionArgs(char *args)
 	}
 
 	for (i=0; secret_lookup[i].name != NULL; i++) {
-		if (strncmp(toks[1], secret_lookup[i].name,
+		if (strncmp(toks[1], secret_lookup[i].name, 
 				strlen(secret_lookup[i].name)) == 0) {
 			data->secret_type = secret_lookup[i].type;
 			break;
@@ -596,7 +595,7 @@ SpoAlertArubaActionData *ParseAlertArubaActionArgs(char *args)
 
 	/* action can be "blacklist" or "setrole:rolename", parse */
 	for (i=0; action_lookup[i].name != NULL; i++) {
-		if (strncmp(action_lookup[i].name, toks[3],
+		if (strncmp(action_lookup[i].name, toks[3], 
 				strlen(action_lookup[i].name)) == 0) {
 			data->action_type = action_lookup[i].type;
 			break;
@@ -618,12 +617,12 @@ SpoAlertArubaActionData *ParseAlertArubaActionArgs(char *args)
 					"specification \"%s\"\n", toks[3]);
 			FatalError("Improperly formatted action\n");
 			return NULL;
-		}
+		} 
 
 		data->role_name = (char *)SnortAlloc(strlen(action_toks[1])+1);
-		strncpy(data->role_name, action_toks[1],
+		strncpy(data->role_name, action_toks[1], 
 				strlen(action_toks[1]));
-	}
+	}	
 
 	/* free toks */
 	mSplitFree(&toks, num_toks);
@@ -644,7 +643,7 @@ void AlertArubaActionCleanExitFunc(int signal, void *arg)
 void AlertArubaActionRestartFunc(int signal, void *arg)
 {
 	SpoAlertArubaActionData *data = (SpoAlertArubaActionData *)arg;
-
+	
 	DEBUG_WRAP(DebugMessage(DEBUG_LOG,"AlertArubaActionRestartFunc\n"););
 	free(data->secret);
 	free(data->role_name);

@@ -1,0 +1,55 @@
+Rule: 
+
+--
+Sid: 
+100000136
+
+-- 
+Summary:
+This event is generated when an attempt is made to exploit a vulnerability
+associated with the gnu_mailutils IMAP4 server.
+
+--
+Impact:
+Serious. Execution of arbitrary commands may be possible.
+
+--
+Detailed Information:
+
+A vulnerability exists in the way that the GNU Mailutils IMAP4 server handles 
+malformed IMAP commands containing format strings.  This may permit the 
+execution of arbitrary code on a vulnerable server.
+
+--
+Affected Systems:
+GNU Mailutils 0.5, 0.6
+
+--
+Attack Scenarios:
+An attacker can send an IMAP command containing format strings, possibly 
+permitting the execution of arbitrary code.
+
+-- 
+Ease of Attack: 
+Simple, exploit scripts exist.
+
+-- 
+False Positives:
+None known.
+
+--
+False Negatives:
+None Known
+
+-- 
+Corrective Action: 
+Upgrade to version 0.6.90 or higher.
+
+--
+Contributors: 
+Judy Novak <judy.novak@sourcefire.com>
+
+-- 
+Additional References:
+
+--

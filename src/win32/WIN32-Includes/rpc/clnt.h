@@ -1,4 +1,4 @@
-/* $Id: clnt.h,v 1.3 2003/10/20 15:03:44 chrisgreen Exp $ */
+/* $Id$ */
 /*	$OpenBSD: clnt.h,v 1.4 1998/03/19 00:27:17 millert Exp $	*/
 /*	$NetBSD: clnt.h,v 1.6 1995/04/29 05:27:58 cgd Exp $	*/
 

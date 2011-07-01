@@ -15,10 +15,10 @@ Serious. Execution of arbitrary code, DoS.
 
 --
 Detailed Information:
-A buffer overflow condition in the Microsoft implementation of the ASN.1 
-Library. It may be possible for an attacker to exploit this condition by 
-sending specially crafted authentication packets to a host running a 
-vulnerable operating system.
+A buffer overflow condition exists in the Microsoft implementation of
+the ASN.1 Library. It may be possible for an attacker to exploit this
+condition by sending specially crafted authentication packets to a host
+running a vulnerable operating system.
 
 When the taget system decodes the ASN.1 data, exploit code may be included 
 in the data that may be excuted on the host with system level privileges. 
@@ -57,9 +57,6 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 
 --
 References:
-
-CVE
-http://www.cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2003-0818
 
 US-CERT
 http://www.us-cert.gov/cas/techalerts/TA04-041A.html

@@ -14,13 +14,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steven Sturges
  *
  */
 
-/* $Id: sp_dynamic.h,v 1.20 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SP_DYNAMIC_H_
 #define __SP_DYNAMIC_H_
@@ -37,9 +37,8 @@ typedef struct _DynamicData
     void *contextData;
     OTNCheckFunction checkFunction;
     OTNHasFunction hasOptionFunction;
-    int contentFlags;
-    GetDynamicContentsFunction getDynamicContents;
-    GetDynamicPreprocOptFpContentsFunc getPreprocFpContents;
+    int fpContentFlags;
+    GetFPContentFunction fastPatternContents;
     PatternMatchData *pmds;
 
 } DynamicData;
@@ -52,10 +51,9 @@ int RegisterDynamicRule(
     void *info,
     OTNCheckFunction,
     OTNHasFunction,
-    int contentFlags,
-    GetDynamicContentsFunction,
-    RuleFreeFunc freeFunc,
-    GetDynamicPreprocOptFpContentsFunc
+    int fpContentFlags,
+    GetFPContentFunction,
+    RuleFreeFunc freeFunc
     );
 
 typedef struct _DynamicRuleNode
@@ -63,11 +61,10 @@ typedef struct _DynamicRuleNode
     Rule *rule;
     OTNCheckFunction chkFunc;
     OTNHasFunction hasFunc;
-    int contentFlags;
-    GetDynamicContentsFunction contentsFunc;
+    int fpContentFlags;
+    GetFPContentFunction fpFunc;
     int converted;
     RuleFreeFunc freeFunc;
-    GetDynamicPreprocOptFpContentsFunc preprocFpContentsFunc;
     struct _DynamicRuleNode *next;
 
 } DynamicRuleNode;
@@ -80,16 +77,8 @@ int ReloadDynamicRules(SnortConfig *);
 
 int DynamicPreprocRuleOptInit(void *);
 u_int32_t DynamicFlowbitRegister(char *name, int op);
-void DynamicFlowbitUnregister(char *name, int op);
 int DynamicFlowbitCheck(void *pkt, int op, u_int32_t id);
 int DynamicAsn1Detect(void *pkt, void *ctxt, const u_int8_t *cursor);
-int DynamicsfUnfold(const u_int8_t *, u_int32_t , u_int8_t *, u_int32_t , u_int32_t *);
-int Dynamicsfbase64decode(u_int8_t *, u_int32_t , u_int8_t *, u_int32_t , u_int32_t *);
-int DynamicGetAltDetect(uint8_t **, uint16_t *);
-void DynamicSetAltDetect(uint8_t *, uint16_t );
-int DynamicIsDetectFlag(SFDetectFlagType);
-void DynamicDetectFlagDisable(SFDetectFlagType);
-
 int DynamicHasFlow(OptTreeNode *otn);
 int DynamicHasFlowbit(OptTreeNode *otn);
 int DynamicHasContent(OptTreeNode *otn);

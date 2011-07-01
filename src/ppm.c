@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2006-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -20,7 +20,7 @@
  ****************************************************************************/
 
 /*
-**  $Id: ppm.c,v 1.16 2011/06/08 00:33:06 jjordan Exp $
+**  $Id$
 **
 **  ppm.c
 **
@@ -51,21 +51,13 @@
 #include <syslog.h>
 #include <time.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "snort.h"
 #include "rules.h"
-#include "treenodes.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "parser.h"
 #include "plugin_enum.h"
 #include "util.h"
 #include "rules.h"
-#include "treenodes.h"
-#include "treenodes.h"
 #include "fpcreate.h"
 #include "event_queue.h"
 #include "event_wrapper.h"
@@ -89,9 +81,8 @@ PPM_TICKS ppm_tpu = 0; /* ticks per usec */
 ppm_pkt_timer_t   ppm_pkt_times[PPM_MAX_TIMERS];
 ppm_pkt_timer_t  *ppm_pt = NULL;
 unsigned int      ppm_pkt_index = 0;
-ppm_rule_timer_t  ppm_rule_times[PPM_MAX_TIMERS];
+ppm_rule_timer_t  ppm_rule_times;
 ppm_rule_timer_t *ppm_rt = NULL;
-unsigned int      ppm_rule_times_index = 0;
 uint64_t            ppm_cur_time = 0;
 
 /* temporary flags */
@@ -233,45 +224,30 @@ void ppm_print_summary(ppm_cfg_t *ppm_cfg)
     if(ppm_cfg->max_pkt_ticks)
     {
         LogMessage("Packet Performance Summary:\n");
-
-        LogMessage("   max packet time       : %g usecs\n",
-            ppm_ticks_to_usecs(ppm_cfg->max_pkt_ticks));
-
-        LogMessage("   packet events         : %u\n",
-            (unsigned int)ppm_cfg->pkt_event_cnt);
-
+        LogMessage("   max packet time       : %lu usecs\n",(unsigned long)(ppm_cfg->max_pkt_ticks/ppm_tpu));
+        LogMessage("   packet events         : %u\n",(unsigned int)ppm_cfg->pkt_event_cnt);
         if( ppm_cfg->tot_pkts )
             LogMessage("   avg pkt time          : %g usecs\n",
-                ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_pkt_time/
-                    ppm_cfg->tot_pkts)));
+                       ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_pkt_time/ppm_cfg->tot_pkts)) );
     }
 
     if(ppm_cfg->max_rule_ticks)
     {
         LogMessage("Rule Performance Summary:\n");
-
-        LogMessage("   max rule time         : %lu usecs\n",
-            (unsigned long)(ppm_cfg->max_rule_ticks/ppm_tpu));
-
-        LogMessage("   rule events           : %u\n",
-            (unsigned int)ppm_cfg->rule_event_cnt);
-
+        LogMessage("   max rule time         : %lu usecs\n",(unsigned long)(ppm_cfg->max_rule_ticks/ppm_tpu));
+        LogMessage("   rule events           : %u\n",(unsigned int)ppm_cfg->rule_event_cnt);
         if( ppm_cfg->tot_rules )
             LogMessage("   avg rule time         : %g usecs\n",
-                ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_rule_time/
-                    ppm_cfg->tot_rules)));
-
+                       ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_rule_time/ppm_cfg->tot_rules)) );
         if( ppm_cfg->tot_nc_rules )
             LogMessage("   avg nc-rule time      : %g usecs\n",
-                ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_nc_rule_time/
-                    ppm_cfg->tot_nc_rules)));
-
+                       ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_nc_rule_time/ppm_cfg->tot_nc_rules)) );
         if( ppm_cfg->tot_pcre_rules )
             LogMessage("   avg nc-pcre-rule time : %g usecs\n",
-                ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_pcre_rule_time/
-                    ppm_cfg->tot_pcre_rules)));
-
+                       ppm_ticks_to_usecs((PPM_TICKS)(ppm_cfg->tot_pcre_rule_time/ppm_cfg->tot_pcre_rules)) );
+#ifdef PORTLISTS
         fpWalkOtns( 0, print_rule );
+#endif
     }
 }
 
@@ -339,8 +315,8 @@ void ppm_pkt_log(ppm_cfg_t *ppm_cfg)
     }
 }
 
-#define PPM_FMT_SUSPENDED "PPM: Rule-Event address=0x%p Pkt[" STDi64 "] used=%g usecs suspended %s"
-#define PPM_FMT_REENABLED "PPM: Rule-Event address=0x%p Pkt[" STDi64 "] re-enabled %s"
+#define PPM_FMT_SUSPENDED "PPM: Rule-Event address=0x%x Pkt[" STDi64 "] used=%g usecs suspended %s"
+#define PPM_FMT_REENABLED "PPM: Rule-Event address=0x%x Pkt[" STDi64 "] re-enabled %s"
 
 void ppm_rule_log(ppm_cfg_t *ppm_cfg, uint64_t pktcnt, Packet *p)
 {
@@ -388,7 +364,7 @@ void ppm_rule_log(ppm_cfg_t *ppm_cfg, uint64_t pktcnt, Packet *p)
             AlertAction(p, potn, &ev);
         }
 
-        if (ppm_cfg->rule_log & PPM_LOG_MESSAGE)
+        if (ppm_cfg->rule_log & PPM_LOG_MESSAGE) 
         {
             int i;
 
@@ -400,7 +376,7 @@ void ppm_rule_log(ppm_cfg_t *ppm_cfg, uint64_t pktcnt, Packet *p)
                 proot = ppm_crules[i];
 
                 LogMessage(PPM_FMT_REENABLED,
-                           (void*)proot,
+                           proot,
                            pktcnt,
                            timestamp);
             }
@@ -456,7 +432,7 @@ void ppm_rule_log(ppm_cfg_t *ppm_cfg, uint64_t pktcnt, Packet *p)
                 proot = ppm_rules[i].tree;
 
                 LogMessage(PPM_FMT_SUSPENDED,
-                           (void*)proot,
+                           proot,
                            pktcnt,
                            ppm_ticks_to_usecs((PPM_TICKS)ppm_rules[i].ticks),
                            timestamp);

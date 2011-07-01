@@ -1,0 +1,64 @@
+Rule: 
+
+--
+Sid: 
+100000166
+
+-- 
+Summary: 
+This event is generated when a command is sent to an Oracle isqlplus instance 
+which contains a command to halt the Oracle TNS listener service.
+
+--
+Impact:
+Vulnerable Oracle servers may shut down their TNS listener service upon receipt 
+of this command, making the database unavailable for normal use until it is 
+restarted.
+
+--
+Detailed Information:
+iSQLPlus is a web interface to the Oracle SQLPlus system. A wide range of 
+commands may be sent to an Oracle server via this interface, including 
+administrative commands. If a request is sent which contains a command to halt 
+the TNS listener service, vulnerable versions of Oracle will execute the 
+command, halting the service and denying service to legitimate users until the 
+service is restarted.
+
+--
+Affected Systems:
+Oracle 9i Standard Edition 9.0.2.4
+Oracle 9i Personal Edition 9.0.2.4
+Oracle 9i Enterprise Edition 9.0.2.4
+
+--
+Attack Scenarios:
+A web browser may be used to exploit this vulnerability.
+
+--
+Ease of Attack:
+Simple, as a publicly available exploit exists which may be executed via a web 
+browser.
+
+--
+False Positives:
+Any time an authorized administrator chooses to shut down the TNS listener 
+service via the iSQLPlus interface.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Apply the Oracle Critical Patch Update from July 2005, available at 
+http://www.oracle.com/technology/deploy/security/pdf/cpujul2005.html.
+
+--
+Contributors:
+rmkml
+Sourcefire Research Team
+
+--
+Additional References
+
+--

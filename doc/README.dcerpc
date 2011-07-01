@@ -1,0 +1,149 @@
+
+DCE/RPC Preprocessor
+====================
+Andrew Mullican <amullican@sourcefire.com>
+
+Overview
+========
+The dcerpc preprocessor detects and decodes SMB and DCE/RPC traffic.
+It is primarily interested in DCE/RPC requests, and only decodes SMB
+to get to the potential DCE/RPC requests carried by SMB.
+
+Currently, the preprocessor only handles desegmentation (at SMB
+and TCP layers) and defragmentation of DCE/RPC.  Snort rules can
+be evaded by using both types of fragmentation. With the
+preprocessor enabled, the rules are given reassembled DCE/RPC data
+to examine.
+
+At the SMB layer, only segmentation using WriteAndX is currently
+reassembled.  Other methods will be handled in future versions of
+the preprocessor.
+
+Autodetection of SMB is done by looking for "\xFFSMB" at the start of
+the SMB data, as well as checking the NetBIOS header (which is always
+present for SMB) for the type "Session Message".
+
+Autodetection of DCE/RPC is not as reliable.  Currently, two bytes are
+checked in the packet.  Assuming that the data is a DCE/RPC header,
+one byte is checked for DCE/RPC version 5 and another for a DCE/RPC
+PDU type of Request.  If both match, the preprocessor proceeds with the
+assumption that it is looking at DCE/RPC data.  If subsequent checks
+are nonsensical, it ends processing.
+
+
+Configuration
+=============
+The proprocessor has several optional configuration options.
+They are described below:
+
+The configuration options are described below:
+
+* autodetect
+  In addition to configured ports, try to autodetect DCE/RPC sessions.
+  Note that DCE/RPC can run on practically any port in addition to the
+  more common ports.
+  This option is not configured by default.
+
+* ports smb { <int> [<int>] }
+  Ports that the preprocessor monitors for SMB traffic.
+  Default are ports 139 and 445.
+
+* ports dcerpc { <int> [<int>] }
+  Ports that the preprocessor monitors for DCE/RPC over TCP traffic.
+  Default is port 135.
+
+* disable_smb_frag
+  Do not do SMB desegmentation.  Unless you are experiencing severe performance
+  issues, this option should not be configured as SMB segmentation provides
+  for an easy evasion opportunity.
+  This option is not configured by default.
+
+* disable_dcerpc_frag
+  Do not do DCE/RPC defragmentation.  Unless you are experiencing severe
+  performance issues, this option should not be configured as DCE/RPC
+  fragmentation provides for an easy evasion opportunity.
+  This option is not configured by default.
+
+* max_frag_size
+  Maximum DCE/RPC fragment size to put in defragmentation buffer, in bytes.
+  Default is 3000 bytes.
+
+* memcap
+  Maximum amount of memory available to the DCE/RPC preprocessor for
+  desegmentation and defragmentation, in kilobytes.
+  Default is 100000 kilobytes.
+   
+* alert_memcap
+  Alert if memcap is exceeded.
+  This option is not configured by default.
+
+* reassemble_increment <int>
+  This option specifies how often the preprocessor should create a reassembled
+  packet to send to the detection engine with the data that's been accrued in
+  the segmentation and fragmentation reassembly buffers, before the final
+  desegmentation or defragmentation of the DCE/RPC request takes place.  This
+  will potentially catch an attack earlier and is useful if in inline mode.
+  Since the preprocessor looks at TCP reassembled packets (to avoid TCP overlaps
+  and segmentation evasions), the last packet of an attack using DCE/RPC
+  segmented/fragmented evasion techniques may have already gone through before
+  the preprocessor looks at it, so looking at the data early will likely catch
+  the attack before all of the exploit data has gone through.
+  Note, however, that in using this option, Snort will potentially take a
+  performance hit.  Not recommended if Snort is running in passive mode as it's
+  not really needed.  
+  The argument to the option specifies how often the preprocessor should create
+  a reassembled packet if there is data in the segmentation/fragmentation buffers.
+  If not specified, this option is disabled.  A value of 0 will in effect disable
+  this option as well.
+   
+
+Examples
+--------
+In addition to defaults, autodetect SMB and DCE/RPC sessions on
+non-configured ports.  Don't do desegmentation on SMB writes.  Truncate
+DCE/RPC fragment if greater than 4000 bytes.
+
+preprocessor dcerpc: \
+  autodetect \
+  disable_smb_frag \
+  max_frag_size 4000
+  
+In addition to defaults, don't do DCE/RPC defragmentation.  Set memory cap
+for desegmentation/defragmentation to 50,000 kilobytes.  (Since no DCE/RPC
+defragmentation will be done the memory cap will only apply to desegmentation.)
+
+preprocessor dcerpc: \
+  disable_dcerpc_frag \
+  memcap 50000
+
+In addition to the defaults, detect on DCE/RPC (or TCP) ports 135 and 2103
+(overrides default).  Set memory cap for desegmentation/defragmentation to
+200,000 kilobytes.  Create a reassembly packet every time through the preprocessor
+if there is data in the desegmentation/defragmentation buffers.
+
+preprocessor dcerpc: \
+  ports dcerpc { 135 2103 } \
+  memcap 200000 \
+  reassemble_increment 1
+ 
+-- Default --
+preprocessor dcerpc: \
+  ports smb { 139 445 } \
+  ports dcerpc { 135 } \
+  max_frag_size 3000 \
+  memcap 100000 \
+  reassemble_increment 0
+
+
+Preprocessor Events
+===================
+The DCE/RPC preprocessor uses generator ID 130 for the following events:
+
+SID   Description
+---   -----------
+1     Maximum memory usage reached
+
+-- Note --
+At the current time, there is not much to do with the dcerpc preprocessor
+other than turn it on and let it reassemble fragmented DCE/RPC packets.
+

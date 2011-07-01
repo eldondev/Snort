@@ -6,30 +6,39 @@ Sid:
 
 --
 Summary:
-This event is generated when an attempt is made to exploit a buffer overflow or denial of service vulnerability associated with FTP USER command. 
+This event is generated when an attempt is made to exploit a buffer
+overflow or denial of service vulnerability associated with FTP USER command. 
 
 --
 Impact:
-Remote access or denial of service.  A successful attack can cause a denial of service or allow remote execution of arbitrary commands with privileges of the process running the FTP server. 
+Remote access or denial of service.  A successful attack can cause a
+denial of service or allow remote execution of arbitrary commands with
+privileges of the process running the FTP server. 
 
 --
 Detailed Information:
-This event is generated when an attempt is made to exploit various vulnerabilities associated with the FTP USER command of different FTP servers. It is possible to cause a denial of service attack or gain remote access to execute arbitrary commands with the privileges of the process running the FTP server by sending an overly long argument with the FTP USER command. 
+This event is generated when an attempt is made to exploit various
+vulnerabilities associated with the FTP USER command of different FTP
+servers. It is possible to cause a denial of service attack or gain
+remote access to execute arbitrary commands with the privileges of the
+process running the FTP server by sending an overly long argument with
+the FTP USER command. 
 
 --
 Affected Systems:
-Hosts running bftpd 1.0.11.
-Hosts running BlackMoon FTP Server 1.0 through 1.5. 
-Hosts running CesarFTPD 0.98b. 
-Hosts running A-FTP Anonymous FTP Server.
-Hosts running Argosoft FRP server 1.0.
-Hosts running TYPSoft FTP Server 0.78. 
-Hosts running AnalogX proxy server 4.04 and earlier 
-Hosts running Dragon FTP server.
+	bftpd 1.0.11.
+	BlackMoon FTP Server 1.0 through 1.5. 
+	CesarFTPD 0.98b. 
+	A-FTP Anonymous FTP Server.
+	Argosoft FRP server 1.0.
+	TYPSoft FTP Server 0.78. 
+	AnalogX proxy server 4.04 and earlier 
+	Dragon FTP server.
 
 --
 Attack Scenarios:
-An attacker can supply an overly long file argument with the USER command, causing a denial of service or buffer overflow.
+An attacker can supply an overly long file argument with the USER
+command, causing a denial of service or buffer overflow.
 
 --
 Ease of Attack:
@@ -56,18 +65,5 @@ Judy Novak <judy.novak@sourcefire.com>
 
 --
 Additional References:
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2000-0943
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2002-0126
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2001-0826
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2001-0794
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2000-1194
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2000-1035
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2000-0656
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2000-0479
-
-Bugtraq:
-http://www.securityfocus.com/bid/4638
 
 --

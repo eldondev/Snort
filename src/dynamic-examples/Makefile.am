@@ -1,9 +1,9 @@
-## $Id: Makefile.am,v 1.10 2011/06/08 00:33:10 jjordan Exp $
+## $Id$
 AUTOMAKE_OPTIONS=foreign no-dependencies
 
 BUILT_SOURCES = \
-	include/snort_bounds.h \
-	include/snort_debug.h \
+	include/bounds.h \
+	include/debug.h \
 	include/preprocids.h \
 	include/profiler.h \
 	include/cpuclock.h \
@@ -25,33 +25,26 @@ BUILT_SOURCES = \
 	include/sfsnort_dynamic_detection_lib.c \
 	include/sfsnort_dynamic_detection_lib.h \
 	include/sf_snort_packet.h \
-        include/sf_protocols.h \
 	include/sf_snort_plugin_api.h \
 	include/pcap_pkthdr32.h \
 	include/stream_api.h \
 	include/str_search.h \
 	include/sf_types.h \
-	include/sfrt.h \
-	include/sfrt.c \
-	include/sfrt_dir.h \
-	include/sfrt_dir.c \
-	include/sfrt_trie.h \
-	include/sfPolicyUserData.c \
-	include/sfPolicyUserData.h \
-	include/sfPolicy.h \
-	include/treenodes.h \
-	include/signature.h \
-	include/plugin_enum.h \
-	include/obfuscation.h \
-	include/rule_option_types.h \
-	include/event.h
+    include/sfrt.h \
+    include/sfrt.c \
+    include/sfrt_dir.h \
+    include/sfrt_dir.c \
+    include/sfrt_trie.h \
+    include/sfPolicyUserData.c \
+    include/sfPolicyUserData.h \
+    include/sfPolicy.h
 
 sed_ipv6_headers = \
 	sed -e "s/->iph->ip_src/->ip4_header->source/" \
 	    -e "s/->iph->ip_dst/->ip4_header->destination/" \
 	    -e "s/->iph->/->ip4_header->/" \
 	    -e "s/->iph$$/->ip4_header/" \
-	    -e "s/orig_iph/orig_ipv4h/" \
+	    -e "s/orig_iph/orig_ip4_header/" \
 	    -e "s/ip_verhl/version_headerlength/" \
 	    -e "s/ip_tos/type_service/" \
 	    -e "s/ip_len/data_length/" \
@@ -81,8 +74,6 @@ massage_ipv6_headers = \
 sed_headers = \
 	sed -e "s/Packet /SFSnortPacket /" \
 	    -e "s/decode\.h/sf_snort_packet.h/" \
-		-e "/sfportobject\.h/d" \
-		-e "s/PortObject \*/void */g" \
 	    $$dst_header.new > $$dst_header
 
 massage_headers = \
@@ -125,14 +116,14 @@ copy_debug_header = \
 	fi
 
 replace_policy_globals = \
-	if test -f $$dst_header; then \
-		sed -e "/SharedObjectAddStarts/d" \
-		    -e "/SharedObjectAddEnds/d" \
+    if test -f $$dst_header; then \
+        sed -e "/SharedObjectAddStarts/d" \
+            -e "/SharedObjectAddEnds/d" \
             -e "/SharedObjectDeleteBegins/,/SharedObjectDeleteEnds/d" \
-		    -e "s/getDefaultPolicy()/_dpd.getDefaultPolicy()/" \
-		        $$dst_header > $$dst_header.new; \
-		mv $$dst_header.new $$dst_header; \
-	fi
+            -e "s/getDefaultPolicy()/_dpd.getDefaultPolicy()/" \
+                $$dst_header > $$dst_header.new; \
+        mv $$dst_header.new $$dst_header; \
+    fi
 
 copy_headers = \
 	mkdir -p include; \
@@ -147,58 +138,30 @@ copy_headers = \
 		echo "Updating " $$dst_header; \
 		cp $$src_header $$dst_header; \
 	fi
-
-sed_treenode_header = \
-	sed -f $(srcdir)/../dynamic-preprocessors/treenodes.sed $$dst_header.new > $$dst_header
-
-copy_treenode_header = \
-	mkdir -p include; \
-	mkdir -p build; \
-	if test -f $$dst_header; then \
-		x=`diff $$src_header $$dst_header.new.new >> /dev/null`; \
-		if test "$$x" != "0"; then \
-			echo "Updating " $$dst_header; \
-			cp $$src_header $$dst_header.new; \
-			$(sed_treenode_header); \
-		fi \
-	else \
-		echo "Updating " $$dst_header; \
-		cp $$src_header $$dst_header.new; \
-		$(sed_treenode_header); \
-	fi
-
+    
 # From main src tree
-include/snort_debug.h: $(srcdir)/../snort_debug.h
+include/debug.h: $(srcdir)/../debug.h 
 	@src_header=$?; dst_header=$@; $(copy_debug_header)
 
 include/preprocids.h: $(srcdir)/../preprocids.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
-
+    
 include/profiler.h: $(srcdir)/../profiler.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
-
+    
 include/cpuclock.h: $(srcdir)/../cpuclock.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
-
+    
 include/pcap_pkthdr32.h: $(srcdir)/../pcap_pkthdr32.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
-
-include/snort_bounds.h: $(srcdir)/../snort_bounds.h
+    
+include/bounds.h: $(srcdir)/../bounds.h 
 	@src_header=$?; dst_header=$@; $(copy_headers)
 
-include/ipv6_port.h: $(srcdir)/../ipv6_port.h
+include/ipv6_port.h: $(srcdir)/../ipv6_port.h 
 	@src_header=$?; dst_header=$@; $(massage_ipv6_headers)
 
 include/sf_types.h: $(srcdir)/../sf_types.h
-	@src_header=$?; dst_header=$@; $(copy_headers)
-
-include/obfuscation.h: $(srcdir)/../obfuscation.h
-	@src_header=$?; dst_header=$@; $(massage_headers)
-
-include/rule_option_types.h: $(srcdir)/../rule_option_types.h
-	@src_header=$?; dst_header=$@; $(copy_headers)
-
-include/event.h: $(srcdir)/../event.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
 
 # From dynamic-plugins
@@ -215,7 +178,7 @@ include/sf_dynamic_meta.h: $(srcdir)/../dynamic-plugins/sf_dynamic_meta.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
 
 include/sf_dynamic_preprocessor.h: $(srcdir)/../dynamic-plugins/sf_dynamic_preprocessor.h
-	@src_header=$?; dst_header=$@; $(massage_headers)
+	@src_header=$?; dst_header=$@; $(copy_headers)
 
 # From dynamic-plugins/sf_preproc_example
 include/sf_dynamic_preproc_lib.c: $(srcdir)/../dynamic-plugins/sf_preproc_example/sf_dynamic_preproc_lib.c
@@ -263,10 +226,10 @@ include/sfrt_trie.h: $(srcdir)/../sfutil/sfrt_trie.h
 
 include/sfPolicyUserData.c: $(srcdir)/../sfutil/sfPolicyUserData.c
 	@src_header=$?; dst_header=$@; $(copy_headers); $(replace_policy_globals)
-
+    
 include/sfPolicyUserData.h: $(srcdir)/../sfutil/sfPolicyUserData.h
 	@src_header=$?; dst_header=$@; $(copy_headers); $(replace_policy_globals)
-
+    
 include/sfPolicy.h: $(srcdir)/../sfutil/sfPolicy.h
 	@src_header=$?; dst_header=$@; $(copy_headers); $(replace_policy_globals)
 
@@ -281,9 +244,6 @@ include/sfsnort_dynamic_detection_lib.h: $(srcdir)/../dynamic-plugins/sf_engine/
 include/sf_snort_packet.h: $(srcdir)/../dynamic-plugins/sf_engine/sf_snort_packet.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
 
-include/sf_protocols.h: $(srcdir)/../sf_protocols.h
-	@src_header=$?; dst_header=$@; $(copy_headers)
-
 include/sf_snort_plugin_api.h: $(srcdir)/../dynamic-plugins/sf_engine/sf_snort_plugin_api.h
 	@src_header=$?; dst_header=$@; $(copy_headers)
 
@@ -294,21 +254,10 @@ include/stream_api.h: $(srcdir)/../preprocessors/stream_api.h
 include/str_search.h: $(srcdir)/../preprocessors/str_search.h
 	@src_header=$?; dst_header=$@; $(massage_headers)
 
-include/treenodes.h: $(srcdir)/../treenodes.h
-	@src_header=$?; dst_header=$@; $(copy_treenode_header)
-
-include/signature.h: $(srcdir)/../signature.h
-	@src_header=$?; dst_header=$@; $(copy_treenode_header)
-
-include/plugin_enum.h: $(srcdir)/../plugin_enum.h
-	@src_header=$?; dst_header=$@; $(copy_headers)
-
-INCLUDES = @INCLUDES@
+INCLUDES = @INCLUDES@ 
 
 if HAVE_DYNAMIC_PLUGINS
-if BUILD_DYNAMIC_EXAMPLES
 SUBDIRS = dynamic-preprocessor dynamic-rule
-endif
 endif
 
 clean-local:

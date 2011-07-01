@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steven Sturges
  *
@@ -24,6 +24,10 @@
 #ifndef _SF_DYNAMIC_ENGINE_H_
 #define _SF_DYNAMIC_ENGINE_H_
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifndef WIN32
 #include <sys/types.h>
 #else
@@ -32,8 +36,9 @@
 
 #include "sf_dynamic_define.h"
 #include "sf_dynamic_meta.h"
+#include "sf_types.h"
 
-/* specifies that a function does not return
+/* specifies that a function does not return 
  * used for quieting Visual Studio warnings
  */
 #ifdef WIN32
@@ -56,64 +61,40 @@ typedef int (*OTNHasFunction)(void* pRule, DynamicOptionType, int flowFlag);
  * Fast Pattern Content information. */
 typedef struct _FPContentInfo
 {
-    char *content;
     int length;
-    int offset;
-    int depth;
+    char *content;
     char noCaseFlag;
-    char exception_flag;
-    char is_relative;
-    char fp;
-    char fp_only;
-    char uri_buffer;
-    u_int16_t fp_offset;
-    u_int16_t fp_length;
-    struct _FPContentInfo *next;
-
 } FPContentInfo;
-
-typedef int (*GetDynamicContentsFunction)(void *, int, FPContentInfo **);
-typedef int (*GetDynamicPreprocOptFpContentsFunc)(void *, FPContentInfo **);
+/* Parameters are rule info pointer, int to indicate URI or NORM,
+ * and list pointer */
+#define FASTPATTERN_NORMAL 0x01
+#define FASTPATTERN_URI    0x02
+typedef int (*GetFPContentFunction)(void *, int, FPContentInfo**, int);
 typedef void (*RuleFreeFunc)(void *);
 
 /* ruleInfo is passed to OTNCheckFunction when the fast pattern matches. */
 typedef int (*RegisterRule)(
     u_int32_t, u_int32_t, void *,
     OTNCheckFunction, OTNHasFunction,
-    int, GetDynamicContentsFunction, RuleFreeFunc,
-    GetDynamicPreprocOptFpContentsFunc
+    int, GetFPContentFunction, RuleFreeFunc
 );
 typedef u_int32_t (*RegisterBit)(char *, int);
-typedef void (*UnregisterBit)(char *, int);
 typedef int (*CheckFlowbit)(void *, int, u_int32_t);
 typedef int (*DetectAsn1)(void *, void *, const u_int8_t *);
 typedef int (*PreprocOptionEval)(void *p, const u_int8_t **cursor, void *dataPtr);
 typedef int (*PreprocOptionInit)(char *, char *, void **dataPtr);
 typedef void (*PreprocOptionCleanup)(void *dataPtr);
-typedef int (*SfUnfold)(const u_int8_t *, u_int32_t , u_int8_t *, u_int32_t , u_int32_t *);
-typedef int (*SfBase64Decode)(u_int8_t *, u_int32_t , u_int8_t *, u_int32_t , u_int32_t *);
 #define PREPROC_OPT_EQUAL       0
 #define PREPROC_OPT_NOT_EQUAL   1
 typedef u_int32_t (*PreprocOptionHash)(void *);
 typedef int (*PreprocOptionKeyCompare)(void *, void *);
-/* Function prototype for rule options that want to add patterns to the
- * fast pattern matcher */
-typedef int (*PreprocOptionFastPatternFunc)
-    (void *rule_opt_data, int protocol, int direction, FPContentInfo **info);
-typedef int (*PreprocOptionOtnHandler)(void *);
-typedef int (*PreprocOptionByteOrderFunc)(void *, int32_t);
-
 typedef int (*RegisterPreprocRuleOpt)(
     char *, PreprocOptionInit, PreprocOptionEval,
-    PreprocOptionCleanup, PreprocOptionHash, PreprocOptionKeyCompare,
-    PreprocOptionOtnHandler, PreprocOptionFastPatternFunc);
+    PreprocOptionCleanup, PreprocOptionHash, PreprocOptionKeyCompare);
 typedef int (*PreprocRuleOptInit)(void *);
 
-typedef void (*SessionDataFree)(void *);
-typedef int (*SetRuleData)(void *, void *, uint32_t, SessionDataFree);
-typedef void *(*GetRuleData)(void *, uint32_t);
-typedef void * (*AllocRuleData)(size_t);
-typedef void (*FreeRuleData)(void *);
+typedef void (*SetRuleData)(void *, void *);
+typedef void *(*GetRuleData)(void *);
 
 /* Info Data passed to dynamic engine plugin must include:
  * version
@@ -128,7 +109,7 @@ typedef void (*FreeRuleData)(void *);
  */
 #include "sf_dynamic_common.h"
 
-#define ENGINE_DATA_VERSION 6
+#define ENGINE_DATA_VERSION 5
 
 typedef void *(*PCRECompileFunc)(const char *, int, const char **, int *, const unsigned char *);
 typedef void *(*PCREStudyFunc)(const void *, int, const char **);
@@ -137,12 +118,8 @@ typedef int (*PCREExecFunc)(const void *, const void *, const char *, int, int, 
 typedef struct _DynamicEngineData
 {
     int version;
-
-    SFDataBuffer *altBuffer;
-    SFDataPointer *altDetect;
-    SFDataPointer *fileDataBuf;
-    UriInfo *uriBuffers[HTTP_BUFFER_MAX];
-
+    u_int8_t *altBuffer;
+    UriInfo *uriBuffers[MAX_URIINFOS];
     RegisterRule ruleRegister;
     RegisterBit flowbitRegister;
     CheckFlowbit flowbitCheck;
@@ -158,7 +135,7 @@ typedef struct _DynamicEngineData
     GetRuleData getRuleData;
 
     DebugMsgFunc debugMsg;
-#ifdef SF_WCHAR
+#ifdef HAVE_WCHAR_H
     DebugWideMsgFunc debugWideMsg;
 #endif
 
@@ -168,21 +145,8 @@ typedef struct _DynamicEngineData
     PCRECompileFunc pcreCompile;
     PCREStudyFunc pcreStudy;
     PCREExecFunc pcreExec;
-    SfUnfold sfUnfold;
-    SfBase64Decode sfbase64decode;
-    GetAltDetectFunc GetAltDetect;
-    SetAltDetectFunc SetAltDetect;
-    IsDetectFlagFunc Is_DetectFlag;
-    DetectFlagDisableFunc DetectFlag_Disable;
-
-    AllocRuleData allocRuleData;
-    FreeRuleData freeRuleData;
-
-    UnregisterBit flowbitUnregister;
 
 } DynamicEngineData;
-
-extern DynamicEngineData _ded;
 
 /* Function prototypes for Dynamic Engine Plugins */
 void CloseDynamicEngineLibs(void);
@@ -200,18 +164,5 @@ int ValidateDynamicEngines(void);
  * fatalMsg did not return - use instead of fatalMsg
  */
 NORETURN void DynamicEngineFatalMessage(const char *format, ...);
-
-typedef struct _PreprocessorOptionInfo
-{
-    PreprocOptionInit optionInit;
-    PreprocOptionEval optionEval;
-    PreprocOptionCleanup optionCleanup;
-    void             *data;
-    PreprocOptionHash optionHash;
-    PreprocOptionKeyCompare optionKeyCompare;
-    PreprocOptionOtnHandler otnHandler;
-    PreprocOptionFastPatternFunc optionFpFunc;
-
-} PreprocessorOptionInfo;
 
 #endif /* _SF_DYNAMIC_ENGINE_H_ */

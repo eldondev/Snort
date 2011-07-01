@@ -1,7 +1,7 @@
 /* $Id */
 
 /*
-** Copyright (C) 2006-2011 Sourcefire, Inc.
+** Copyright (C) 2006-2009 Sourcefire, Inc.
 **
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -28,7 +28,7 @@
  *
  * Alert for DNS client rdata buffer overflow.
  * Alert for Obsolete or Experimental RData types (per RFC 1035)
- *
+ * 
  */
 
 #ifdef HAVE_CONFIG_H
@@ -41,11 +41,11 @@
 
 #include "sf_snort_packet.h"
 #include "sf_dynamic_preprocessor.h"
+#include "sf_snort_plugin_api.h"
 
 #include "preprocids.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "spp_dns.h"
-#include "sf_preproc_info.h"
 
 #include <stdio.h>
 #include <syslog.h>
@@ -64,22 +64,10 @@ PreprocStats dnsPerfStats;
 #include "sf_types.h"
 #include "sfPolicy.h"
 #include "sfPolicyUserData.h"
-#include "snort_bounds.h"
 
 #ifdef TARGET_BASED
 int16_t dns_app_id = SFTARGET_UNKNOWN_PROTOCOL;
 #endif
-
-const int MAJOR_VERSION = 1;
-const int MINOR_VERSION = 1;
-const int BUILD_VERSION = 4;
-#ifdef SUP_IP6
-const char *PREPROC_NAME = "SF_DNS (IPV6)";
-#else
-const char *PREPROC_NAME = "SF_DNS";
-#endif
-
-#define SetupDNS DYNAMIC_PREPROC_SETUP
 
 /*
  * Generator id. Define here the same as the official registry
@@ -96,7 +84,7 @@ static void PrintDNSConfig(DNSConfig *);
 static void FreeDNSSessionData( void* );
 static void  ParseDNSArgs(DNSConfig *, u_char*);
 static void ProcessDNS( void*, void* );
-static inline int CheckDNSPort(DNSConfig *, uint16_t);
+static INLINE int CheckDNSPort(DNSConfig *, uint16_t);
 static void DNSReset(int, void *);
 static void DNSResetStats(int, void *);
 static void _addPortsToStream5Filter(DNSConfig *, tSfPolicyId);
@@ -119,6 +107,8 @@ static void DNSCleanExit(int, void *);
 
 #define DNS_RR_PTR 0xC0
 
+extern DynamicPreprocessorData _dpd;
+
 static tSfPolicyUserContextId dns_config = NULL;
 DNSConfig *dns_eval_config = NULL;
 
@@ -135,13 +125,13 @@ static void DNSReloadSwapFree(void *);
  * to corresponding preprocessor initialization function.
  *
  * PARAMETERS:  None.
- *
+ * 
  * RETURNS: Nothing.
  *
  */
 void SetupDNS(void)
 {
-    /* Link preprocessor keyword to initialization function
+    /* Link preprocessor keyword to initialization function 
      * in the preprocessor list. */
 #ifndef SNORT_RELOAD
     _dpd.registerPreproc( "dns", DNSInit );
@@ -153,13 +143,13 @@ void SetupDNS(void)
 
 /* Initializes the DNS preprocessor module and registers
  * it in the preprocessor list.
- *
- * PARAMETERS:
+ * 
+ * PARAMETERS:  
  *
  * argp:        Pointer to argument string to process for config
  *                      data.
  *
- * RETURNS:     Nothing.
+ * RETURNS:     Nothing. 
  */
 static void DNSInit( char* argp )
 {
@@ -215,7 +205,7 @@ static void DNSInit( char* argp )
         DynamicPreprocessorFatalMessage("Could not allocate memory for "
                                         "DNS configuration.\n");
     }
-
+ 
     sfPolicyUserDataSetCurrent(dns_config, pPolicyConfig);
 
     ParseDNSArgs(pPolicyConfig, (u_char *)argp);
@@ -227,13 +217,13 @@ static void DNSInit( char* argp )
 #endif
 }
 
-/* Parses and processes the configuration arguments
+/* Parses and processes the configuration arguments 
  * supplied in the DNS preprocessor rule.
  *
- * PARAMETERS:
+ * PARAMETERS: 
  *
  * argp:        Pointer to string containing the config arguments.
- *
+ * 
  * RETURNS:     Nothing.
  */
 static void ParseDNSArgs(DNSConfig *config, u_char* argp)
@@ -244,35 +234,35 @@ static void ParseDNSArgs(DNSConfig *config, u_char* argp)
 
     if (config == NULL)
         return;
-
+    
     /* Set up default port to listen on */
     config->ports[ PORT_INDEX( DNS_PORT ) ] |= CONV_PORT(DNS_PORT);
-
+    
     /* Sanity check(s) */
     if ( !argp )
     {
         PrintDNSConfig(config);
         return;
     }
-
+    
     argcpyp = strdup( (char*) argp );
-
+    
     if ( !argcpyp )
     {
         DynamicPreprocessorFatalMessage("Could not allocate memory to parse DNS options.\n");
         return;
     }
-
+    
     cur_tokenp = strtok( argcpyp, " ");
-
+    
     while ( cur_tokenp )
     {
         if ( !strcmp( cur_tokenp, DNS_PORTS_KEYWORD ))
         {
-            /* If the user specified ports, remove 'DNS_PORT' for now since
+            /* If the user specified ports, remove 'DNS_PORT' for now since 
              * it now needs to be set explicitely. */
             config->ports[ PORT_INDEX( DNS_PORT ) ] = 0;
-
+            
             /* Eat the open brace. */
             cur_tokenp = strtok( NULL, " ");
             if (( !cur_tokenp ) || ( strcmp(cur_tokenp, "{" )))
@@ -284,13 +274,13 @@ static void ParseDNSArgs(DNSConfig *config, u_char* argp)
                 //free(argcpyp);
                 //return;
             }
-
+            
             cur_tokenp = strtok( NULL, " ");
             while (( cur_tokenp ) && strcmp(cur_tokenp, "}" ))
             {
                 if ( !isdigit( (int)cur_tokenp[0] ))
                 {
-                    DynamicPreprocessorFatalMessage("%s(%d) Bad port %s.\n",
+                    DynamicPreprocessorFatalMessage("%s(%d) Bad port %s.\n", 
                                                     *(_dpd.config_file), *(_dpd.config_line), cur_tokenp );
                     //free(argcpyp);
                     //return;
@@ -298,7 +288,7 @@ static void ParseDNSArgs(DNSConfig *config, u_char* argp)
                 else
                 {
                     port = atoi( cur_tokenp );
-                    if( port < 0 || port > MAX_PORTS )
+                    if( port < 0 || port > MAX_PORTS ) 
                     {
                         DynamicPreprocessorFatalMessage("%s(%d) Port value illegitimate: %s\n",
                                                         *(_dpd.config_file), *(_dpd.config_line),
@@ -306,10 +296,10 @@ static void ParseDNSArgs(DNSConfig *config, u_char* argp)
                         //free(argcpyp);
                         //return;
                     }
-
+                    
                     config->ports[ PORT_INDEX( port ) ] |= CONV_PORT(port);
                 }
-
+                
                 cur_tokenp = strtok( NULL, " ");
             }
         }
@@ -336,16 +326,16 @@ static void ParseDNSArgs(DNSConfig *config, u_char* argp)
             DynamicPreprocessorFatalMessage("Invalid argument: %s\n", cur_tokenp);
             return;
         }
-
+        
         cur_tokenp = strtok( NULL, " " );
     }
-
+    
     PrintDNSConfig(config);
     free(argcpyp);
 }
 
-/* Display the configuration for the DNS preprocessor.
- *
+/* Display the configuration for the DNS preprocessor. 
+ * 
  * PARAMETERS:  None.
  *
  * RETURNS: Nothing.
@@ -356,11 +346,11 @@ static void PrintDNSConfig(DNSConfig *config)
 
     if (config == NULL)
         return;
-
+    
     _dpd.logMsg("DNS config: \n");
 #if 0
-    _dpd.logMsg("    Autodetection: %s\n",
-        config->autodetect ?
+    _dpd.logMsg("    Autodetection: %s\n", 
+        config->autodetect ? 
         "ENABLED":"DISABLED");
 #endif
     _dpd.logMsg("    DNS Client rdata txt Overflow Alert: %s\n",
@@ -372,10 +362,10 @@ static void PrintDNSConfig(DNSConfig *config)
     _dpd.logMsg("    Experimental DNS RR Types Alert: %s\n",
         config->enabled_alerts & DNS_ALERT_EXPERIMENTAL_TYPES ?
         "ACTIVE" : "INACTIVE" );
-
+    
     /* Printing ports */
-    _dpd.logMsg("    Ports:");
-    for(index = 0; index < MAX_PORTS; index++)
+    _dpd.logMsg("    Ports:"); 
+    for(index = 0; index < MAX_PORTS; index++) 
     {
         if( config->ports[ PORT_INDEX(index) ] & CONV_PORT(index) )
         {
@@ -385,9 +375,9 @@ static void PrintDNSConfig(DNSConfig *config)
     _dpd.logMsg("\n");
 }
 
-/* Retrieves the DNS data block registered with the stream
+/* Retrieves the DNS data block registered with the stream 
  * session associated w/ the current packet. If none exists,
- * allocates it and registers it with the stream API.
+ * allocates it and registers it with the stream API. 
  *
  * PARAMETERS:
  *
@@ -433,21 +423,21 @@ DNSSessionData * GetDNSSessionData(SFSnortPacket *p, DNSConfig *config)
         memset(dnsSessionData, 0, sizeof(DNSSessionData));
         return dnsSessionData;
     }
-
+    
     /* More Sanity check(s) */
     if ( !p->stream_session_ptr )
     {
         return NULL;
     }
-
+    
     dnsSessionData = calloc( 1, sizeof( DNSSessionData ));
-
+    
     if ( !dnsSessionData )
         return NULL;
-
+    
     /*Register the new DNS data block in the stream session. */
-    _dpd.streamAPI->set_application_data(
-        p->stream_session_ptr,
+    _dpd.streamAPI->set_application_data( 
+        p->stream_session_ptr, 
         PP_DNS, dnsSessionData, FreeDNSSessionData );
 
     return dnsSessionData;
@@ -456,7 +446,7 @@ DNSSessionData * GetDNSSessionData(SFSnortPacket *p, DNSConfig *config)
 /* Registered as a callback with the DNS data when they are
  * added to the stream session. Called by stream when a
  * session is about to be destroyed to free that data.
- *
+ * 
  * PARAMETERS:
  *
  * application_data:  Pointer to the DNS data
@@ -481,7 +471,7 @@ static void FreeDNSSessionData( void* application_data )
  * RETURNS: DNS_TRUE, if the port is indeed an DNS server port.
  *      DNS_FALSE, otherwise.
  */
-static inline int CheckDNSPort(DNSConfig *config, uint16_t port)
+static INLINE int CheckDNSPort(DNSConfig *config, uint16_t port)
 {
     return config->ports[PORT_INDEX(port)] & CONV_PORT(port);
 }
@@ -730,7 +720,7 @@ uint16_t ParseDNSName(const unsigned char *data,
             }
             break;
         }
-
+        
         /* Go to the next portion of the name */
         dnsSessionData->curr_txt.name_state = DNS_RESP_STATE_NAME_SIZE;
     }
@@ -858,7 +848,7 @@ uint16_t ParseDNSAnswer(const unsigned char *data,
             return bytes_unused;
         }
     }
-
+    
     switch (dnsSessionData->curr_rec_state)
     {
     case DNS_RESP_STATE_RR_TYPE:
@@ -916,7 +906,7 @@ uint16_t ParseDNSAnswer(const unsigned char *data,
         while (dnsSessionData->bytes_seen_curr_rec < 4)
         {
             dnsSessionData->bytes_seen_curr_rec++;
-            dnsSessionData->curr_rr.ttl |=
+            dnsSessionData->curr_rr.ttl |= 
                 (uint8_t)*data << (4-dnsSessionData->bytes_seen_curr_rec)*8;
             data++;
             bytes_unused--;
@@ -1052,7 +1042,7 @@ uint16_t CheckRRTypeTXTVuln(const unsigned char *data,
             }
             break;
         }
-
+        
         /* Go to the next portion of the name */
         dnsSessionData->curr_txt.name_state = DNS_RESP_STATE_RR_NAME_SIZE;
     }
@@ -1178,7 +1168,7 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
         }
 
         /* Print out the header (but only once -- when we're ready to parse the Questions */
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
         if ((dnsSessionData->curr_rec_state == DNS_RESP_STATE_Q_NAME) &&
             (dnsSessionData->curr_rec == 0))
         {
@@ -1216,7 +1206,7 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
                             dnsSessionData->curr_q.dns_class);
                             );
                     dnsSessionData->curr_rec_state = DNS_RESP_STATE_Q_NAME;
-                    dnsSessionData->curr_rec++;
+                    dnsSessionData->curr_rec++;  
                 }
                 if (bytes_unused > 0)
                 {
@@ -1252,7 +1242,7 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
                 {
                 case DNS_RESP_STATE_RR_RDATA_START:
                     DEBUG_WRAP(
-                        DebugMessage(DEBUG_DNS,
+                        DebugMessage(DEBUG_DNS, 
                                     "DNS ANSWER RR %d: type %d, class %d, "
                                     "ttl %d rdlength %d\n", i,
                                     dnsSessionData->curr_rr.type,
@@ -1308,7 +1298,7 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
                 {
                 case DNS_RESP_STATE_RR_RDATA_START:
                     DEBUG_WRAP(
-                        DebugMessage(DEBUG_DNS,
+                        DebugMessage(DEBUG_DNS, 
                                     "DNS AUTH RR %d: type %d, class %d, "
                                     "ttl %d rdlength %d\n", i,
                                     dnsSessionData->curr_rr.type,
@@ -1364,7 +1354,7 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
                 {
                 case DNS_RESP_STATE_RR_RDATA_START:
                     DEBUG_WRAP(
-                        DebugMessage(DEBUG_DNS,
+                        DebugMessage(DEBUG_DNS, 
                                     "DNS ADDITONAL RR %d: type %d, class %d, "
                                     "ttl %d rdlength %d\n", i,
                                     dnsSessionData->curr_rr.type,
@@ -1410,12 +1400,12 @@ void ParseDNSResponseMessage(SFSnortPacket *p, DNSSessionData *dnsSessionData)
     return;
 }
 
-/* Main runtime entry point for DNS preprocessor.
- * Analyzes DNS packets for anomalies/exploits.
- *
+/* Main runtime entry point for DNS preprocessor. 
+ * Analyzes DNS packets for anomalies/exploits. 
+ * 
  * PARAMETERS:
  *
- * p:           Pointer to current packet to process.
+ * p:           Pointer to current packet to process. 
  * context:     Pointer to context block, not used.
  *
  * RETURNS:     Nothing.
@@ -1426,7 +1416,7 @@ static void ProcessDNS( void* packetPtr, void* context )
     uint8_t src = 0;
     uint8_t dst = 0;
     uint8_t known_port = 0;
-    uint8_t direction = 0;
+    uint8_t direction = 0; 
     SFSnortPacket* p;
 #ifdef TARGET_BASED
     int16_t app_id = SFTARGET_UNKNOWN_PROTOCOL;
@@ -1441,7 +1431,7 @@ static void ProcessDNS( void* packetPtr, void* context )
         return;
 
     dns_eval_config = config;
-
+    
     p = (SFSnortPacket*) packetPtr;
 
     /* check if we have data to work with */
@@ -1450,7 +1440,7 @@ static void ProcessDNS( void* packetPtr, void* context )
 
     /* Attempt to get a previously allocated DNS block. If none exists,
      * allocate and register one with the stream layer. */
-    dnsSessionData = _dpd.streamAPI->get_application_data(
+    dnsSessionData = _dpd.streamAPI->get_application_data( 
         p->stream_session_ptr, PP_DNS );
 
     if (dnsSessionData == NULL)
@@ -1496,7 +1486,7 @@ static void ProcessDNS( void* packetPtr, void* context )
             return;
         }
     }
-
+    
     /* For TCP, do a few extra checks... */
     if (p->tcp_header)
     {
@@ -1533,7 +1523,7 @@ static void ProcessDNS( void* packetPtr, void* context )
         }
 
         /* Get the direction of the packet. */
-        direction = ( (p->flags & FLAG_FROM_SERVER ) ?
+        direction = ( (p->flags & FLAG_FROM_SERVER ) ? 
                         DNS_DIR_FROM_SERVER : DNS_DIR_FROM_CLIENT );
     }
     else if (p->udp_header)
@@ -1556,13 +1546,13 @@ static void ProcessDNS( void* packetPtr, void* context )
     }
 
     PREPROC_PROFILE_START(dnsPerfStats);
-
+    
     /* Check the stream session. If it does not currently
      * have our DNS data-block attached, create one.
      */
     if (dnsSessionData == NULL)
         dnsSessionData = GetDNSSessionData(p, config);
-
+    
     if ( !dnsSessionData )
     {
         /* Could not get/create the session data for this packet. */
@@ -1581,7 +1571,7 @@ static void ProcessDNS( void* packetPtr, void* context )
     {
         ParseDNSResponseMessage(p, dnsSessionData);
     }
-
+    
     PREPROC_PROFILE_END(dnsPerfStats);
 }
 
@@ -1625,7 +1615,7 @@ static void _addServicesToStream5Filter(tSfPolicyId policy_id)
 
 static int DnsFreeConfigPolicy(
         tSfPolicyUserContextId config,
-        tSfPolicyId policyId,
+        tSfPolicyId policyId, 
         void* pData
         )
 {
@@ -1715,7 +1705,7 @@ static void DNSReload(char *argp)
         DynamicPreprocessorFatalMessage("Could not allocate memory for "
                                         "DNS configuration.\n");
     }
-
+ 
     sfPolicyUserDataSetCurrent(dns_swap_config, pPolicyConfig);
 
     ParseDNSArgs(pPolicyConfig, (u_char *)argp);

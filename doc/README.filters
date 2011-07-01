@@ -1,9 +1,8 @@
 OVERVIEW OF FILTERS
 ===================
 
-This document describes the detection, rate, and event filtering, introduced
-in Snort 2.8.5, which control the generation, processing, and logging of events
-as follows:
+This document describes the detection, rate, and event filtering in Snort 2.8.5
+which control the generation, processing, and logging of events as follows:
 
 * detection_filter is a new rule option that replaces the current threshold
   keyword in a rule.  It defines a rate which must be exceeded by a source or

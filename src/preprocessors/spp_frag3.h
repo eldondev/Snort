@@ -1,7 +1,7 @@
-/* $Id: spp_frag3.h,v 1.13 2011/02/09 23:23:29 jjordan Exp $ */
+/* $Id$ */
 
 /*
-** Copyright (C) 2004-2011 Sourcefire, Inc.
+** Copyright (C) 2004-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2004 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify

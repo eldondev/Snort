@@ -1,0 +1,64 @@
+Rule: 
+
+--
+Sid: 
+100000104
+
+-- 
+Summary: 
+This event is generated when an empty UDP packet is sent to port 27777, where 
+Amp II 3D game servers typically listen.
+
+-- 
+
+Impact: 
+After receiving such a packet, the server will fall into an infinite loop, 
+potentially consuming all resources on the host system. The administrator will 
+need to restart the game server, and possibly the host system.
+
+--
+Detailed Information:
+Amp II 3D servers listen to UDP port 27777 for commands. Upon receiving an 
+empty UDP packet to that port, the server falls into an infinite loop, possibly 
+consuming all resources on the host system. The administrator must restart the 
+game server and/or the host system.
+
+--
+Affected Systems:
+Amp II 3D Game Engine
+Amp Gore: Ultimate Soldier 1.50
+
+--
+
+Attack Scenarios: 
+A script that generates empty UDP packets can be used to perform this attack.
+
+-- 
+
+Ease of Attack: 
+Simple; public exploits exist.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+No known patches or workarounds exist. System administrators may be able to 
+reject these packets at their firewall, depending upon the abilities of the 
+firewall system they use.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

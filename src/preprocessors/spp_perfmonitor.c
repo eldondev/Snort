@@ -1,8 +1,8 @@
-/* $Id: spp_perfmonitor.c,v 1.44 2011/06/08 00:33:18 jjordan Exp $
+/* $Id$ 
 **
 **  spp_perfmonitor.c
 **
-**  Copyright (C) 2002-2011 Sourcefire, Inc.
+**  Copyright (C) 2002-2009 Sourcefire, Inc.
 **  Marc Norton <mnorton@sourcefire.com>
 **  Dan Roelker <droelker@sourcefire.com>
 **
@@ -29,22 +29,22 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "plugbase.h"
 #include "mstring.h"
 #include "util.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "parser.h"
-#include "sfdaq.h"
+
 #include "snort.h"
 #include "perf.h"
 #include "perf-base.h"
+
 #include "profiler.h"
+
+extern SnortConfig *snort_conf_for_parsing;
+extern pcap_t *pcap_handle;
+extern SFBASE sfBase;
+extern SFFLOW sfFlow;
 
 SFPERF *perfmon_config = NULL;
 
@@ -55,6 +55,7 @@ static void PerfMonitorInit(char *);
 static void ParsePerfMonitorArgs(SFPERF *, char *);
 static void ProcessPerfMonitor(Packet *, void *);
 static void PerfMonitorCleanExit(int, void *);
+static void PerfMonitorRestart(int, void *);
 static void PerfMonitorReset(int, void *);
 static void PerfMonitorResetStats(int, void *);
 static void PerfMonitorFreeConfig(SFPERF *);
@@ -74,7 +75,7 @@ PreprocStats perfmonStats;
 /*
  * Function: SetupPerfMonitor()
  *
- * Purpose: Registers the preprocessor keyword and initialization
+ * Purpose: Registers the preprocessor keyword and initialization 
  *          function into the preprocessor list.  This is the function that
  *          gets called from InitPreprocessors() in plugbase.c.
  *
@@ -85,7 +86,7 @@ PreprocStats perfmonStats;
  */
 void SetupPerfMonitor(void)
 {
-    /* link the preprocessor keyword to the init function in
+    /* link the preprocessor keyword to the init function in 
        the preproc list */
 #ifndef SNORT_RELOAD
     RegisterPreprocessor("PerfMonitor", PerfMonitorInit);
@@ -111,7 +112,7 @@ void SetupPerfMonitor(void)
 static void PerfMonitorInit(char *args)
 {
     DEBUG_WRAP(DebugMessage(DEBUG_PLUGIN,"Preprocessor: PerfMonitor Initialized\n"););
-
+    
     //not policy specific. Perf monitor configuration should be in the default
     //configuration file.
     if (getParserPolicy() != 0)
@@ -131,15 +132,10 @@ static void PerfMonitorInit(char *args)
             ParseError("Cannot open performance log file '%s'.", perfmon_config->file);
     }
 
-    if (perfmon_config->flowip_file != NULL)
-    {
-        if (sfOpenFlowIPStatsFile(perfmon_config))
-            ParseError("Cannot open Flow-IP log file '%s'.", perfmon_config->flowip_file);
-    }
-
     /* Set the preprocessor function into the function list */
     AddFuncToPreprocList(ProcessPerfMonitor, PRIORITY_SCANNER, PP_PERFMONITOR, PROTO_BIT__ALL);
     AddFuncToPreprocCleanExitList(PerfMonitorCleanExit, NULL, PRIORITY_LAST, PP_PERFMONITOR);
+    AddFuncToPreprocRestartList(PerfMonitorRestart, NULL, PRIORITY_LAST, PP_PERFMONITOR);
     AddFuncToPreprocResetList(PerfMonitorReset, NULL, PRIORITY_LAST, PP_PERFMONITOR);
     AddFuncToPreprocResetStatsList(PerfMonitorResetStats, NULL, PRIORITY_LAST, PP_PERFMONITOR);
 
@@ -151,9 +147,9 @@ static void PerfMonitorInit(char *args)
 /*
  * Function: ParsePerfMonitorArgs(char *)
  *
- * Purpose: Process the preprocessor arguements from the rules file and
+ * Purpose: Process the preprocessor arguements from the rules file and 
  *          initialize the preprocessor's data struct.  This function doesn't
- *          have to exist if it makes sense to parse the args in the init
+ *          have to exist if it makes sense to parse the args in the init 
  *          function.
  *
  * Arguments: args => argument list
@@ -170,11 +166,10 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
     int   iTokenNum=0;
     int   i, iTime=60, iFlow=0, iFlowMaxPort=1023, iEvents=0, iMaxPerfStats=0;
     int   iFile=0, iSnortFile=0, iConsole=0, iPkts=10000, iReset=1;
-    int   iStatsExit=0, iFlowIP=0;
-    uint32_t uiMaxFileSize=MAX_PERF_FILE_SIZE, uiFlowIPMemcap=50*1024*1024;
+    int   iStatsExit=0;
+    uint32_t uiMaxFileSize=MAX_PERF_FILE_SIZE;
     char  *file = NULL;
     char  *snortfile = NULL;
-    char  *flowipfile = NULL;
     char  *pcEnd;
 
     if (pconfig == NULL)
@@ -190,7 +185,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
     {
        Tokens = mSplit(args, " \t", 0, &iTokenNum, 0);
     }
-
+    
     for( i = 0; i < iTokenNum; i++ )
     {
         /* Check for a 'time number' parameter */
@@ -215,7 +210,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
               i++;
               if( (i< iTokenNum) && Tokens[i] )
                   iFlowMaxPort= atoi(Tokens[i]);
-
+              
               if( iFlowMaxPort > SF_MAX_PORT )
                   iFlowMaxPort = SF_MAX_PORT;
 
@@ -230,7 +225,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
             **  troubleshooting and performance tuning.
             */
             iFlow = 1;
-        }
+        }       
         else if( strcasecmp( Tokens[i],"accumulate")==0)
         {
             iReset=0;
@@ -244,7 +239,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
             /*
             **  The events paramenter gives the total number
             **  of qualified and non-qualified events during
-            **  the processing sample time.  This allows
+            **  the processing sample time.  This allows 
             **  performance problems to be seen in a general
             **  manner.
             */
@@ -302,7 +297,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
                            "value should be a positive integer.");
             }
 
-            uiMaxFileSize = SnortStrtoul(Tokens[++i], &pcEnd, 10);
+            uiMaxFileSize = strtoul(Tokens[++i], &pcEnd, 10);
 
             if (*pcEnd || (errno == ERANGE))
             {
@@ -329,29 +324,6 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
         {
             iStatsExit = 1;
         }
-        else if (!strcasecmp(Tokens[i], "flow-ip"))
-        {
-            iFlowIP = 1;
-        }
-        else if (!strcasecmp(Tokens[i], "flow-ip-file"))
-        {
-            if (i == (iTokenNum - 1))
-            {
-                ParseError("Missing 'flow-ip-file' argument.  This value is the file to save flow-ip stats to.");
-            }
-
-            iFlowIP = 1;
-            flowipfile = ProcessFileOption(snort_conf_for_parsing, Tokens[++i]);
-        }
-        else if (!strcasecmp(Tokens[i], "flow-ip-memcap"))
-        {
-            iFlowIP = 1;
-            uiFlowIPMemcap = strtol(Tokens[++i], &pcEnd, 10);
-            if(iTime <= 0 || *pcEnd)
-            {
-                ParseError("Invalid Flow-IP memcap.  The value must be in bytes described by a positive integer.");
-            }
-        }
         else
         {
             ParseError("Invalid parameter '%s' to preprocessor "
@@ -372,14 +344,6 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
     {
         sfSetPerformanceStatistics(pconfig, SFPERF_FLOW);
         pconfig->flow_max_port_to_track = iFlowMaxPort;
-
-    }
-
-    if (iFlowIP)
-    {
-        sfSetPerformanceStatistics(pconfig, SFPERF_FLOWIP);
-        pconfig->flowip_file = flowipfile;
-        pconfig->flowip_memcap = uiFlowIPMemcap;
     }
 
     if (iEvents)
@@ -387,7 +351,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
 
     if (iMaxPerfStats)
         sfSetPerformanceStatistics(pconfig, SFPERF_BASE_MAX);
-
+     
     if (iConsole)
         sfSetPerformanceStatistics(pconfig, SFPERF_CONSOLE);
 
@@ -425,7 +389,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
                 pconfig->file = snortfile;
         }
     }
-
+    
     if (iPkts)
         sfSetPerformanceStatisticsEx(pconfig, SFPERF_PKTCNT, &iPkts);
 
@@ -435,19 +399,13 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
     LogMessage("PerfMonitor config:\n");
     LogMessage("    Time:           %d seconds\n", iTime);
     LogMessage("    Flow Stats:     %s\n", iFlow ? "ACTIVE" : "INACTIVE");
-    LogMessage("    Flow IP Stats:  %s\n", iFlowIP ? "ACTIVE" : "INACTIVE");
-    if (iFlowIP)
-    {
-        LogMessage("       Flow IP Memcap:  %u\n", uiFlowIPMemcap);
-        LogMessage("       Flow IP File:    %s\n", flowipfile ? flowipfile : "INACTIVE");
-    }
     LogMessage("    Event Stats:    %s\n", iEvents ? "ACTIVE" : "INACTIVE");
-    LogMessage("    Max Perf Stats: %s\n",
+    LogMessage("    Max Perf Stats: %s\n", 
                iMaxPerfStats ? "ACTIVE" : "INACTIVE");
     LogMessage("    Console Mode:   %s\n", iConsole ? "ACTIVE" : "INACTIVE");
-    LogMessage("    File Mode:      %s\n",
+    LogMessage("    File Mode:      %s\n", 
                iFile ? file : "INACTIVE");
-    LogMessage("    SnortFile Mode: %s\n",
+    LogMessage("    SnortFile Mode: %s\n", 
                iSnortFile ? snortfile : "INACTIVE");
     LogMessage("    Packet Count:   %d\n", iPkts);
     LogMessage("    Dump Summary:   %s\n", pconfig->perf_flags & SFPERF_SUMMARY ?
@@ -467,7 +425,7 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
  *          as you like.  Try not to destroy the performance of the whole
  *          system by trying to do too much....
  *
- * Arguments: p => pointer to the current packet data struct
+ * Arguments: p => pointer to the current packet data struct 
  *
  * Returns: void function
  *
@@ -475,18 +433,33 @@ static void ParsePerfMonitorArgs(SFPERF *pconfig, char *args)
 static void ProcessPerfMonitor(Packet *p, void *context)
 {
     static int first = 1;
-    SFSType type = SFS_TYPE_OTHER;
     PROFILE_VARS;
 
     if( first )
     {
-        const DAQ_Stats_t* ps = DAQ_GetStats();
-        sfBase.pkt_stats.pkts_recv = ps->hw_packets_received;
-        sfBase.pkt_stats.pkts_drop = ps->hw_packets_dropped;
+#ifndef PCAP_CLOSE
+        if ((pcap_handle != NULL)
+#ifdef WIN32
+            && (!ScReadMode())
+#endif
+           )
+        {
+            if (UpdatePcapPktStats() != -1)
+#else
+            if (UpdatePcapPktStats(0) != -1)
+#endif
+            {
+                sfBase.pkt_stats.pkts_recv = GetPcapPktStatsRecv();
+                sfBase.pkt_stats.pkts_drop = GetPcapPktStatsDrop();
+            }
+#ifndef PCAP_CLOSE
+        }
+#endif
+
         first = 0;
     }
 
-    if(p == NULL)
+    if(p == NULL) 
     {
         return;
     }
@@ -494,7 +467,7 @@ static void ProcessPerfMonitor(Packet *p, void *context)
 
     PREPROC_PROFILE_START(perfmonStats);
     /*
-    *  Performance Statistics
+    *  Performance Statistics  
     */
     if (IsSetRotatePerfFileFlag())
     {
@@ -509,7 +482,7 @@ static void ProcessPerfMonitor(Packet *p, void *context)
             sfPerformanceStats(perfmon_config, p, p->packet_flags & PKT_REBUILT_STREAM);
         }
     }
-
+    
     if( p->tcph )
     {
         if((p->tcph->th_flags & TH_SYN) && !(p->tcph->th_flags & TH_ACK))
@@ -528,41 +501,25 @@ static void ProcessPerfMonitor(Packet *p, void *context)
     *  TCP Flow Perf
     */
     if(p->pkth && (perfmon_config->perf_flags & SFPERF_FLOW))
-    {
+   {
         /*
         **  TCP Flow Stats
         */
         if( p->tcph && !(p->packet_flags & PKT_REBUILT_STREAM))
         {
             UpdateTCPFlowStatsEx(&sfFlow, p->sp, p->dp, p->pkth->caplen);
-            type = SFS_TYPE_TCP;
         }
         /*
         *  UDP Flow Stats
         */
         else if( p->udph )
-        {
             UpdateUDPFlowStatsEx(&sfFlow, p->sp, p->dp, p->pkth->caplen);
-            type = SFS_TYPE_UDP;
-        }
+
         /*
         *  Get stats for ICMP packets
         */
         else if( p->icmph )
             UpdateICMPFlowStatsEx(&sfFlow, p->icmph->type, p->pkth->caplen);
-    }
-
-    /*
-     * IPv4 distribution flow stats
-     */
-    if (p->pkth && (perfmon_config->perf_flags & SFPERF_FLOWIP) && IsIP(p))
-    {
-        if (p->tcph && !(p->packet_flags & PKT_REBUILT_STREAM))
-            type = SFS_TYPE_TCP;
-        else if (p->udph)
-            type = SFS_TYPE_UDP;
-
-        UpdateFlowIPStats(&sfFlow, GET_SRC_IP(p), GET_DST_IP(p), p->pkth->caplen, type);
     }
 
     PREPROC_PROFILE_END(perfmonStats);
@@ -579,11 +536,6 @@ static void PerfMonitorCleanExit(int signal, void *foo)
 
     /* Close the performance stats file */
     sfSetPerformanceStatisticsEx(perfmon_config, SFPERF_FILECLOSE, NULL);
-    sfCloseFlowIPStatsFile(perfmon_config);
-    FreeFlowStats(&sfFlow);
-#ifdef LINUX_SMP
-    FreeProcPidStats(&sfBase.sfProcPidStats);
-#endif
 
     PerfMonitorFreeConfig(perfmon_config);
     perfmon_config = NULL;
@@ -597,10 +549,22 @@ static void PerfMonitorFreeConfig(SFPERF *config)
     if (config->file != NULL)
         free(config->file);
 
-    if (config->flowip_file != NULL)
-        free(config->flowip_file);
-
     free(config);
+}
+
+/**
+ * Restart func required by preprocessors
+ */
+static void PerfMonitorRestart(int signal, void *foo)
+{
+    if (perfmon_config == NULL)
+        return;
+
+    /* Close the performance stats file */
+    sfSetPerformanceStatisticsEx(perfmon_config, SFPERF_FILECLOSE, NULL);
+
+    PerfMonitorFreeConfig(perfmon_config);
+    perfmon_config = NULL;
 }
 
 static void PerfMonitorReset(int signal, void *foo)
@@ -644,7 +608,7 @@ static void PerfMonitorReload(char *args)
     AddFuncToPreprocList(ProcessPerfMonitor, PRIORITY_SCANNER, PP_PERFMONITOR, PROTO_BIT__ALL);
     AddFuncToPreprocReloadVerifyList(PerfmonReloadVerify);
 }
-
+    
 static int PerfmonReloadVerify(void)
 {
     if ((perfmon_config == NULL) || (perfmon_swap_config == NULL))

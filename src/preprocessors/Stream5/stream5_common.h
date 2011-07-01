@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************/
-
+ 
 #ifndef STREAM5_COMMON_H_
 #define STREAM5_COMMON_H_
 
@@ -26,9 +26,6 @@
 #ifndef WIN32
 #include <netinet/in.h>
 #endif
-
-#include "sfutil/bitop_funcs.h"
-#include "sfutil/sfActionQueue.h"
 #include "parser/IpAddrSet.h"
 
 #include "stream_api.h"
@@ -52,12 +49,14 @@
 #define S5_MAX_SSN_TIMEOUT      3600*24   /* max timeout (approx 1 day) */
 #define S5_MIN_SSN_TIMEOUT      1         /* min timeout (1 second) */
 #define S5_MIN_ALT_HS_TIMEOUT   0         /* min timeout (0 seconds) */
+#define S5_DEFAULT_MIN_TTL      1         /* default for min TTL */
+#define S5_MIN_MIN_TTL          1         /* min for min TTL */
+#define S5_MAX_MIN_TTL          255       /* max for min TTL */
 #define S5_TRACK_YES            1
 #define S5_TRACK_NO             0
 #define S5_MAX_MAX_WINDOW       0x3FFFc000 /* max window allowed by TCP */
                                            /* 65535 << 14 (max wscale) */
 #define S5_MIN_MAX_WINDOW       0
-#define MAX_PORTS_TO_PRINT      20
 
 #define S5_DEFAULT_MAX_QUEUED_BYTES 1048576 /* 1 MB */
 #define S5_MIN_MAX_QUEUED_BYTES 1024       /* Don't let this go below 1024 */
@@ -90,7 +89,6 @@
 #define STREAM_POLICY_HPUX10    11
 #define STREAM_POLICY_VISTA     12
 #define STREAM_POLICY_WINDOWS2K3 13
-#define STREAM_POLICY_IPS       14
 #define STREAM_POLICY_DEFAULT   STREAM_POLICY_BSD
 
 #define STREAM5_CONFIG_STATEFUL_INSPECTION      0x00000001
@@ -106,7 +104,6 @@
 #define STREAM5_CONFIG_IGNORE_ANY               0x00000400
 #define STREAM5_CONFIG_PERFORMANCE              0x00000800
 #define STREAM5_CONFIG_STATIC_FLUSHPOINTS       0x00001000
-#define STREAM5_CONFIG_IPS                      0x00002000
 #define STREAM5_CONFIG_CHECK_SESSION_HIJACKING  0x00004000
 #define STREAM5_CONFIG_NO_ASYNC_REASSEMBLY      0x00008000
 
@@ -124,11 +121,14 @@
 #define STREAM5_STATE_DROP_CLIENT           0x0010
 #define STREAM5_STATE_DROP_SERVER           0x0020
 #define STREAM5_STATE_MIDSTREAM             0x0040
-#define STREAM5_STATE_TIMEDOUT              0x0080
-#define STREAM5_STATE_UNREACH               0x0100
-#define STREAM5_STATE_SENDER_SEEN           0x0200
-#define STREAM5_STATE_RECEIVER_SEEN         0x0400
-#define STREAM5_STATE_CLOSED                0x0800
+#define STREAM5_STATE_RESET                 0x0080
+#define STREAM5_STATE_CLIENT_RESET          0x0100
+#define STREAM5_STATE_SERVER_RESET          0x0200
+#define STREAM5_STATE_TIMEDOUT              0x0400
+#define STREAM5_STATE_UNREACH               0x0800
+#define STREAM5_STATE_SENDER_SEEN           0x1000
+#define STREAM5_STATE_RECEIVER_SEEN         0x2000
+#define STREAM5_STATE_CLOSED                0x4000
 
 #define TCP_HZ          100
 
@@ -164,24 +164,12 @@ typedef struct _Stream5AppData
     StreamAppDataFree freeFunc;
 } Stream5AppData;
 
-typedef struct _Stream5AlertExtraDataInfo
-{
-    uint32_t event_id;
-    uint32_t event_second;
-    uint16_t log_func_count;
-    void *config;
-    LogExtraData extra_data_log;
-    LogFunction log_funcs[LOG_FUNC_MAX];
-} Stream5AlertExtraDataInfo;
-
 typedef struct _Stream5AlertInfo
 {
     /* For storing alerts that have already been seen on the session */
     uint32_t sid;
     uint32_t gid;
     uint32_t seq;
-    int alert_extra_data;
-    Stream5AlertExtraDataInfo extra_data;
 } Stream5AlertInfo;
 
 // this struct is organized by member size for compactness
@@ -220,41 +208,25 @@ typedef struct _Stream5LWSession
     char       protocol;
     char       direction;
     char       ignore_direction; /* flag to ignore traffic on this session */
-
-#ifdef ACTIVE_RESPONSE
-    uint8_t    response_count;
-#endif
-
-    uint8_t    inner_client_ttl, inner_server_ttl;
-    uint8_t    outer_client_ttl, outer_server_ttl;
-
 } Stream5LWSession;
 
 typedef struct _Stream5GlobalConfig
 {
-    char       disabled;
     char       track_tcp_sessions;
-    char       track_udp_sessions;
-    char       track_icmp_sessions;
     uint32_t   max_tcp_sessions;
+    char       track_udp_sessions;
     uint32_t   max_udp_sessions;
+    char       track_icmp_sessions;
     uint32_t   max_icmp_sessions;
     uint32_t   memcap;
     uint32_t   prune_log_max;
     uint32_t   flags;
-
-#ifdef ACTIVE_RESPONSE
-    uint32_t   min_response_seconds;
-    uint8_t    max_active_responses;
-#endif
 
 } Stream5GlobalConfig;
 
 typedef struct _FlushMgr
 {
     uint32_t   flush_pt;
-    uint16_t   last_count;
-    uint16_t   last_size;
     uint8_t    flush_policy;
 
 } FlushMgr;
@@ -295,12 +267,12 @@ typedef struct _Stream5TcpPolicy
 {
     uint16_t   policy;
     uint16_t   reassembly_policy;
-    uint16_t   flags;
-    uint16_t   flush_factor;
     uint32_t   session_timeout;
+    uint8_t    min_ttl;
     uint32_t   max_window;
     uint32_t   overlap_limit;
     uint32_t   hs_timeout;
+    uint16_t   flags;
     IpAddrSet   *bound_addrs;
     FlushConfig flush_config[MAX_PORTS];
 #ifdef TARGET_BASED
@@ -314,7 +286,7 @@ typedef struct _Stream5TcpPolicy
 
     uint32_t   max_consec_small_segs;
     uint32_t   max_consec_small_seg_size;
-    char       small_seg_ignore[MAX_PORTS/8];
+    char        small_seg_ignore[MAX_PORTS/8];
 
 } Stream5TcpPolicy;
 
@@ -322,9 +294,6 @@ typedef struct _Stream5TcpConfig
 {
     Stream5TcpPolicy *default_policy;
     Stream5TcpPolicy **policy_list;
-
-    void* paf_config;
-
     uint8_t num_policies;
     uint8_t port_filter[MAX_PORTS + 1];
 
@@ -410,7 +379,6 @@ typedef struct _Stream5Stats
     uint32_t   tcp_rebuilt_seqs_used;
     uint32_t   tcp_overlaps;
     uint32_t   tcp_discards;
-    uint32_t   tcp_gaps;
     uint32_t   udp_timeouts;
     uint32_t   udp_sessions_created;
     uint32_t   udp_sessions_released;
@@ -426,7 +394,7 @@ typedef struct _Stream5Stats
 
 /**Whether incoming packets should be ignored or processed.
  */
-typedef enum {
+typedef enum { 
     /**Ignore the packet. */
     PORT_MONITOR_PACKET_PROCESS = 0,
 
@@ -435,19 +403,15 @@ typedef enum {
 
 } PortMonitorPacketStates;
 
+extern Stream5Stats s5stats;
+extern uint32_t firstPacketTime;
+extern MemPool s5FlowMempool;
+
 void Stream5DisableInspection(Stream5LWSession *lwssn, Packet *p);
 
 int Stream5Expire(Packet *p, Stream5LWSession *ssn);
 void Stream5SetExpire(Packet *p, Stream5LWSession *ssn, uint32_t timeout);
-
-#ifdef ACTIVE_RESPONSE
-int Stream5GetExpire(Packet*, Stream5LWSession*);
-void Stream5ActiveResponse(Packet*, Stream5LWSession*);
-void SetTTL (Stream5LWSession*, Packet*, int client);
-#endif
-
 void MarkupPacketFlags(Packet *p, Stream5LWSession *ssn);
-
 #ifdef TARGET_BASED
 void Stream5SetApplicationProtocolIdFromHostEntry(Stream5LWSession *lwssn,
                                            HostAttributeEntry *host_entry,
@@ -460,34 +424,5 @@ int isPacketFilterDiscard(
         Packet *p,
         int ignore_any_rules
         );
-
-static inline void Stream5ResetFlowBits(Stream5LWSession *lwssn)
-{
-    StreamFlowData *flowdata;
-
-    if ((lwssn == NULL) || (lwssn->flowdata == NULL))
-        return;
-
-    flowdata = (StreamFlowData *)lwssn->flowdata->data;
-    boResetBITOP(&(flowdata->boFlowbits));
-}
-
-// shared stream state
-extern Stream5Stats s5stats;
-extern uint32_t firstPacketTime;
-extern MemPool s5FlowMempool;
-
-extern uint32_t mem_in_use;
-extern unsigned int giFlowbitSize;
-extern Stream5GlobalConfig *s5_global_eval_config;
-extern Stream5TcpConfig *s5_tcp_eval_config;
-extern Stream5UdpConfig *s5_udp_eval_config;
-extern Stream5IcmpConfig *s5_icmp_eval_config;
-extern tSfPolicyUserContextId s5_config;
-extern tSfActionQueueId decoderActionQ;
-
-#ifdef SNORT_RELOAD
-extern tSfPolicyUserContextId s5_swap_config;
-#endif
 
 #endif /* STREAM5_COMMON_H_ */

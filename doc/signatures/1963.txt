@@ -30,7 +30,7 @@ a buffer overflow.
 
 --
 Affected Systems:
-Sun Solaris 2.4, 2.5, 2.5.1, 2.6, 2.7 for SPARC and Intel architectures
+	Sun Solaris 2.4, 2.5, 2.5.1, 2.6, 2.7 for SPARC and Intel architectures
 
 --
 Attack Scenarios:
@@ -39,7 +39,7 @@ monitored by vulnerable versions of snoop
 
 --
 Ease of Attack:
-Simple
+Simple. Exploits exist.
 
 --
 False Positives:
@@ -60,16 +60,12 @@ block access to RPC ports from outside the LAN.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
 
 --
 Additional References:
 
-Bugtraq:
-http://www.securityfocus.com/bid/864
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-1999-0974
 
 --

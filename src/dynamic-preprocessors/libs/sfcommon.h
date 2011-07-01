@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2007-2011 Sourcefire, Inc.
+ * Copyright (C) 2007-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -21,8 +21,8 @@
 #ifndef DYN_PP_PARSER_H
 #define DYN_PP_PARSER_H
 
-#include "snort_bounds.h"
-#include "snort_debug.h"
+#include "sf_types.h"
+#include "debug.h"
 
 #define SFP_MIN_ERR_STR 128
 
@@ -41,9 +41,9 @@ typedef uint8_t ports_tbl_t[MAXPORTS/8];
 
 typedef char SFP_errstr_t[SFP_MIN_ERR_STR + 1];
 
-static inline char *SFP_GET_ERR(SFP_errstr_t err)
+static INLINE char *SFP_GET_ERR(SFP_errstr_t err) 
 {
-    return (char*)err;
+    return (char*)err; 
 }
 
 SFP_ret_t SFP_ports(ports_tbl_t ports, char *str, SFP_errstr_t errstr);

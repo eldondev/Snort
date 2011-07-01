@@ -1,4 +1,4 @@
-$Id: README.UNSOCK,v 1.6 2004/01/15 20:38:07 jh8 Exp $
+$Id$
 
 It is possible to send alert messages and some packet relevant data
 from snort through a unix socket, to perform additional separate

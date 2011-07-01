@@ -1,0 +1,71 @@
+Rule: 
+
+--
+Sid: 
+100000100
+
+-- 
+Summary: 
+This event is generated when a URI of 1,050 bytes ore more is requested from an 
+internal web server.
+
+-- 
+
+Impact: 
+Unknown.
+
+--
+Detailed Information:
+This rule is used in conjunction with SID 100000101 to detect buffer overflow 
+attacks against the Adobe Acrobat/Acrobat Reader ActiveX Control, pdf.ocx. This 
+rule should never generate an alert.
+
+--
+Affected Systems:
+Adobe Acrobat 5.0
+Adobe Acrobat 5.0.5
+Adobe Acrobat 6.0
+Adobe Acrobat 6.0.1
+Adobe Acrobat Reader 5.0
+Adobe Acrobat Reader 5.0.5
+Adobe Acrobat Reader 5.1
+Adobe Acrobat Reader 6.0
+Adobe Acrobat Reader 6.0.1
+
+--
+
+Attack Scenarios: 
+A web browser or automated script may be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as simply typing a long URI into a web browser will suffice.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Upgrade to Adobe Acrobat/Acrobat Reader 6.0.2.
+An alternate workaround is available: disable "Display PDF in browser" under 
+Edit -> Preferences.
+
+--
+Contributors: 
+Sourcefire Research Team
+Judy Novak <judy.novak@sourcefire.com>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+http://www.adobe.com/support/downloads/thankyou.jsp?ftpID=2589&fileID=2433
+
+--

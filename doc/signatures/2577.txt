@@ -62,7 +62,7 @@ Use a browser other than Internet Explorer
 
 --
 Contributors:
-Original Snort contributed by nnposter@users.sourceforge.net
+Original Snort documentation contributed by nnposter@users.sourceforge.net
 Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Nigel Houghton <nigel.houghton@sourcefire.com>

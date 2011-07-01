@@ -324,6 +324,9 @@ IV. Changelog
 
 V. Changelog of Database schema
 
+2007-03-15 -- v107
+  + ALL:  Updated to include signature.sig_gid to log the generator ID
+
 2002-09-03 -- v106
   + ALL: added sensor.last_cid to store the last used cid for a 
          given sid

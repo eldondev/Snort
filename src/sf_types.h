@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -175,25 +175,8 @@ typedef unsigned int  uintptr_t;
 #  define PATH_MAX 4096
 #endif
 
-/* utilities */
-#ifndef boolean
-#ifndef HAVE_BOOLEAN
-typedef unsigned char boolean;
-#endif
-#endif
-
-#ifndef TRUE
-# define TRUE 1
-#endif
-
-#ifndef FALSE
-# define FALSE 0
-#endif
-
-#ifndef bool
-typedef enum { false, true } _SFBool;
-#define bool _SFBool
-#endif
+#define MAXPORTS 65536
+#define MAXPORTS_STORAGE 8192
 
 #endif  /* __SF_TYPES_H__ */
 

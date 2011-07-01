@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -173,7 +173,7 @@ int         ip_fprint( FILE * fp, IPADDRESS * p );
    255.255.255.255, or 0xffffffff, or -1.
 */
 #ifdef SUP_IP6
-IPSET * ipset_new     (void);
+IPSET * ipset_new     ( );
 int     ipset_add     ( IPSET * ipset, sfip_t *ip, void * port, int notflag);
 int     ipset_contains( IPSET * ipset, sfip_t *ip, void * port);
 #else

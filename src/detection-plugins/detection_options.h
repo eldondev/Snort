@@ -1,6 +1,6 @@
-/* $Id: detection_options.h,v 1.14 2011/02/09 23:22:56 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2007-2011 Sourcefire, Inc.
+** Copyright (C) 2007-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -37,7 +37,54 @@
 #include "sf_types.h"
 #include "decode.h"
 #include "sfutil/sfxhash.h"
-#include "rule_option_types.h"
+
+typedef enum _option_type_t
+{
+    RULE_OPTION_TYPE_LEAF_NODE,
+    RULE_OPTION_TYPE_ASN1,
+    RULE_OPTION_TYPE_BYTE_TEST,
+    RULE_OPTION_TYPE_BYTE_JUMP,
+    RULE_OPTION_TYPE_FLOW,
+    RULE_OPTION_TYPE_CVS,
+    RULE_OPTION_TYPE_DSIZE,
+    RULE_OPTION_TYPE_FLOWBIT,
+    RULE_OPTION_TYPE_FTPBOUNCE,
+    RULE_OPTION_TYPE_ICMP_CODE,
+    RULE_OPTION_TYPE_ICMP_ID,
+    RULE_OPTION_TYPE_ICMP_SEQ,
+    RULE_OPTION_TYPE_ICMP_TYPE,
+    RULE_OPTION_TYPE_IP_FRAGBITS,
+    RULE_OPTION_TYPE_IP_FRAG_OFFSET,
+    RULE_OPTION_TYPE_IP_ID,
+    RULE_OPTION_TYPE_IP_OPTION,
+    RULE_OPTION_TYPE_IP_PROTO,
+    RULE_OPTION_TYPE_IP_SAME,
+    RULE_OPTION_TYPE_IP_TOS,
+    RULE_OPTION_TYPE_IS_DATA_AT,
+    RULE_OPTION_TYPE_CONTENT,
+    RULE_OPTION_TYPE_CONTENT_URI,
+    RULE_OPTION_TYPE_PCRE,
+#ifdef ENABLE_REACT
+    RULE_OPTION_TYPE_REACT,
+#endif
+#ifdef ENABLE_RESPOND
+    RULE_OPTION_TYPE_RESPOND,
+#endif
+    RULE_OPTION_TYPE_RPC_CHECK,
+    RULE_OPTION_TYPE_SESSION,
+    RULE_OPTION_TYPE_TCP_ACK,
+    RULE_OPTION_TYPE_TCP_FLAG,
+    RULE_OPTION_TYPE_TCP_SEQ,
+    RULE_OPTION_TYPE_TCP_WIN,
+    RULE_OPTION_TYPE_TTL,
+    RULE_OPTION_TYPE_URILEN
+#ifdef DYNAMIC_PLUGIN
+    ,
+    RULE_OPTION_TYPE_HDR_OPT_CHECK,
+    RULE_OPTION_TYPE_PREPROCESSOR,
+    RULE_OPTION_TYPE_DYNAMIC
+#endif
+} option_type_t;
 
 #define DETECTION_OPTION_EQUAL 0
 #define DETECTION_OPTION_NOT_EQUAL 1
@@ -59,7 +106,6 @@ typedef struct _detection_option_tree_node
     int num_children;
     struct _detection_option_tree_node **children;
     int relative_children;
-    int result;
     struct 
     {
         struct timeval ts;

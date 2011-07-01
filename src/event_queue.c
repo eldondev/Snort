@@ -1,6 +1,6 @@
-/* $Id: event_queue.c,v 1.24 2011/06/08 00:33:05 jjordan Exp $ */
+/* $Id$ */
 /*
- ** Copyright (C) 2004-2011 Sourcefire, Inc.
+ ** Copyright (C) 2004-2009 Sourcefire, Inc.
  **
  ** This program is free software; you can redistribute it and/or modify
  ** it under the terms of the GNU General Public License Version 2 as
@@ -29,15 +29,15 @@
 **  functions for ordering incoming events.
 **
 ** Notes:
-**  11/1/05  Updates to add support for rules for all events in
+**  11/1/05  Updates to add support for rules for all events in 
 **           decoders and preprocessors and the detection engine.
 **           Added support for rule by rule flushing control via
 **           metadata. Also added code to check fo an otn for every
 **           event (gid,sid pair).  This is now required to get events
-**           to be logged. The decoders and preprocessors are still
-**           configured independently, which allows them to inspect and
+**           to be logged. The decoders and preprocessors are still 
+**           configured independently, which allows them to inspect and 
 **           call the alerting functions SnortEventqAdd, GenerateSnortEvent()
-**           and GenerateEvent2() for sfportscan.c.  The GenerateSnortEvent()
+**           and GenerateEvent2() for sfportscan.c.  The GnerateSnoprtEvent()
 **           function now finds and otn and calls fpLogEvent.
 **
 **           Any event that has no otn associated with it's gid,sid pair,
@@ -45,18 +45,17 @@
 **           configured to detect an alertable event.
 **
 **           In the future, preporcessor may have an api that gets called
-**           after rules are loaded that checks for the gid/sid -> otn
+**           after rules are loaded that checks for the gid/sid -> otn 
 **           mapping, and then adjusts it's inspection or detection
-**           accordingly.
+**           accordingly.  
 **
-**           SnortEventqAdd() - only adds events that have an otn
-**
+**           SnortEventqAdd() - only adds events that have an otn 
+**          
 */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include "sf_types.h"
 #include "fpcreate.h"
 #include "fpdetect.h"
 #include "util.h"
@@ -65,26 +64,6 @@
 #include "event_queue.h"
 #include "sfthreshold.h"
 #include "sfPolicy.h"
-
-//-------------------------------------------------
-// the push/pop methods ensure that qIndex stays in
-// bounds and that it is only popped after it was
-// successfully pushed.
-static unsigned qIndex = 0;
-static unsigned qOverflow = 0;
-
-void SnortEventqPush(void)
-{
-    if ( qIndex < NUM_EVENT_QUEUES-1 ) qIndex++;
-    else qOverflow++;
-}
-
-void SnortEventqPop(void)
-{
-    if ( qOverflow > 0 ) qOverflow--;
-    else if ( qIndex > 0 ) qIndex--;
-}
-//-------------------------------------------------
 
 /*
 **  Set default values
@@ -96,7 +75,6 @@ EventQueueConfig * EventQueueConfigNew(void)
 
     eq->max_events = 8;
     eq->log_events = 3;
-
     eq->order = SNORT_EVENTQ_CONTENT_LEN;
     eq->process_all_events = 0;
 
@@ -119,17 +97,17 @@ void EventQueueConfigFree(EventQueueConfig *eq)
  *  g_event_queue.log_events into the queue.
  *  ... Jan '06
  */
-int SnortEventqAdd(unsigned int gid,
-                   unsigned int sid,
-                   unsigned int rev,
-                   unsigned int classification,
+int SnortEventqAdd(unsigned int gid, 
+                   unsigned int sid, 
+                   unsigned int rev, 
+                   unsigned int classification, 
                    unsigned int pri,
                    char        *msg,
                    void        *rule_info)
 {
     EventNode *en;
-    en = (EventNode *)sfeventq_event_alloc(snort_conf->event_queue[qIndex]);
-
+    
+    en = (EventNode *)sfeventq_event_alloc(snort_conf->event_queue);
     if(!en)
         return -1;
 
@@ -141,24 +119,24 @@ int SnortEventqAdd(unsigned int gid,
     en->msg = msg;
     en->rule_info = rule_info;
 
-    /*
+    /* 
      * Check if we have a preprocessor or decoder event
      * Preprocessors and decoders may be configured to inspect
-     * and alert in their principal configuration (legacy code)
-     * this test than checks if the rule otn says they should
+     * and alert in their principle configuration (legacy code) 
+     * this test than checks if the rule otn says they should 
      * be enabled or not.  The rule itself will decide if it should
      * be an alert or a drop (sdrop) condition.
      */
-
+   
 #ifdef PREPROCESSOR_AND_DECODER_RULE_EVENTS
     {
         struct _OptTreeNode * potn;
 
         /* every event should have a rule/otn  */
         potn = OtnLookup(snort_conf->otn_map, gid, sid);
-        /*
-         * if no rule otn exists for this event, than it was
-         * not enabled via rules
+        /* 
+         * if no rule otn exists for this event, than it was 
+         * not enabled via rules 
          */
 
         if (potn == NULL)
@@ -173,36 +151,24 @@ int SnortEventqAdd(unsigned int gid,
                                              en->priority,
                                              en->msg);
 
-                if (potn != NULL)
+                if (potn != NULL)  
                     OtnLookupAdd(snort_conf->otn_map, potn);
             }
-            if (potn == NULL)
-            {
-                /* no otn found/created - do not add it to the queue */
-                return 0;
-            }
         }
-        else
+
+        if (potn == NULL) 
         {
-            tSfPolicyId policyId = getRuntimePolicy();
-            RuleTreeNode* rtn = getRtnFromOtn(potn, policyId);
-
-            if ( !rtn )
-            {
-                if ( ScAutoGenPreprocDecoderOtns() )
-                    rtn = GenerateSnortEventRtn(potn, getRuntimePolicy());
-
-                if ( !rtn )
-                    return 0;
-            }
+            /* no otn found/created - do not add it to the queue */
+            return 0;
         }
     }
 #endif
-
-    if (sfeventq_add(snort_conf->event_queue[qIndex], (void *)en))
+     
+    if (sfeventq_add(snort_conf->event_queue, (void *)en))
     {
         return -1;
     }
+    
     return 0;
 }
 #ifdef OLD_RULE_ORDER
@@ -256,7 +222,7 @@ static int OrderContentLength(void *event1, void *event2)
     {
         /*
         **  Neither event is a rule.  Use incoming as
-        **  priority.  Last one in goes at the end to
+        **  priority.  Last one in goes at the end to 
         **  preserve rule order.
         */
         return 0;
@@ -277,11 +243,10 @@ static int OrderContentLength(void *event1, void *event2)
 #endif
 
 
-void SnortEventqNew(
-    EventQueueConfig *eq_config, SF_EVENTQ *eq[]
-) {
+SF_EVENTQ * SnortEventqNew(EventQueueConfig *eq_config)
+{
+    SF_EVENTQ *eq;
     int (*sort)(void *, void*) = NULL;
-    int i;
 
 #ifdef OLD_RULE_ORDER
     if (eq_config->order == SNORT_EVENTQ_PRIORITY)
@@ -298,21 +263,13 @@ void SnortEventqNew(
     }
 #endif
 
-    for ( i = 0; i < NUM_EVENT_QUEUES; i++ )
-    {
-        eq[i] = sfeventq_new(eq_config->max_events, eq_config->log_events,
+    eq = sfeventq_new(eq_config->max_events, eq_config->log_events,
                       sizeof(EventNode), sort);
 
-        if (eq[i] == NULL)
-            FatalError("Failed to initialize Snort event queue.\n");
-    }
-}
+    if (eq == NULL)
+        FatalError("Failed to initialize Snort event queue.\n");
 
-void SnortEventqFree(SF_EVENTQ *eq[])
-{
-    int i;
-    for ( i = 0; i < NUM_EVENT_QUEUES; i++ )
-        sfeventq_free(eq[i]);
+    return eq;
 }
 
 static int LogSnortEvents(void *event, void *user)
@@ -368,7 +325,7 @@ static int LogSnortEvents(void *event, void *user)
                                          en->classification,
                                          en->priority,
                                          en->msg);
-#endif
+#endif        
             if (potn != NULL)
             {
                 OtnLookupAdd(snort_conf->otn_map, potn);
@@ -405,14 +362,14 @@ static int LogSnortEvents(void *event, void *user)
 **  @return 1 logged events
 **  @return 0 did not log events or logged only decoder/preprocessor events
 */
-int SnortEventqLog(SF_EVENTQ *eq[], Packet *p)
+int SnortEventqLog(SF_EVENTQ *eq, Packet *p)
 {
     static SNORT_EVENTQ_USER user;
 
     user.rule_alert = 0x00;
     user.pkt = (void *)p;
 
-    if (sfeventq_action(eq[qIndex], LogSnortEvents, (void *)&user) > 0)
+    if (sfeventq_action(eq, LogSnortEvents, (void *)&user) > 0)
     {
         if (user.rule_alert)
             return 1;
@@ -423,6 +380,10 @@ int SnortEventqLog(SF_EVENTQ *eq[], Packet *p)
 
 void SnortEventqReset(void)
 {
-    sfeventq_reset(snort_conf->event_queue[qIndex]);
+    sfeventq_reset(snort_conf->event_queue);
 }
 
+void SnortEventqFree(SF_EVENTQ *eq)
+{
+    sfeventq_free(eq);
+}

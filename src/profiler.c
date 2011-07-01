@@ -1,9 +1,9 @@
 /*
-**  $Id: profiler.c,v 1.31 2011/06/08 00:33:06 jjordan Exp $
-**
+**  $Id$
+** 
 **  profiler.c
 **
-**  Copyright (C) 2005-2011 Sourcefire, Inc.
+**  Copyright (C) 2005-2009 Sourcefire, Inc.
 **  Steven Sturges <ssturges@sourcefire.com>
 **
 **  This program is free software; you can redistribute it and/or modify
@@ -28,20 +28,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "snort.h"
 #include "rules.h"
-#include "treenodes.h"
-#include "treenodes.h"
 #include "parser.h"
 #include "plugin_enum.h"
 #include "util.h"
 #include "rules.h"
-#include "treenodes.h"
-#include "treenodes.h"
 #include "profiler.h"
 #include "sf_types.h"
 #include "sf_textlog.h"
@@ -85,6 +77,7 @@ int max_layers = 0;
 
 /* Externs ********************************************************************/
 extern PreprocStats mpsePerfStats, rulePerfStats, ncrulePerfStats;
+extern SnortConfig *snort_conf;
 
 
 void getTicksPerMicrosec(void)
@@ -112,16 +105,16 @@ void ResetRuleProfiling(void)
             hashNode = sfghash_findnext(sc->otn_map))
     {
         otn = (OptTreeNode *)hashNode->data;
-        for ( policyId = 0;
-              policyId < otn->proto_node_num;
+        for ( policyId = 0; 
+              policyId < otn->proto_node_num; 
               policyId++ )
         {
             rtn = getRtnFromOtn(otn, policyId);
             //rtn = currHeadNodeOtn->proto_node[currHeadNodePolicy];
 
             if ((rtn->proto == IPPROTO_TCP) || (rtn->proto == IPPROTO_UDP)
-                    || (rtn->proto == IPPROTO_ICMP) || (rtn->proto == ETHERNET_TYPE_IP))
-            {
+                    || (rtn->proto == IPPROTO_ICMP) || (rtn->proto == ETHERNET_TYPE_IP)) 
+            { 
                 //do operation
                 otn->ticks = 0;
                 otn->ticks_match = 0;
@@ -221,7 +214,7 @@ void PrintWorstRules(int numToPrint)
             "%*s%*s%*s%*s%*s%*s%*s%*s%*s%*s%*s\n",
 #endif
              6, "Num",
-             9, "SID", 4, "GID", 4, "Rev",
+             9, "SID", 4, "GID", 4, "Rev", 
             11, "Checks",
             10, "Matches",
             10, "Alerts",
@@ -243,7 +236,7 @@ void PrintWorstRules(int numToPrint)
             "%*s%*s%*s%*s%*s%*s%*s%*s%*s%*s%*s\n",
 #endif
              6, "Num",
-             9, "SID", 4, "GID", 4, "Rev",
+             9, "SID", 4, "GID", 4, "Rev", 
             11, "Checks",
             10, "Matches",
             10, "Alerts",
@@ -385,8 +378,8 @@ void CollectRTNProfile(void)
             hashNode = sfghash_findnext(sc->otn_map))
     {
         otn = (OptTreeNode *)hashNode->data;
-        for ( policyId = 0;
-              policyId < otn->proto_node_num;
+        for ( policyId = 0; 
+              policyId < otn->proto_node_num; 
               policyId++ )
         {
             rtn = getRtnFromOtn(otn, policyId);
@@ -552,7 +545,6 @@ void RegisterPreprocessorProfile(char *keyword, PreprocStats *stats, int layer, 
                 /* Don't fatal error here since during a reload there are
                  * probably going to be dups - just return */
                 //multiple policy support
-                free(node);
                 return;
             }
 

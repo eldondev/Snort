@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- ****************************************************************************
+ **************************************************************************** 
  * Provides macros and functions for debugging the preprocessor.
  * If Snort is not configured to do debugging, macros are empty.
  *
@@ -27,6 +27,8 @@
 #ifndef _DCE2_DEBUG_H_
 #define _DCE2_DEBUG_H_
 
+#include "debug.h"
+#include "sf_types.h"
 #include <stdio.h>
 
 /********************************************************************
@@ -60,14 +62,10 @@ int DCE2_DebugThis(int level);
 #ifdef DEBUG
 #include <assert.h>
 #define DCE2_ASSERT(code)             assert(code)
-#else
-#define DCE2_ASSERT(code)
-#endif
-
-#ifdef DEBUG_MSGS
 #define DCE2_DEBUG_VAR(code)          code
 #define DCE2_DEBUG_CODE(level, code)  { if (DCE2_DebugThis(level)) { code } }
 #else
+#define DCE2_ASSERT(code)
 #define DCE2_DEBUG_VAR(code)
 #define DCE2_DEBUG_CODE(level, code)
 #endif

@@ -1,17 +1,17 @@
-; $Id: snort_installer.nsi,v 1.39 2011/06/08 00:33:23 jjordan Exp $
+; $Id$
 ;
-; NSIS Installation script for Snort 2.9.1 Win32
+; NSIS Installation script for Snort 2.8.5.2 Win32
 ; Written by Chris Reid <chris.reid@codecraftconsultants.com>
 ; Updated by Steven Sturges <ssturges@sourcefire.com>
 ;
-; This script will create a Win32 installer for Snort 2.9.1 (Win32 only).
+; This script will create a Win32 installer for Snort 2.8.5.2 (Win32 only).
 ; For more information about NSIS, see their homepage:
 ;     http://nsis.sourceforge.net/
 ;
 ; Note that this NSIS script is designed for NSIS version 2.09.
 ;
 
-Name "Snort 2.9.1 Beta"
+Name "Snort 2.8.5.2"
 
 CRCCheck On
 
@@ -23,7 +23,7 @@ CRCCheck On
 ;Configuration
 
   ;General
-  OutFile "Snort_2_9_1_Beta_Installer.exe"  ; The name of the installer executable
+  OutFile "Snort_2_8_5_2_Installer.exe"  ; The name of the installer executable
 
   ;Folder selection page
   InstallDir "C:\Snort"
@@ -101,7 +101,7 @@ Function .onInstSuccess
   StrCpy $0 "Snort has successfully been installed.$\r$\n"
   StrCpy $0 "$0$\r$\n"
   StrCpy $0 "$0$\r$\n"
-  StrCpy $0 "$0Snort also requires WinPcap 4.1.1 to be installed on this machine.$\r$\n"
+  StrCpy $0 "$0Snort also requires WinPcap 3.1 to be installed on this machine.$\r$\n"
   StrCpy $0 "$0WinPcap can be downloaded from:$\r$\n"
   StrCpy $0 "$0    http://www.winpcap.org/ $\r$\n"
   StrCpy $0 "$0$\r$\n"
@@ -149,14 +149,8 @@ Section "Snort" Snort
 
   CreateDirectory "$INSTDIR\bin"
   SetOutPath "$INSTDIR\bin"
-  ; File ".\LibnetNT.dll"
+  File ".\LibnetNT.dll"
   File ".\pcre.dll"
-  File ".\zlib1.dll"
-  File ".\ntwdblib.dll"
-  File ".\wpcap.dll"
-  File ".\WanPacket.dll"
-  File ".\npptools.dll"
-  File ".\Packet.dll"
   
   CreateDirectory "$INSTDIR\etc"
   SetOutPath "$INSTDIR\etc"
@@ -228,28 +222,22 @@ Section "Dynamic Modules" Dynamic
   CreateDirectory "$INSTDIR\lib"
   CreateDirectory "$INSTDIR\lib\snort_dynamicpreprocessor"
   SetOutPath "$INSTDIR\lib\snort_dynamicpreprocessor"
-  StrCmp $1 "IPv4" 0 +12
+  StrCmp $1 "IPv4" 0 +8
   File "..\..\dynamic-preprocessors\ftptelnet\Release\sf_ftptelnet.dll"
   File "..\..\dynamic-preprocessors\smtp\Release\sf_smtp.dll"
   File "..\..\dynamic-preprocessors\ssh\Release\sf_ssh.dll"
+  File "..\..\dynamic-preprocessors\dcerpc\Release\sf_dcerpc.dll"
   File "..\..\dynamic-preprocessors\dns\Release\sf_dns.dll"
   File "..\..\dynamic-preprocessors\ssl\Release\sf_ssl.dll"
   File "..\..\dynamic-preprocessors\dcerpc2\Release\sf_dce2.dll"
-  File "..\..\dynamic-preprocessors\sdf\Release\sf_sdf.dll"
-  File "..\..\dynamic-preprocessors\sip\Release\sf_sip.dll"
-  File "..\..\dynamic-preprocessors\imap\Release\sf_imap.dll"
-  File "..\..\dynamic-preprocessors\pop\Release\sf_pop.dll"
-  StrCmp $1 "IPv6" 0 +12
+  StrCmp $1 "IPv6" 0 +8
   File "..\..\dynamic-preprocessors\ftptelnet\IPv6_Release\sf_ftptelnet.dll"
   File "..\..\dynamic-preprocessors\smtp\IPv6_Release\sf_smtp.dll"
   File "..\..\dynamic-preprocessors\ssh\IPv6_Release\sf_ssh.dll"
+  File "..\..\dynamic-preprocessors\dcerpc\IPv6_Release\sf_dcerpc.dll"
   File "..\..\dynamic-preprocessors\dns\IPv6_Release\sf_dns.dll"
   File "..\..\dynamic-preprocessors\ssl\IPv6_Release\sf_ssl.dll"
   File "..\..\dynamic-preprocessors\dcerpc2\IPv6_Release\sf_dce2.dll"
-  File "..\..\dynamic-preprocessors\sdf\IPv6_Release\sf_sdf.dll"
-  File "..\..\dynamic-preprocessors\sip\IPv6_Release\sf_sip.dll"
-  File "..\..\dynamic-preprocessors\imap\IPv6_Release\sf_imap.dll"
-  File "..\..\dynamic-preprocessors\pop\IPv6_Release\sf_pop.dll"
 
   CreateDirectory "$INSTDIR\lib\snort_dynamicengine"
   SetOutPath "$INSTDIR\lib\snort_dynamicengine"

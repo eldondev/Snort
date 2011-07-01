@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,18 +17,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
 
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "sf_types.h"
 #include "dce2_roptions.h"
 #include "dce2_memory.h"
 #include "dcerpc.h"
@@ -38,9 +29,16 @@
 #include "sf_dynamic_preprocessor.h"
 #include "stream_api.h"
 #include "sf_dynamic_engine.h"
-#include "sf_snort_plugin_api.h"
 #include "sfhashfcn.h"
 #include "profiler.h"
+#include <errno.h>
+#include <string.h>
+#include <stdarg.h>
+
+/********************************************************************
+ * Extern variables
+ ********************************************************************/
+extern DynamicPreprocessorData _dpd;
 
 /********************************************************************
  * Macros
@@ -54,7 +52,6 @@
 #define DCE2_ROPT__STUB_DATA  "dce_stub_data"
 #define DCE2_ROPT__BYTE_TEST  "byte_test"   /* Override keyword */
 #define DCE2_ROPT__BYTE_JUMP  "byte_jump"   /* Override keyword */
-#define DCE2_ROPT__BYTE_EXTRACT "byte_extract"  /* Override keyword */
 
 #define DCE2_RARG__LT   '<'
 #define DCE2_RARG__EQ   '='
@@ -68,7 +65,6 @@
 #define DCE2_RARG__ALIGN         "align"
 #define DCE2_RARG__POST_OFFSET   "post_offset"
 #define DCE2_RARG__DCE_OVERRIDE  "dce"
-#define DCE2_RARG__DCE_BYTEORDER "dce"
 
 #define DCE2_IFACE__MIN_ARGS  1
 #define DCE2_IFACE__MAX_ARGS  3
@@ -93,8 +89,7 @@
  ********************************************************************/
 typedef enum _DCE2_IfOp
 {
-    DCE2_IF_OP__NONE = 0,
-    DCE2_IF_OP__LT,
+    DCE2_IF_OP__LT = 1,
     DCE2_IF_OP__EQ,
     DCE2_IF_OP__GT,
     DCE2_IF_OP__NE
@@ -103,8 +98,7 @@ typedef enum _DCE2_IfOp
 
 typedef enum _DCE2_BtOp
 {
-    DCE2_BT_OP__NONE = 0,
-    DCE2_BT_OP__LT,
+    DCE2_BT_OP__LT = 1,
     DCE2_BT_OP__EQ,
     DCE2_BT_OP__GT,
     DCE2_BT_OP__AND,
@@ -141,7 +135,7 @@ typedef struct _DCE2_IfaceData
     int iface_vers_maj;
     int iface_vers_min;
     DCE2_IfOp operator;
-    int any_frag;
+    int any_frag; 
 
 } DCE2_IfaceData;
 
@@ -196,9 +190,9 @@ typedef struct _DCE2_ByteJumpData
 static int DCE2_IfaceInit(char *, char *, void **);
 static int DCE2_OpnumInit(char *, char *, void **);
 static void DCE2_ParseOpnumList(char **, char *, uint8_t *);
-static inline void DCE2_OpnumSet(uint8_t *, const uint16_t);
-static inline void DCE2_OpnumSetRange(uint8_t *, uint16_t, uint16_t);
-static inline int DCE2_OpnumIsSet(const uint8_t *, const uint16_t, const uint16_t, const uint16_t);
+static INLINE void DCE2_OpnumSet(uint8_t *, const uint16_t);
+static INLINE void DCE2_OpnumSetRange(uint8_t *, uint16_t, uint16_t);
+static INLINE int DCE2_OpnumIsSet(const uint8_t *, const uint16_t, const uint16_t, const uint16_t);
 static int DCE2_StubDataInit(char *, char *, void **);
 static int DCE2_ByteTestInit(char *, char *, void **);
 static int DCE2_ByteJumpInit(char *, char *, void **);
@@ -220,10 +214,8 @@ static int DCE2_IfaceKeyCompare(void *, void *);
 static int DCE2_OpnumKeyCompare(void *, void *);
 static int DCE2_ByteTestKeyCompare(void *, void *);
 static int DCE2_ByteJumpKeyCompare(void *, void *);
-static inline int DCE2_RoptDoEval(SFSnortPacket *);
+static INLINE int DCE2_RoptDoEval(SFSnortPacket *);
 static NORETURN void DCE2_RoptError(const char *, ...);
-static inline void * DCE2_AllocFp(uint32_t);
-static int DCE2_IfaceAddFastPatterns(void *, int, int, FPContentInfo **);
 
 /********************************************************************
  * Function:
@@ -238,19 +230,16 @@ static int DCE2_IfaceAddFastPatterns(void *, int, int, FPContentInfo **);
 void DCE2_RegRuleOptions(void)
 {
     _dpd.preprocOptRegister(DCE2_ROPT__IFACE, DCE2_IfaceInit, DCE2_IfaceEval,
-            DCE2_IfaceCleanup, DCE2_IfaceHash, DCE2_IfaceKeyCompare,
-            NULL, DCE2_IfaceAddFastPatterns);
+                            DCE2_IfaceCleanup, DCE2_IfaceHash, DCE2_IfaceKeyCompare);
     _dpd.preprocOptRegister(DCE2_ROPT__OPNUM, DCE2_OpnumInit, DCE2_OpnumEval,
-            DCE2_OpnumCleanup, DCE2_OpnumHash, DCE2_OpnumKeyCompare, NULL, NULL);
-    _dpd.preprocOptRegister(DCE2_ROPT__STUB_DATA, DCE2_StubDataInit,
-            DCE2_StubDataEval, NULL, NULL, NULL, NULL, NULL);
+                            DCE2_OpnumCleanup, DCE2_OpnumHash, DCE2_OpnumKeyCompare);
+    _dpd.preprocOptRegister(DCE2_ROPT__STUB_DATA, DCE2_StubDataInit, DCE2_StubDataEval, NULL, NULL, NULL);
     _dpd.preprocOptOverrideKeyword(DCE2_ROPT__BYTE_TEST, DCE2_RARG__DCE_OVERRIDE,
-            DCE2_ByteTestInit, DCE2_ByteTestEval, DCE2_ByteTestCleanup,
-            DCE2_ByteTestHash, DCE2_ByteTestKeyCompare, NULL, NULL);
+                                   DCE2_ByteTestInit, DCE2_ByteTestEval, DCE2_ByteTestCleanup,
+                                   DCE2_ByteTestHash, DCE2_ByteTestKeyCompare);
     _dpd.preprocOptOverrideKeyword(DCE2_ROPT__BYTE_JUMP, DCE2_RARG__DCE_OVERRIDE,
-            DCE2_ByteJumpInit, DCE2_ByteJumpEval, DCE2_ByteJumpCleanup,
-            DCE2_ByteJumpHash, DCE2_ByteJumpKeyCompare, NULL, NULL);
-    _dpd.preprocOptByteOrderKeyword(DCE2_RARG__DCE_BYTEORDER, DCE2_GetByteOrder);
+                                   DCE2_ByteJumpInit, DCE2_ByteJumpEval, DCE2_ByteJumpCleanup,
+                                   DCE2_ByteJumpHash, DCE2_ByteJumpKeyCompare);
 }
 
 /********************************************************************
@@ -260,7 +249,7 @@ void DCE2_RegRuleOptions(void)
  *
  * XXX Connectionless uses a 32bit version, connection-oriented
  * a 16bit major version and 16bit minor version.  Not likely to
- * need to support versions greater than 65535, but may need to
+ * need to support versions greater than 65535, but may need to 
  * support minor version.
  *
  * Arguments:
@@ -290,11 +279,11 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
     iface_data = (DCE2_IfaceData *)DCE2_Alloc(sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
     if (iface_data == NULL)
     {
-        DCE2_Die("%s(%d) Failed to allocate memory for iface data structure.",
-                __FILE__, __LINE__);
+         DCE2_Die("%s(%d) Failed to allocate memory for iface data structure.",
+                  __FILE__, __LINE__);
     }
 
-    iface_data->operator = DCE2_IF_OP__NONE;
+    iface_data->operator = DCE2_SENTINEL;
 
     /* Must have arguments */
     if (DCE2_IsEmptyStr(args))
@@ -309,7 +298,7 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
     {
         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
         DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                "was not NULL.", __FILE__, __LINE__);
+                 "was not NULL.", __FILE__, __LINE__);
     }
 
     do
@@ -331,7 +320,7 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
             {
                 DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid argument: %s.",
-                        DCE2_ROPT__IFACE, token);
+                               DCE2_ROPT__IFACE, token);
             }
 
             switch (*token)
@@ -360,16 +349,16 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Cannot configure interface "
-                            "version more than once.", DCE2_ROPT__IFACE);
+                                   "version more than once.", DCE2_ROPT__IFACE);
                 }
 
                 token++;
-                iface_data->iface_vers = _dpd.SnortStrtoul(token, &endptr, 10);
+                iface_data->iface_vers = strtoul(token, &endptr, 10);
                 if ((errno == ERANGE) || (*endptr != '\0'))
                 {
                     DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid argument: %s.",
-                            DCE2_ROPT__IFACE, token);
+                                   DCE2_ROPT__IFACE, token);
                 }
 
                 switch (iface_data->operator)
@@ -379,14 +368,14 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                         {
                             DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                             DCE2_RoptError("\"%s\" rule option: Interface version "
-                                    "cannot be less than zero.", DCE2_ROPT__IFACE);
+                                           "cannot be less than zero.", DCE2_ROPT__IFACE);
                         }
                         else if (iface_data->iface_vers > (UINT16_MAX + 1))
                         {
                             DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                             DCE2_RoptError("\"%s\" rule option: Interface version "
-                                    "cannot be greater than %u.",
-                                    DCE2_ROPT__IFACE, UINT16_MAX);
+                                           "cannot be greater than %u.",
+                                           DCE2_ROPT__IFACE, UINT16_MAX);
                         }
 
                         break;
@@ -397,8 +386,8 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                         {
                             DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                             DCE2_RoptError("\"%s\" rule option: Interface version "
-                                    "cannot be greater than %u.",
-                                    DCE2_ROPT__IFACE, UINT16_MAX);
+                                           "cannot be greater than %u.",
+                                           DCE2_ROPT__IFACE, UINT16_MAX);
                         }
 
                         break;
@@ -408,8 +397,8 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                         {
                             DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                             DCE2_RoptError("\"%s\" rule option: Interface version "
-                                    "cannot be greater than %u.",
-                                    DCE2_ROPT__IFACE, UINT16_MAX);
+                                           "cannot be greater than %u.",
+                                           DCE2_ROPT__IFACE, UINT16_MAX);
                         }
 
                         break;
@@ -417,7 +406,7 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                     default:
                         /* Shouldn't get here */
                         DCE2_Die("%s(%d) Invalid operator: %d",
-                                __FILE__, __LINE__, iface_data->operator);
+                                 __FILE__, __LINE__, iface_data->operator);
                         break;
                 }
 
@@ -434,8 +423,8 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Cannot configure "
-                            "\"%s\" more than once.",
-                            DCE2_ROPT__IFACE, DCE2_RARG__ANY_FRAG);
+                                   "\"%s\" more than once.",
+                                   DCE2_ROPT__IFACE, DCE2_RARG__ANY_FRAG);
                 }
 
                 if (strcasecmp(token, DCE2_RARG__ANY_FRAG) == 0)
@@ -446,7 +435,7 @@ static int DCE2_IfaceInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid argument: %s.",
-                            DCE2_ROPT__IFACE, token);
+                                   DCE2_ROPT__IFACE, token);
                 }
 
                 any_frag = 1;
@@ -495,7 +484,7 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
     {
         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
         DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                "was not NULL.", __FILE__, __LINE__);
+                 "was not NULL.", __FILE__, __LINE__);
     }
 
     /* Cut into pieces separated by '-' */
@@ -504,7 +493,7 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
     {
         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
         DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                "was not NULL.", __FILE__, __LINE__);
+                 "was not NULL.", __FILE__, __LINE__);
     }
 
     do
@@ -516,14 +505,14 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
             case 0:
                 {
                     unsigned long int time_low;
-
+ 
                     if (strlen(if_hex) != DCE2_IFACE__TIME_LOW_LEN)
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                         DCE2_RoptError("\"%s\" rule option: Invalid uuid.", DCE2_ROPT__IFACE);
                     }
-
-                    time_low = _dpd.SnortStrtoul(if_hex, &endptr, 16);
+                    
+                    time_low = strtoul(if_hex, &endptr, 16);
                     if ((errno == ERANGE) || (*endptr != '\0'))
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -544,8 +533,8 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                         DCE2_RoptError("\"%s\" rule option: Invalid uuid.", DCE2_ROPT__IFACE);
                     }
-
-                    time_mid = _dpd.SnortStrtoul(if_hex, &endptr, 16);
+                    
+                    time_mid = strtoul(if_hex, &endptr, 16);
                     if ((errno == ERANGE) || (*endptr != '\0'))
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -567,8 +556,8 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
                         DCE2_RoptError("\"%s\" rule option: Invalid uuid.", DCE2_ROPT__IFACE);
                     }
-
-                    time_high = _dpd.SnortStrtoul(if_hex, &endptr, 16);
+                    
+                    time_high = strtoul(if_hex, &endptr, 16);
                     if ((errno == ERANGE) || (*endptr != '\0'))
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -592,7 +581,7 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
                     }
 
                     /* Work backwards */
-                    clock_seq_low = _dpd.SnortStrtoul(&if_hex[2], &endptr, 16);
+                    clock_seq_low = strtoul(&if_hex[2], &endptr, 16);
                     if ((errno == ERANGE) || (*endptr != '\0'))
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -601,10 +590,10 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
 
                     iface_data->iface.clock_seq_low = (uint8_t)clock_seq_low;
 
-                    /* Set third byte to null so we can _dpd.SnortStrtoul the first part */
+                    /* Set third byte to null so we can strtoul the first part */
                     if_hex[2] = '\x00';
 
-                    clock_seq_and_reserved = _dpd.SnortStrtoul(if_hex, &endptr, 16);
+                    clock_seq_and_reserved = strtoul(if_hex, &endptr, 16);
                     if ((errno == ERANGE) || (*endptr != '\0'))
                     {
                         DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -613,7 +602,7 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
 
                     iface_data->iface.clock_seq_and_reserved = (uint8_t)clock_seq_and_reserved;
                 }
-
+              
                 break;
 
             case 4:
@@ -628,11 +617,11 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
 
                     /* Walk back a byte at a time - 2 hex digits */
                     for (i = DCE2_IFACE__NODE_LEN - 2, j = sizeof(iface_data->iface.node) - 1;
-                            (i >= 0) && (j >= 0);
-                            i -= 2, j--)
+                         (i >= 0) && (j >= 0);
+                         i -= 2, j--)
                     {
-                        /* Only giving _dpd.SnortStrtoul 1 byte */
-                        iface_data->iface.node[j] = (uint8_t)_dpd.SnortStrtoul(&if_hex[i], &endptr, 16);
+                        /* Only giving strtoul 1 byte */
+                        iface_data->iface.node[j] = (uint8_t)strtoul(&if_hex[i], &endptr, 16);
                         if ((errno == ERANGE) || (*endptr != '\0'))
                         {
                             DCE2_Free((void *)iface_data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
@@ -668,122 +657,6 @@ static void DCE2_ParseIface(char *token, DCE2_IfaceData *iface_data)
     }
 }
 
-static inline void * DCE2_AllocFp(uint32_t size)
-{
-    void *mem = calloc(1, (size_t)size);
-    if (mem == NULL)
-    {
-        DCE2_Die("%s(%d) Out of memory!", __FILE__, __LINE__);
-    }
-
-    return mem;
-}
-
-static int DCE2_IfaceAddFastPatterns(void *rule_opt_data, int protocol,
-        int direction, FPContentInfo **info)
-{
-    DCE2_IfaceData *iface_data = (DCE2_IfaceData *)rule_opt_data;
-
-    if ((rule_opt_data == NULL) || (info == NULL))
-        return -1;
-
-    if ((protocol != IPPROTO_TCP) && (protocol != IPPROTO_UDP))
-        return -1;
-
-    if (protocol == IPPROTO_TCP)
-    {
-        FPContentInfo *tcp_fp = (FPContentInfo *)DCE2_AllocFp(sizeof(FPContentInfo));
-        char *client_fp = "\x05\x00\x00";
-        char *server_fp = "\x05\x00\x02";
-        char *no_dir_fp = "\x05\x00";
-
-        switch (direction)
-        {
-            case FLAG_FROM_CLIENT:
-                tcp_fp->content = (char *)DCE2_AllocFp(3);
-                memcpy(tcp_fp->content, client_fp, 3);
-                tcp_fp->length = 3;
-                break;
-
-            case FLAG_FROM_SERVER:
-                tcp_fp->content = (char *)DCE2_AllocFp(3);
-                memcpy(tcp_fp->content, server_fp, 3);
-                tcp_fp->length = 3;
-                break;
-
-            default:
-                tcp_fp->content = (char *)DCE2_AllocFp(2);
-                memcpy(tcp_fp->content, no_dir_fp, 2);
-                tcp_fp->length = 2;
-                break;
-        }
-
-        *info = tcp_fp;
-    }
-    else
-    {
-        //DCE2_IfaceData *iface_data = (DCE2_IfaceData *)rule_opt_data;
-        FPContentInfo *big_fp = (FPContentInfo *)DCE2_AllocFp(sizeof(FPContentInfo));
-        FPContentInfo *little_fp = (FPContentInfo *)DCE2_AllocFp(sizeof(FPContentInfo));
-        char *big_content = (char *)DCE2_AllocFp(sizeof(Uuid));
-        char *little_content = (char *)DCE2_AllocFp(sizeof(Uuid));
-        uint32_t time32;
-        uint16_t time16;
-        int index = 0;
-
-        time32 = DceRpcNtohl(&iface_data->iface.time_low,
-                DCERPC_BO_FLAG__BIG_ENDIAN);
-        memcpy(&big_content[index], &time32, sizeof(uint32_t));
-        time32 = DceRpcNtohl(&iface_data->iface.time_low,
-                DCERPC_BO_FLAG__LITTLE_ENDIAN);
-        memcpy(&little_content[index], &time32, sizeof(uint32_t));
-        index += sizeof(uint32_t);
-
-        time16 = DceRpcNtohs(&iface_data->iface.time_mid,
-                DCERPC_BO_FLAG__BIG_ENDIAN);
-        memcpy(&big_content[index], &time16, sizeof(uint16_t));
-        time16 = DceRpcNtohs(&iface_data->iface.time_mid,
-                DCERPC_BO_FLAG__LITTLE_ENDIAN);
-        memcpy(&little_content[index], &time16, sizeof(uint16_t));
-        index += sizeof(uint16_t);
-
-        time16 = DceRpcNtohs(&iface_data->iface.time_high_and_version,
-                DCERPC_BO_FLAG__BIG_ENDIAN);
-        memcpy(&big_content[index], &time16, sizeof(uint16_t));
-        time16 = DceRpcNtohs(&iface_data->iface.time_high_and_version,
-                DCERPC_BO_FLAG__LITTLE_ENDIAN);
-        memcpy(&little_content[index], &time16, sizeof(uint16_t));
-        index += sizeof(uint16_t);
-
-        big_content[index] = iface_data->iface.clock_seq_and_reserved;
-        little_content[index] = iface_data->iface.clock_seq_and_reserved;
-        index += sizeof(uint8_t);
-
-        big_content[index] = iface_data->iface.clock_seq_low;
-        little_content[index] = iface_data->iface.clock_seq_low;
-        index += sizeof(uint8_t);
-
-        memcpy(&big_content[index], iface_data->iface.node, 6);
-        memcpy(&little_content[index], iface_data->iface.node, 6);
-
-        big_fp->content = big_content;
-        big_fp->length = sizeof(Uuid);
-        little_fp->content = little_content;
-        little_fp->length = sizeof(Uuid);
-
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Iface: %s\nBig endian: %s\n, Little endian: %s\n",
-                    DCE2_UuidToStr(&iface_data->iface, DCERPC_BO_FLAG__NONE),
-                    DCE2_UuidToStr((Uuid *)big_fp->content, DCERPC_BO_FLAG__NONE),
-                    DCE2_UuidToStr((Uuid *)little_fp->content, DCERPC_BO_FLAG__NONE)););
-
-        big_fp->next = little_fp;
-        *info = big_fp;
-    }
-
-    return 0;
-}
-
 /********************************************************************
  * Function:
  *
@@ -810,7 +683,7 @@ static int DCE2_OpnumInit(char *name, char *args, void **data)
     if (DCE2_IsEmptyStr(args))
     {
         DCE2_RoptError("\"%s\" rule option: No arguments. Must supply "
-                "the value of the opnum.", DCE2_ROPT__OPNUM);
+                       "the value of the opnum.", DCE2_ROPT__OPNUM);
     }
 
     /* Include NULL byte for parsing */
@@ -841,7 +714,7 @@ static int DCE2_OpnumInit(char *name, char *args, void **data)
         if (odata == NULL)
         {
             DCE2_Die("%s(%d) Failed to allocate memory for opnum data.",
-                    __FILE__, __LINE__);
+                     __FILE__, __LINE__);
         }
 
         odata->odata.type = DCE2_OPNUM_TYPE__SINGLE;
@@ -859,7 +732,7 @@ static int DCE2_OpnumInit(char *name, char *args, void **data)
         if (odata == NULL)
         {
             DCE2_Die("%s(%d) Failed to allocate memory for opnum data.",
-                    __FILE__, __LINE__);
+                     __FILE__, __LINE__);
         }
 
         odata->mask = (uint8_t *)DCE2_Alloc(mask_size, DCE2_MEM_TYPE__ROPTION);
@@ -867,7 +740,7 @@ static int DCE2_OpnumInit(char *name, char *args, void **data)
         {
             DCE2_Free((void *)odata, sizeof(DCE2_OpnumMultiple), DCE2_MEM_TYPE__ROPTION);
             DCE2_Die("%s(%d) Failed to allocate memory for opnum data.",
-                    __FILE__, __LINE__);
+                     __FILE__, __LINE__);
         }
 
         odata->odata.type = DCE2_OPNUM_TYPE__MULTIPLE;
@@ -922,7 +795,7 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
                 else if (!DCE2_IsSpaceChar(c))
                 {
                     DCE2_RoptError("\"%s\" rule option: Invalid opnum list: %s.",
-                            DCE2_ROPT__OPNUM, *ptr);
+                                   DCE2_ROPT__OPNUM, *ptr);
                 }
 
                 break;
@@ -931,12 +804,12 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
                 if (!DCE2_IsOpnumChar(c))
                 {
                     DCE2_Ret status = DCE2_GetValue(lo_start, *ptr, &lo_opnum,
-                            0, DCE2_INT_TYPE__UINT16, 10);
+                                                    0, DCE2_INT_TYPE__UINT16, 10);
 
                     if (status != DCE2_RET__SUCCESS)
                     {
                         DCE2_RoptError("\"%s\" rule option: Invalid opnum: %.*s",
-                                DCE2_ROPT__OPNUM, *ptr - lo_start, lo_start);
+                                       DCE2_ROPT__OPNUM, *ptr - lo_start, lo_start);
                     }
 
                     if (DCE2_IsOpnumRangeChar(c))
@@ -972,12 +845,12 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
                 if (!DCE2_IsOpnumChar(c))
                 {
                     DCE2_Ret status = DCE2_GetValue(hi_start, *ptr, &hi_opnum,
-                            0, DCE2_INT_TYPE__UINT16, 10);
+                                                    0, DCE2_INT_TYPE__UINT16, 10);
 
                     if (status != DCE2_RET__SUCCESS)
                     {
                         DCE2_RoptError("\"%s\" rule option: Invalid opnum: %.*s",
-                                DCE2_ROPT__OPNUM, *ptr - hi_start, hi_start);
+                                       DCE2_ROPT__OPNUM, *ptr - hi_start, hi_start);
                     }
 
                     DCE2_OpnumSetRange(opnum_mask, lo_opnum, hi_opnum);
@@ -1000,14 +873,14 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
                 else if (!DCE2_IsSpaceChar(c))
                 {
                     DCE2_RoptError("\"%s\" rule option: Invalid opnum list: %s.",
-                            DCE2_ROPT__OPNUM, *ptr);
+                                   DCE2_ROPT__OPNUM, *ptr);
                 }
 
                 break;
 
             default:
                 DCE2_Die("%s(%d) Invalid opnum list state: %d",
-                        __FILE__, __LINE__, state);
+                         __FILE__, __LINE__, state);
                 break;
         }
 
@@ -1017,7 +890,7 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
     if (state != DCE2_OPNUM_LIST_STATE__END)
     {
         DCE2_RoptError("\"%s\" rule option: Invalid opnum list: %s",
-                DCE2_ROPT__OPNUM, *ptr);
+                       DCE2_ROPT__OPNUM, *ptr);
     }
 }
 
@@ -1031,8 +904,8 @@ static void DCE2_ParseOpnumList(char **ptr, char *end, uint8_t *opnum_mask)
  * Returns:
  *
  ********************************************************************/
-static inline int DCE2_OpnumIsSet(const uint8_t *opnum_mask, const uint16_t opnum_lo,
-        const uint16_t opnum_hi, const uint16_t opnum)
+static INLINE int DCE2_OpnumIsSet(const uint8_t *opnum_mask, const uint16_t opnum_lo,
+                                  const uint16_t opnum_hi, const uint16_t opnum)
 {
     uint16_t otmp = opnum - opnum_lo;
 
@@ -1052,7 +925,7 @@ static inline int DCE2_OpnumIsSet(const uint8_t *opnum_mask, const uint16_t opnu
  * Returns:
  *
  ********************************************************************/
-static inline void DCE2_OpnumSet(uint8_t *opnum_mask, const uint16_t opnum)
+static INLINE void DCE2_OpnumSet(uint8_t *opnum_mask, const uint16_t opnum)
 {
     opnum_mask[(opnum / 8)] |= (1 << (opnum % 8));
 }
@@ -1067,7 +940,7 @@ static inline void DCE2_OpnumSet(uint8_t *opnum_mask, const uint16_t opnum)
  * Returns:
  *
  ********************************************************************/
-static inline void DCE2_OpnumSetRange(uint8_t *opnum_mask, uint16_t lo_opnum, uint16_t hi_opnum)
+static INLINE void DCE2_OpnumSetRange(uint8_t *opnum_mask, uint16_t lo_opnum, uint16_t hi_opnum)
 {
     uint16_t i;
 
@@ -1101,7 +974,7 @@ static int DCE2_StubDataInit(char *name, char *args, void **data)
     if (!DCE2_IsEmptyStr(args))
     {
         DCE2_RoptError("\"%s\" rule option: This option has no arguments.",
-                DCE2_ROPT__STUB_DATA);
+                       DCE2_ROPT__STUB_DATA);
     }
 
     /* Set it to something even though we don't need it */
@@ -1133,10 +1006,10 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
     if (bt_data == NULL)
     {
         DCE2_Die("%s(%d) Failed to allocate memory for byte test data structure.",
-                __FILE__, __LINE__);
+                 __FILE__, __LINE__);
     }
 
-    bt_data->operator = DCE2_BT_OP__NONE;
+    bt_data->operator = DCE2_SENTINEL;
 
     /* Must have arguments */
     if (DCE2_IsEmptyStr(args))
@@ -1151,7 +1024,7 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
     {
         DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
         DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                "was not NULL.", __FILE__, __LINE__);
+                 "was not NULL.", __FILE__, __LINE__);
     }
 
     do
@@ -1163,22 +1036,22 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
         if (tok_num == 1)   /* Number of bytes to convert */
         {
             char *endptr;
-            unsigned long int num_bytes = _dpd.SnortStrtoul(token, &endptr, 10);
+            unsigned long int num_bytes = strtoul(token, &endptr, 10);
 
             if ((errno == ERANGE) || (*endptr != '\0'))
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid number of bytes to "
-                        "convert: %s.  Should be one of 1, 2 or 4.",
-                        DCE2_ROPT__BYTE_TEST, token);
+                               "convert: %s.  Should be one of 1, 2 or 4.",
+                               DCE2_ROPT__BYTE_TEST, token);
             }
 
             if ((num_bytes != 1) && (num_bytes != 2) && (num_bytes != 4))
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid number of bytes to "
-                        "convert: %s.  Should be one of 1, 2 or 4.",
-                        DCE2_ROPT__BYTE_TEST, token);
+                               "convert: %s.  Should be one of 1, 2 or 4.",
+                               DCE2_ROPT__BYTE_TEST, token);
             }
 
             bt_data->num_bytes = num_bytes;
@@ -1190,7 +1063,7 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid argument: %s",
-                        DCE2_ROPT__BYTE_TEST, token);
+                               DCE2_ROPT__BYTE_TEST, token);
             }
 
             /* If two bytes first must be '!' */
@@ -1200,7 +1073,7 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid argument: %s",
-                            DCE2_ROPT__BYTE_TEST, token);
+                                   DCE2_ROPT__BYTE_TEST, token);
                 }
                 else
                 {
@@ -1230,21 +1103,21 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
                 default:
                     DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid argument: %s",
-                            DCE2_ROPT__BYTE_TEST, token);
+                             DCE2_ROPT__BYTE_TEST, token);
                     break;
             }
         }
         else if (tok_num == 3)  /* Value to compare to */
         {
             char *endptr;
-            unsigned long int value = _dpd.SnortStrtoul(token, &endptr, 10);
+            unsigned long int value = strtoul(token, &endptr, 10);
 
             if ((errno == ERANGE) || (*endptr != '\0') || (value > UINT32_MAX))
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid compare value: %s. Must be "
-                        "between 0 and %u inclusive.",
-                        DCE2_ROPT__BYTE_TEST, token, UINT32_MAX);
+                               "between 0 and %u inclusive.",
+                               DCE2_ROPT__BYTE_TEST, token, UINT32_MAX);
             }
 
             bt_data->value = value;
@@ -1252,15 +1125,15 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
         else if (tok_num == 4)  /* Offset in packet data */
         {
             char *endptr;
-            long int offset = _dpd.SnortStrtol(token, &endptr, 10);
+            long int offset = strtol(token, &endptr, 10);
 
             if ((errno == ERANGE) || (*endptr != '\0') ||
-                    (offset > (long int)UINT16_MAX) || (offset < (-1 * (long int)UINT16_MAX)))
+                (offset > (long int)UINT16_MAX) || (offset < (-1 * (long int)UINT16_MAX)))
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid offset: %s. Must be "
-                        "between -%u and %u inclusive.",
-                        DCE2_ROPT__BYTE_TEST, token, UINT16_MAX, UINT16_MAX);
+                               "between -%u and %u inclusive.",
+                               DCE2_ROPT__BYTE_TEST, token, UINT16_MAX, UINT16_MAX);
             }
 
             bt_data->offset = offset;
@@ -1274,8 +1147,8 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Can't configure \"%s\" "
-                            "more than once.",
-                            DCE2_ROPT__BYTE_TEST, DCE2_RARG__RELATIVE);
+                                   "more than once.",
+                                   DCE2_ROPT__BYTE_TEST, DCE2_RARG__RELATIVE);
                 }
 
                 bt_data->relative = 1;
@@ -1284,7 +1157,7 @@ static int DCE2_ByteTestInit(char *name, char *args, void **data)
             {
                 DCE2_Free((void *)bt_data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid argument: %s.",
-                        DCE2_ROPT__BYTE_TEST, token);
+                               DCE2_ROPT__BYTE_TEST, token);
             }
         }
         else
@@ -1330,7 +1203,7 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
     if (bj_data == NULL)
     {
         DCE2_Die("%s(%d) Failed to allocate memory for byte jump data structure.",
-                __FILE__, __LINE__);
+                 __FILE__, __LINE__);
     }
 
     bj_data->multiplier = DCE2_SENTINEL;
@@ -1348,7 +1221,7 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
     {
         DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
         DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                "was not NULL.", __FILE__, __LINE__);
+                 "was not NULL.", __FILE__, __LINE__);
     }
 
     do
@@ -1360,22 +1233,22 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
         if (tok_num == 1)   /* Number of bytes to convert */
         {
             char *endptr;
-            unsigned long int num_bytes = _dpd.SnortStrtoul(token, &endptr, 10);
+            unsigned long int num_bytes = strtoul(token, &endptr, 10);
 
             if ((errno == ERANGE) || (*endptr != '\0'))
             {
                 DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid number of bytes to "
-                        "convert: %s.  Should be one of 1, 2 or 4.",
-                        DCE2_ROPT__BYTE_JUMP, token);
+                               "convert: %s.  Should be one of 1, 2 or 4.",
+                               DCE2_ROPT__BYTE_JUMP, token);
             }
 
             if ((num_bytes != 4) && (num_bytes != 2) && (num_bytes != 1))
             {
                 DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid number of bytes to "
-                        "convert: %s.  Should be one of 1, 2 or 4.",
-                        DCE2_ROPT__BYTE_JUMP, token);
+                               "convert: %s.  Should be one of 1, 2 or 4.",
+                               DCE2_ROPT__BYTE_JUMP, token);
             }
 
             bj_data->num_bytes = num_bytes;
@@ -1383,15 +1256,15 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
         else if (tok_num == 2)  /* Offset in packet data */
         {
             char *endptr;
-            long int offset = _dpd.SnortStrtol(token, &endptr, 10);
+            long int offset = strtol(token, &endptr, 10);
 
             if ((errno == ERANGE) || (*endptr != '\0') ||
-                    (offset > (long int)UINT16_MAX) || (offset < (-1 * (long int)UINT16_MAX)))
+                (offset > (long int)UINT16_MAX) || (offset < (-1 * (long int)UINT16_MAX)))
             {
                 DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid offset: %s. Must be "
-                        "between -%u and %u inclusive.",
-                        DCE2_ROPT__BYTE_JUMP, token, UINT16_MAX, UINT16_MAX);
+                               "between -%u and %u inclusive.",
+                               DCE2_ROPT__BYTE_JUMP, token, UINT16_MAX, UINT16_MAX);
             }
 
             bj_data->offset = offset;
@@ -1406,7 +1279,7 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
             {
                 DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_Die("%s(%d) strtok_r() returned NULL when string argument "
-                        "was not NULL.", __FILE__, __LINE__);
+                         "was not NULL.", __FILE__, __LINE__);
             }
 
             if (strcasecmp(arg, DCE2_RARG__RELATIVE) == 0)
@@ -1416,8 +1289,8 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Can't configure \"%s\" "
-                            "more than once.",
-                            DCE2_ROPT__BYTE_TEST, DCE2_RARG__RELATIVE);
+                                   "more than once.",
+                                   DCE2_ROPT__BYTE_TEST, DCE2_RARG__RELATIVE);
                 }
 
                 bj_data->relative = 1;
@@ -1428,8 +1301,8 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Can't configure \"%s\" "
-                            "more than once.",
-                            DCE2_ROPT__BYTE_TEST, DCE2_RARG__ALIGN);
+                                   "more than once.",
+                                   DCE2_ROPT__BYTE_TEST, DCE2_RARG__ALIGN);
                 }
 
                 bj_data->align = 1;
@@ -1443,26 +1316,26 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Can't configure \"%s\" "
-                            "more than once.",
-                            DCE2_ROPT__BYTE_TEST, DCE2_RARG__MULTIPLIER);
+                                   "more than once.",
+                                   DCE2_ROPT__BYTE_TEST, DCE2_RARG__MULTIPLIER);
                 }
 
                 arg = strtok_r(NULL, DCE2_RTOKEN__ARG_SEP, &argptr);
                 if (arg == NULL)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
-                    DCE2_RoptError("\"%s\" rule option: \"%s\" requires an argument.",
-                            DCE2_ROPT__BYTE_JUMP, DCE2_RARG__MULTIPLIER);
+                    DCE2_RoptError("\"%s\" rule option: \"%s\" requires an argument.", 
+                                   DCE2_ROPT__BYTE_JUMP, DCE2_RARG__MULTIPLIER);
                 }
 
-                multiplier = _dpd.SnortStrtoul(arg, &endptr, 10);
+                multiplier = strtoul(arg, &endptr, 10);
                 if ((errno == ERANGE) || (*endptr != '\0') ||
-                        (multiplier <= 1) || (multiplier > UINT16_MAX))
+                    (multiplier <= 1) || (multiplier > UINT16_MAX))
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid multiplier: %s. "
-                            "Must be between 2 and %u inclusive.",
-                            DCE2_ROPT__BYTE_JUMP, arg, UINT16_MAX);
+                                   "Must be between 2 and %u inclusive.",
+                                   DCE2_ROPT__BYTE_JUMP, arg, UINT16_MAX);
                 }
 
                 bj_data->multiplier = multiplier;
@@ -1476,8 +1349,8 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Can't configure \"%s\" "
-                            "more than once.",
-                            DCE2_ROPT__BYTE_TEST, DCE2_RARG__POST_OFFSET);
+                                   "more than once.",
+                                   DCE2_ROPT__BYTE_TEST, DCE2_RARG__POST_OFFSET);
                 }
 
                 arg = strtok_r(NULL, DCE2_RTOKEN__ARG_SEP, &argptr);
@@ -1485,17 +1358,17 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: \"%s\" requires an argument.",
-                            DCE2_ROPT__BYTE_JUMP, DCE2_RARG__POST_OFFSET);
+                                   DCE2_ROPT__BYTE_JUMP, DCE2_RARG__POST_OFFSET);
                 }
 
-                post_offset = _dpd.SnortStrtol(arg, &endptr, 10);
+                post_offset = strtol(arg, &endptr, 10);
                 if ((errno == ERANGE) || (*endptr != '\0') ||
-                        (post_offset > (long int)UINT16_MAX) || (post_offset < (-1 * (long int)UINT16_MAX)))
+                    (post_offset > (long int)UINT16_MAX) || (post_offset < (-1 * (long int)UINT16_MAX)))
                 {
                     DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                     DCE2_RoptError("\"%s\" rule option: Invalid post offset "
-                            "value: %s. Must be between -%u to %u inclusive",
-                            DCE2_ROPT__BYTE_JUMP, arg, UINT16_MAX, UINT16_MAX);
+                                   "value: %s. Must be between -%u to %u inclusive",
+                                   DCE2_ROPT__BYTE_JUMP, arg, UINT16_MAX, UINT16_MAX);
                 }
 
                 bj_data->post_offset = post_offset;
@@ -1505,7 +1378,7 @@ static int DCE2_ByteJumpInit(char *name, char *args, void **data)
             {
                 DCE2_Free((void *)bj_data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
                 DCE2_RoptError("\"%s\" rule option: Invalid argument: %s.",
-                        DCE2_ROPT__BYTE_JUMP, arg);
+                               DCE2_ROPT__BYTE_JUMP, arg);
             }
         }
         else
@@ -1543,61 +1416,55 @@ static int DCE2_IfaceEval(void *pkt, const uint8_t **cursor, void *data)
     DCE2_SsnData *sd;
     DCE2_Roptions *ropts;
     DCE2_IfaceData *iface_data;
-    int ret = RULE_NOMATCH;
+    int ret = 0;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "Evaluating \"%s\" rule option.\n", DCE2_ROPT__IFACE));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Evaluating \"%s\" rule option.\n", DCE2_ROPT__IFACE));
 
     if (!DCE2_RoptDoEval(p))
-        return RULE_NOMATCH;
+        return 0;
 
-    sd = (DCE2_SsnData *)
-        _dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
+    sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
     if (sd == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No session data - not evaluating.\n"));
+        return 0;
     }
 
     ropts = &sd->ropts;
 
     if (ropts->first_frag == DCE2_SENTINEL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "First frag not set - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "First frag not set - not evaluating.\n"));
+        return 0;
     }
 
     iface_data = (DCE2_IfaceData *)data;
     if (iface_data == NULL)
-        return RULE_NOMATCH;
+        return 0;
 
     if (!iface_data->any_frag && !ropts->first_frag)
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Not a first fragment and rule set to only look at "
-                    "first fragment.\n"));
+                       "Not a first fragment and rule set to only look at first fragment.\n"));
 
-        return RULE_NOMATCH;
+        return 0;
     }
 
     /* Compare the uuid */
     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Comparing \"%s\" to \"%s\"\n",
-                DCE2_UuidToStr(&ropts->iface, DCERPC_BO_FLAG__NONE),
-                DCE2_UuidToStr(&iface_data->iface, DCERPC_BO_FLAG__NONE)));
+                   DCE2_UuidToStr(&ropts->iface, DCERPC_BO_FLAG__NONE),
+                   DCE2_UuidToStr(&iface_data->iface, DCERPC_BO_FLAG__NONE)));
 
     if (DCE2_UuidCompare((void *)&ropts->iface, (void *)&iface_data->iface) != 0)
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Uuids don't match\n"));
-        return RULE_NOMATCH;
+        return 0;
     }
 
-    if (iface_data->operator == DCE2_IF_OP__NONE)
+    if ((int)iface_data->operator == DCE2_SENTINEL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "\"%s\" Match\n", DCE2_ROPT__IFACE));
-        return RULE_MATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Match\n", DCE2_ROPT__IFACE));
+        return 1;
     }
 
     switch (iface_data->operator)
@@ -1606,12 +1473,12 @@ static int DCE2_IfaceEval(void *pkt, const uint8_t **cursor, void *data)
             if (IsTCP(p) && (iface_data->iface_vers_maj != DCE2_SENTINEL))
             {
                 if ((int)ropts->iface_vers_maj < iface_data->iface_vers_maj)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
             else
             {
                 if (ropts->iface_vers < iface_data->iface_vers)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
 
             break;
@@ -1620,12 +1487,12 @@ static int DCE2_IfaceEval(void *pkt, const uint8_t **cursor, void *data)
             if (IsTCP(p) && (iface_data->iface_vers_maj != DCE2_SENTINEL))
             {
                 if ((int)ropts->iface_vers_maj == iface_data->iface_vers_maj)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
             else
             {
                 if (ropts->iface_vers == iface_data->iface_vers)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
 
             break;
@@ -1634,12 +1501,12 @@ static int DCE2_IfaceEval(void *pkt, const uint8_t **cursor, void *data)
             if (IsTCP(p) && (iface_data->iface_vers_maj != DCE2_SENTINEL))
             {
                 if ((int)ropts->iface_vers_maj > iface_data->iface_vers_maj)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
             else
             {
                 if (ropts->iface_vers > iface_data->iface_vers)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
 
             break;
@@ -1648,18 +1515,18 @@ static int DCE2_IfaceEval(void *pkt, const uint8_t **cursor, void *data)
             if (IsTCP(p) && (iface_data->iface_vers_maj != DCE2_SENTINEL))
             {
                 if ((int)ropts->iface_vers_maj != iface_data->iface_vers_maj)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
             else
             {
                 if (ropts->iface_vers != iface_data->iface_vers)
-                    ret = RULE_MATCH;
+                    ret = 1;
             }
 
             break;
 
         default:
-            break;
+            break; 
     }
 
     return ret;
@@ -1682,59 +1549,50 @@ static int DCE2_OpnumEval(void *pkt, const uint8_t **cursor, void *data)
     DCE2_SsnData *sd;
     DCE2_Roptions *ropts;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "Evaluating \"%s\" rule option.\n", DCE2_ROPT__OPNUM));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Evaluating \"%s\" rule option.\n", DCE2_ROPT__OPNUM));
 
     if (!DCE2_RoptDoEval(p))
-        return RULE_NOMATCH;
+        return 0;
 
-    sd = (DCE2_SsnData *)
-        _dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
+    sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
     if (sd == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No session data - not evaluating.\n"));
+        return 0;
     }
 
     ropts = &sd->ropts;
 
     if (ropts->opnum == DCE2_SENTINEL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Opnum not set - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Opnum not set - not evaluating.\n"));
+        return 0;
     }
 
     switch (opnum_data->type)
     {
         case DCE2_OPNUM_TYPE__SINGLE:
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Rule opnum: %u, ropts opnum: %u\n",
-                        ((DCE2_OpnumSingle *)opnum_data)->opnum, ropts->opnum));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Rule opnum: %u, ropts opnum: %u\n",
+                           ((DCE2_OpnumSingle *)opnum_data)->opnum, ropts->opnum));
 
             if (ropts->opnum == ((DCE2_OpnumSingle *)opnum_data)->opnum)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "\"%s\" Match\n", DCE2_ROPT__OPNUM));
-                return RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Match\n", DCE2_ROPT__OPNUM));
+                return 1;
             }
 
             break;
 
         case DCE2_OPNUM_TYPE__MULTIPLE:
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Multiple opnums: ropts opnum: %u\n", ropts->opnum));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Multiple opnums: ropts opnum: %u\n", ropts->opnum));
 
             {
                 DCE2_OpnumMultiple *omult = (DCE2_OpnumMultiple *)opnum_data;
 
-                if (DCE2_OpnumIsSet(omult->mask, omult->opnum_lo,
-                            omult->opnum_hi, (uint16_t)ropts->opnum))
+                if (DCE2_OpnumIsSet(omult->mask, omult->opnum_lo, omult->opnum_hi, (uint16_t)ropts->opnum))
                 {
-                    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                                "\"%s\" Match\n", DCE2_ROPT__OPNUM));
-                    return RULE_MATCH;
+                    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Match\n", DCE2_ROPT__OPNUM));
+                    return 1;
                 }
             }
 
@@ -1742,15 +1600,14 @@ static int DCE2_OpnumEval(void *pkt, const uint8_t **cursor, void *data)
 
         default:
             DCE2_Log(DCE2_LOG_TYPE__ERROR,
-                    "%s(%d) Invalid opnum type: %d",
-                    __FILE__, __LINE__, opnum_data->type);
+                     "%s(%d) Invalid opnum type: %d",
+                     __FILE__, __LINE__, opnum_data->type);
             break;
     }
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "\"%s\" Fail\n", DCE2_ROPT__OPNUM));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Fail\n", DCE2_ROPT__OPNUM));
 
-    return RULE_NOMATCH;
+    return 0;
 }
 
 /********************************************************************
@@ -1769,31 +1626,28 @@ static int DCE2_StubDataEval(void *pkt, const uint8_t **cursor, void *data)
     DCE2_SsnData *sd;
     DCE2_Roptions *ropts;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "Evaluating \"%s\" rule option.\n", DCE2_ROPT__STUB_DATA));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Evaluating \"%s\" rule option.\n", DCE2_ROPT__STUB_DATA));
 
     if (!DCE2_RoptDoEval(p))
-        return RULE_NOMATCH;
+        return 0;
 
     sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
     if (sd == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No session data - not evaluating.\n"));
+        return 0;
     }
 
     ropts = &sd->ropts;
 
     if (ropts->stub_data != NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Setting cursor to stub data: %p.\n", ropts->stub_data));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Setting cursor to stub data: %p.\n", ropts->stub_data));
         *cursor = ropts->stub_data;
-        return RULE_MATCH;
+        return 1;
     }
-
-    return RULE_NOMATCH;
+        
+    return 0;
 }
 
 /********************************************************************
@@ -1815,43 +1669,39 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
     const uint8_t *bt_ptr;
     uint32_t pkt_value;
     DceRpcBoFlag byte_order;
-    int ret = RULE_NOMATCH;
+    int ret = 0;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "Evaluating \"%s\" rule option.\n", DCE2_ROPT__BYTE_TEST));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Evaluating \"%s\" rule option.\n", DCE2_ROPT__BYTE_TEST));
 
     if (*cursor == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Cursor is NULL - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Cursor is NULL - not evaluating.\n"));
+        return 0;
     }
 
     if (!DCE2_RoptDoEval(p))
-        return RULE_NOMATCH;
+        return 0;
 
     sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
     if (sd == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No session data - not evaluating.\n"));
+        return 0;
     }
 
     ropts = &sd->ropts;
 
     if ((ropts->data_byte_order == DCE2_SENTINEL) ||
-            (ropts->hdr_byte_order == DCE2_SENTINEL))
+        (ropts->hdr_byte_order == DCE2_SENTINEL))
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Data byte order or header byte order not set "
-                    "in rule options - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Data byte order or header byte order not set "
+                       "in rule options - not evaluating.\n"));
+        return 0;
     }
 
     bt_data = (DCE2_ByteTestData *)data;
     if (bt_data == NULL)
-        return RULE_NOMATCH;
+        return 0;
 
     /* Make sure we don't read past the end of the payload or before
      * beginning of payload */
@@ -1859,18 +1709,16 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
     {
         if ((bt_data->offset < 0) && (*cursor + bt_data->offset) < p->payload)
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset is negative and puts cursor before beginning "
-                        "of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset is negative and puts cursor before beginning "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         if ((*cursor + bt_data->offset + bt_data->num_bytes) > (p->payload + p->payload_size))
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset plus number of bytes to read puts cursor past "
-                        "end of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset plus number of bytes to read puts cursor past end "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         bt_ptr = *cursor + bt_data->offset;
@@ -1879,17 +1727,14 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
     {
         if (bt_data->offset < 0)
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset is negative but is not relative - "
-                        "not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset is negative but is not relative - not evaluating.\n"));
+            return 0;
         }
         else if ((p->payload + bt_data->offset + bt_data->num_bytes) > (p->payload + p->payload_size))
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset plus number of bytes to read puts cursor past "
-                        "end of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset plus number of bytes to read puts cursor past end "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         bt_ptr = p->payload + bt_data->offset;
@@ -1898,23 +1743,19 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
     /* Determine which byte order to use */
     if (ropts->stub_data == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Stub data is NULL.  Setting byte order to that "
-                    "of the header.\n"));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Stub data is NULL.  Setting byte order to that of the header.\n"));
         byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
     }
     else if (bt_ptr < ropts->stub_data)
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the header.  Setting byte order "
-                    "to that of the header.\n"));
+                       "Reading data in the header.  Setting byte order to that of the header.\n"));
         byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
     }
     else
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the stub.  Setting byte order "
-                    "to that of the stub data.\n"));
+                       "Reading data in the stub.  Setting byte order to that of the stub data.\n"));
         byte_order = (DceRpcBoFlag)ropts->data_byte_order;
     }
 
@@ -1923,31 +1764,25 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
     {
         case 1:
             pkt_value = *((uint8_t *)bt_ptr);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 1 byte: %u.\n", pkt_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 1 byte: %u.\n", pkt_value));
             break;
         case 2:
             pkt_value = DceRpcNtohs((uint16_t *)bt_ptr, byte_order);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 2 bytes: %u.\n", pkt_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 2 bytes: %u.\n", pkt_value));
             break;
         case 4:
             pkt_value = DceRpcNtohl((uint32_t *)bt_ptr, byte_order);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 4 bytes: %u.\n", pkt_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 4 bytes: %u.\n", pkt_value));
             break;
         default:
-            return RULE_NOMATCH;
+            return 0;
     }
 
     /* Invert the return value if necessary */
     if (bt_data->invert)
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Applying not flag.\n"));
-        if (ret == RULE_MATCH)
-            ret = RULE_NOMATCH;
-        else
-            ret = RULE_MATCH;
+        ret ^= 1;
     }
 
     switch (bt_data->operator)
@@ -1955,13 +1790,9 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
         case DCE2_BT_OP__LT:
             if (pkt_value < bt_data->value)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "Packet value (%u) < Option value (%u).\n",
-                            pkt_value, bt_data->value));
-                if (ret == RULE_MATCH)
-                    ret = RULE_NOMATCH;
-                else
-                    ret = RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Packet value (%u) < Option value (%u).\n",
+                               pkt_value, bt_data->value));
+                ret ^= 1;
             }
 
             break;
@@ -1969,13 +1800,9 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
         case DCE2_BT_OP__EQ:
             if (pkt_value == bt_data->value)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "Packet value (%u) == Option value (%u).\n",
-                            pkt_value, bt_data->value));
-                if (ret == RULE_MATCH)
-                    ret = RULE_NOMATCH;
-                else
-                    ret = RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Packet value (%u) == Option value (%u).\n",
+                               pkt_value, bt_data->value));
+                ret ^= 1;
             }
 
             break;
@@ -1983,13 +1810,9 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
         case DCE2_BT_OP__GT:
             if (pkt_value > bt_data->value)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "Packet value (%u) > Option value (%u).\n",
-                            pkt_value, bt_data->value));
-                if (ret == RULE_MATCH)
-                    ret = RULE_NOMATCH;
-                else
-                    ret = RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Packet value (%u) > Option value (%u).\n",
+                               pkt_value, bt_data->value));
+                ret ^= 1;
             }
 
             break;
@@ -1997,13 +1820,9 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
         case DCE2_BT_OP__AND:
             if (pkt_value & bt_data->value)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "Packet value (%08x) & Option value (%08x).\n",
-                            pkt_value, bt_data->value));
-                if (ret == RULE_MATCH)
-                    ret = RULE_NOMATCH;
-                else
-                    ret = RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Packet value (%08x) & Option value (%08x).\n",
+                               pkt_value, bt_data->value));
+                ret ^= 1;
             }
 
             break;
@@ -2011,31 +1830,25 @@ static int DCE2_ByteTestEval(void *pkt, const uint8_t **cursor, void *data)
         case DCE2_BT_OP__XOR:
             if (pkt_value ^ bt_data->value)
             {
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                            "Packet value (%08x) ^ Option value (%08x).\n",
-                            pkt_value, bt_data->value));
-                if (ret == RULE_MATCH)
-                    ret = RULE_NOMATCH;
-                else
-                    ret = RULE_MATCH;
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Packet value (%08x) ^ Option value (%08x).\n",
+                               pkt_value, bt_data->value));
+                ret ^= 1;
             }
 
             break;
 
         default:
-            return RULE_NOMATCH;
+            return 0;
     }
 
-#ifdef DEBUG_MSGS
-    if (ret == RULE_MATCH)
+#ifdef DEBUG
+    if (ret)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "\"%s\" Match.\n", DCE2_ROPT__BYTE_TEST));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Match.\n", DCE2_ROPT__BYTE_TEST));
     }
     else
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "\"%s\" Fail.\n", DCE2_ROPT__BYTE_TEST));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Fail.\n", DCE2_ROPT__BYTE_TEST));
     }
 #endif
 
@@ -2062,41 +1875,37 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     uint32_t jmp_value;
     DceRpcBoFlag byte_order;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "Evaluating \"%s\" rule option.\n", DCE2_ROPT__BYTE_JUMP));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Evaluating \"%s\" rule option.\n", DCE2_ROPT__BYTE_JUMP));
 
     if (*cursor == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Cursor is NULL - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Cursor is NULL - not evaluating.\n"));
+        return 0;
     }
 
     if (!DCE2_RoptDoEval(p))
-        return RULE_NOMATCH;
+        return 0;
 
     sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
     if (sd == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No session data - not evaluating.\n"));
+        return 0;
     }
 
     ropts = &sd->ropts;
 
     if ((ropts->data_byte_order == DCE2_SENTINEL) ||
-            (ropts->hdr_byte_order == DCE2_SENTINEL))
+        (ropts->hdr_byte_order == DCE2_SENTINEL))
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Data byte order or header byte order not set "
-                    "in rule options - not evaluating.\n"));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Data byte order or header byte order not set "
+                       "in rule options - not evaluating.\n"));
+        return 0;
     }
 
     bj_data = (DCE2_ByteJumpData *)data;
     if (bj_data == NULL)
-        return RULE_NOMATCH;
+        return 0;
 
     /* Make sure we don't read past the end of the payload or before
      * beginning of payload */
@@ -2104,18 +1913,16 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     {
         if ((bj_data->offset < 0) && (*cursor + bj_data->offset) < p->payload)
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset is negative and puts cursor before beginning "
-                        "of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset is negative and puts cursor before beginning "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         if ((*cursor + bj_data->offset + bj_data->num_bytes) > (p->payload + p->payload_size))
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset plus number of bytes to read puts cursor past "
-                        "end of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset plus number of bytes to read puts cursor past end "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         bj_ptr = *cursor + bj_data->offset;
@@ -2124,17 +1931,14 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     {
         if (bj_data->offset < 0)
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset is negative but is not relative - "
-                        "not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset is negative but is not relative - not evaluating.\n"));
+            return 0;
         }
         else if ((p->payload + bj_data->offset + bj_data->num_bytes) > (p->payload + p->payload_size))
         {
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Offset plus number of bytes to read puts cursor past "
-                        "end of payload - not evaluating.\n"));
-            return RULE_NOMATCH;
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Offset plus number of bytes to read puts cursor past end "
+                           "of payload - not evaluating.\n"));
+            return 0;
         }
 
         bj_ptr = p->payload + bj_data->offset;
@@ -2143,22 +1947,19 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     /* Determine which byte order to use */
     if (ropts->stub_data == NULL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Stub data is NULL.  "
-                    "Setting byte order to that of the header.\n"));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Stub data is NULL.  Setting byte order to that of the header.\n"));
         byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
     }
     else if (bj_ptr < ropts->stub_data)
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the header.  Setting byte order "
-                    "to that of the header.\n"));
+                       "Reading data in the header.  Setting byte order to that of the header.\n"));
         byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
     }
     else
     {
         DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the stub.  Setting byte order "
-                    "to that of the stub data.\n"));
+                       "Reading data in the stub.  Setting byte order to that of the stub data.\n"));
         byte_order = (DceRpcBoFlag)ropts->data_byte_order;
     }
 
@@ -2167,18 +1968,15 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     {
         case 1:
             jmp_value = *((uint8_t *)bj_ptr);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 1 byte: %u.\n", jmp_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 1 byte: %u.\n", jmp_value));
             break;
         case 2:
             jmp_value = DceRpcNtohs((uint16_t *)bj_ptr, byte_order);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 2 bytes: %u.\n", jmp_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 2 bytes: %u.\n", jmp_value));
             break;
         case 4:
             jmp_value = DceRpcNtohl((uint32_t *)bj_ptr, byte_order);
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                        "Got 4 bytes: %u.\n", jmp_value));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Got 4 bytes: %u.\n", jmp_value));
             break;
         default:
             return 0;
@@ -2186,19 +1984,17 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
 
     if (bj_data->multiplier != DCE2_SENTINEL)
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Applying multiplier: %u * %u = %u.\n",
-                    jmp_value, bj_data->multiplier,
-                    jmp_value * bj_data->multiplier));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Applying multiplier: %u * %u = %u.\n",
+                       jmp_value, bj_data->multiplier,
+                       jmp_value * bj_data->multiplier));
 
         jmp_value *= bj_data->multiplier;
     }
 
     if (bj_data->align && (jmp_value & 3))
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Aligning to 4 byte boundary: %u => %u.\n",
-                    jmp_value, jmp_value + (4 - (jmp_value & 3))));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Aligning to 4 byte boundary: %u => %u.\n",
+                       jmp_value, jmp_value + (4 - (jmp_value & 3))));
 
         jmp_value += (4 - (jmp_value & 3));
     }
@@ -2206,18 +2002,16 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
     bj_ptr += bj_data->num_bytes + jmp_value + bj_data->post_offset;
     if ((bj_ptr < p->payload) || (bj_ptr >= (p->payload + p->payload_size)))
     {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "\"%s\" Fail.  Jump puts us past end of payload.\n",
-                    DCE2_ROPT__BYTE_JUMP));
-        return RULE_NOMATCH;
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Fail.  Jump puts us past end of payload.\n",
+                       DCE2_ROPT__BYTE_JUMP));
+        return 0;
     }
 
     *cursor = bj_ptr;
 
-    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                "\"%s\" Match.\n", DCE2_ROPT__BYTE_JUMP));
+    DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "\"%s\" Match.\n", DCE2_ROPT__BYTE_JUMP));
 
-    return RULE_MATCH;
+    return 1;
 }
 
 /********************************************************************
@@ -2230,15 +2024,15 @@ static int DCE2_ByteJumpEval(void *pkt, const uint8_t **cursor, void *data)
  * Returns:
  *
  ********************************************************************/
-static inline int DCE2_RoptDoEval(SFSnortPacket *p)
+static INLINE int DCE2_RoptDoEval(SFSnortPacket *p)
 {
     if ((p->payload_size == 0) ||
-            (p->stream_session_ptr == NULL) ||
-            (!IsTCP(p) && !IsUDP(p)))
+        (p->stream_session_ptr == NULL) ||
+        (!IsTCP(p) && !IsUDP(p)))
     {
 
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No payload or no "
-                    "session pointer or not TCP or UDP - not evaluating.\n"));
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "No payload or no session pointer or "
+                       "not TCP or UDP - not evaluating.\n"));
         return 0;
     }
 
@@ -2261,7 +2055,7 @@ static void DCE2_IfaceCleanup(void *data)
         return;
 
     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY,
-                "Cleaning Iface data: %u bytes.\n", sizeof(DCE2_IfaceData)));
+                   "Cleaning Iface data: %u bytes.\n", sizeof(DCE2_IfaceData)));
 
     DCE2_Free(data, sizeof(DCE2_IfaceData), DCE2_MEM_TYPE__ROPTION);
 }
@@ -2286,9 +2080,8 @@ static void DCE2_OpnumCleanup(void *data)
     switch (odata->type)
     {
         case DCE2_OPNUM_TYPE__SINGLE:
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY,
-                        "Cleaning Single opnum data: %u bytes.\n",
-                        sizeof(DCE2_OpnumSingle)));
+            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY, "Cleaning Single opnum data: %u bytes.\n",
+                           sizeof(DCE2_OpnumSingle)));
 
             DCE2_Free((void *)odata, sizeof(DCE2_OpnumSingle), DCE2_MEM_TYPE__ROPTION);
 
@@ -2298,16 +2091,15 @@ static void DCE2_OpnumCleanup(void *data)
             {
                 DCE2_OpnumMultiple *omult = (DCE2_OpnumMultiple *)odata;
 
-                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY,
-                            "Cleaning Multiple opnum data: %u bytes.\n",
-                            sizeof(DCE2_OpnumMultiple) + omult->mask_size));
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY, "Cleaning Multiple opnum data: %u bytes.\n",
+                               sizeof(DCE2_OpnumMultiple) + omult->mask_size));
 
                 if (omult->mask != NULL)
                     DCE2_Free((void *)omult->mask, omult->mask_size, DCE2_MEM_TYPE__ROPTION);
 
                 DCE2_Free((void *)omult, sizeof(DCE2_OpnumMultiple), DCE2_MEM_TYPE__ROPTION);
             }
-
+            
             break;
 
         default:
@@ -2331,8 +2123,7 @@ static void DCE2_ByteTestCleanup(void *data)
         return;
 
     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY,
-                "Cleaning ByteTest data: %u bytes.\n",
-                sizeof(DCE2_ByteTestData)));
+                   "Cleaning ByteTest data: %u bytes.\n", sizeof(DCE2_ByteTestData)));
 
     DCE2_Free(data, sizeof(DCE2_ByteTestData), DCE2_MEM_TYPE__ROPTION);
 }
@@ -2353,8 +2144,7 @@ static void DCE2_ByteJumpCleanup(void *data)
         return;
 
     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MEMORY,
-                "Cleaning ByteJump data: %u bytes.\n",
-                sizeof(DCE2_ByteJumpData)));
+                   "Cleaning ByteJump data: %u bytes.\n", sizeof(DCE2_ByteJumpData)));
 
     DCE2_Free(data, sizeof(DCE2_ByteJumpData), DCE2_MEM_TYPE__ROPTION);
 }
@@ -2387,9 +2177,9 @@ static uint32_t DCE2_IfaceHash(void *data)
     mix(a, b, c);
 
     a += (iface_data->iface.node[2] << 24) |
-        (iface_data->iface.node[3] << 16) |
-        (iface_data->iface.node[4] << 8) |
-        (iface_data->iface.node[5]);
+         (iface_data->iface.node[3] << 16) |
+         (iface_data->iface.node[4] << 8) |
+         (iface_data->iface.node[5]);
     b += iface_data->iface_vers;
     c += iface_data->iface_vers_maj;
 
@@ -2463,7 +2253,7 @@ static uint32_t DCE2_OpnumHash(void *data)
 
         default:
             DCE2_Die("%s(%d) Invalid opnum type: %d",
-                    __FILE__, __LINE__, odata->type);
+                     __FILE__, __LINE__, odata->type);
             break;
     }
 
@@ -2499,7 +2289,7 @@ static uint32_t DCE2_ByteTestHash(void *data)
     c += bt_data->relative;
 
     final(a, b, c);
-
+    
     return c;
 }
 
@@ -2554,11 +2344,11 @@ static int DCE2_IfaceKeyCompare(void *l, void *r)
         return PREPROC_OPT_NOT_EQUAL;
 
     if ((DCE2_UuidCompare(&left->iface, &right->iface) == 0) &&
-            (left->iface_vers == right->iface_vers) &&
-            (left->iface_vers_maj == right->iface_vers_maj) &&
-            (left->iface_vers_min == right->iface_vers_min) &&
-            (left->operator == right->operator) &&
-            (left->any_frag == right->any_frag))
+        (left->iface_vers == right->iface_vers) &&
+        (left->iface_vers_maj == right->iface_vers_maj) &&
+        (left->iface_vers_min == right->iface_vers_min) &&
+        (left->operator == right->operator) &&
+        (left->any_frag == right->any_frag))
     {
         return PREPROC_OPT_EQUAL;
     }
@@ -2608,8 +2398,8 @@ static int DCE2_OpnumKeyCompare(void *l, void *r)
                 DCE2_OpnumMultiple *rmult = (DCE2_OpnumMultiple *)right;
 
                 if ((lmult->mask_size != rmult->mask_size) ||
-                        (lmult->opnum_lo != rmult->opnum_lo) ||
-                        (lmult->opnum_hi != rmult->opnum_hi))
+                    (lmult->opnum_lo != rmult->opnum_lo) ||
+                    (lmult->opnum_hi != rmult->opnum_hi))
                 {
                     return PREPROC_OPT_NOT_EQUAL;
                 }
@@ -2625,7 +2415,7 @@ static int DCE2_OpnumKeyCompare(void *l, void *r)
 
         default:
             DCE2_Die("%s(%d) Invalid opnum type: %d",
-                    __FILE__, __LINE__, left->type);
+                     __FILE__, __LINE__, left->type);
             break;
     }
 
@@ -2651,11 +2441,11 @@ static int DCE2_ByteTestKeyCompare(void *l, void *r)
         return PREPROC_OPT_NOT_EQUAL;
 
     if ((left->num_bytes == right->num_bytes) &&
-            (left->value == right->value) &&
-            (left->invert == right->invert) &&
-            (left->operator == right->operator) &&
-            (left->offset == right->offset) &&
-            (left->relative == right->relative))
+        (left->value == right->value) &&
+        (left->invert == right->invert) &&
+        (left->operator == right->operator) &&
+        (left->offset == right->offset) &&
+        (left->relative == right->relative))
     {
         return PREPROC_OPT_EQUAL;
     }
@@ -2682,10 +2472,10 @@ static int DCE2_ByteJumpKeyCompare(void *l, void *r)
         return PREPROC_OPT_NOT_EQUAL;
 
     if ((left->num_bytes == right->num_bytes) &&
-            (left->offset == right->offset) &&
-            (left->relative == right->relative) &&
-            (left->multiplier == right->multiplier) &&
-            (left->align == right->align))
+        (left->offset == right->offset) &&
+        (left->relative == right->relative) &&
+        (left->multiplier == right->multiplier) &&
+        (left->align == right->align))
     {
         return PREPROC_OPT_EQUAL;
     }
@@ -2713,17 +2503,17 @@ void DCE2_PrintRoptions(DCE2_Roptions *ropts)
     }
     else
     {
-        printf("Iface: %s\n", DCE2_UuidToStr(&ropts->iface, DCERPC_BO_FLAG__NONE));
+        printf("Iface: %s\n", DCE2_UuidToStr(&ropts->iface, DCERPC_BO_FLAG__NONE)); 
         printf("Iface version: %u\n", ropts->iface_vers_maj);
     }
     if (ropts->opnum == DCE2_SENTINEL) printf("Opnum: unset\n");
     else printf("Opnum: %u\n", ropts->opnum);
     printf("Header byte order: %s\n",
-            ropts->hdr_byte_order == DCERPC_BO_FLAG__LITTLE_ENDIAN ? "little endian" :
-            (ropts->hdr_byte_order == DCERPC_BO_FLAG__BIG_ENDIAN ? "big endian" : "unset"));
+           ropts->hdr_byte_order == DCERPC_BO_FLAG__LITTLE_ENDIAN ? "little endian" :
+           (ropts->hdr_byte_order == DCERPC_BO_FLAG__BIG_ENDIAN ? "big endian" : "unset"));
     printf("Data byte order: %s\n",
-            ropts->data_byte_order == DCERPC_BO_FLAG__LITTLE_ENDIAN ? "little endian" :
-            (ropts->data_byte_order == DCERPC_BO_FLAG__BIG_ENDIAN ? "big endian" : "unset"));
+           ropts->data_byte_order == DCERPC_BO_FLAG__LITTLE_ENDIAN ? "little endian" :
+           (ropts->data_byte_order == DCERPC_BO_FLAG__BIG_ENDIAN ? "big endian" : "unset"));
     if (ropts->stub_data != NULL) printf("Stub data: %p\n", ropts->stub_data);
     else printf("Stub data: NULL\n");
 }
@@ -2754,89 +2544,6 @@ static NORETURN void DCE2_RoptError(const char *format, ...)
     buf[sizeof(buf) - 1] = '\0';
 
     DCE2_Die("%s(%d): %s  Please consult documentation.",
-            *_dpd.config_file, *_dpd.config_line, buf);
+             *_dpd.config_file, *_dpd.config_line, buf);
 }
 
-
-/**********************************
- * Function: DCE2_GetByteOrder()
- *
- * Gets the byte order needed for a byte_test, byte_jump, or byte_extract.
- *
- * Arguments:
- *  Packet *
- *    packet being evaluated
- *  int32_t
- *    offset into the packet payload where the rule will be evaluated.
- *    calling function is responsible for checking that the offset is in-bounds.
- *
- * Returns:
- *  DCE2_SENTINEL (-1) if byte order not set, or otherwise not evaluating
- *  BIG (0) if byte order is big-endian
- *  LITTLE (1) if byte order is little-endian
- *
- **********************************/
-#define BIG 0
-#define LITTLE 1
-int DCE2_GetByteOrder(void *data, int32_t offset)
-{
-    DCE2_SsnData *sd;
-    DCE2_Roptions *ropts;
-    DceRpcBoFlag byte_order;
-    const uint8_t *data_ptr;
-    SFSnortPacket *p = (SFSnortPacket *)data;
-
-    if (p == NULL)
-        return -1;
-
-    sd = (DCE2_SsnData *)_dpd.streamAPI->get_application_data(p->stream_session_ptr, PP_DCE2);
-    if (sd == NULL)
-    {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "No session data - not evaluating.\n"));
-        return -1;
-    }
-
-    ropts = &sd->ropts;
-
-    if ((ropts->data_byte_order == DCE2_SENTINEL) ||
-            (ropts->hdr_byte_order == DCE2_SENTINEL))
-    {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Data byte order or header byte order not set "
-                    "in rule options - not evaluating.\n"));
-        return -1;
-    }
-
-    /* Determine which byte order to use */
-    data_ptr = p->payload + offset;
-
-    if (ropts->stub_data == NULL)
-    {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS, "Stub data is NULL.  "
-                    "Setting byte order to that of the header.\n"));
-        byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
-    }
-    else if (data_ptr < ropts->stub_data)
-    {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the header.  Setting byte order "
-                    "to that of the header.\n"));
-        byte_order = (DceRpcBoFlag)ropts->hdr_byte_order;
-    }
-    else
-    {
-        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__ROPTIONS,
-                    "Reading data in the stub.  Setting byte order "
-                    "to that of the stub data.\n"));
-        byte_order = (DceRpcBoFlag)ropts->data_byte_order;
-    }
-
-    /* Return ints, since this enum doesn't exist back in Snort-land. */
-    if (byte_order == DCERPC_BO_FLAG__BIG_ENDIAN)
-        return BIG;
-    if (byte_order == DCERPC_BO_FLAG__LITTLE_ENDIAN)
-        return LITTLE;
-
-    return -1;
-}

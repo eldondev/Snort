@@ -1,0 +1,260 @@
+#!/bin/sh -e
+
+CONFIG=/etc/snort/snort.debian.conf
+
+. /usr/share/debconf/confmodule
+test $DEBIAN_SCRIPT_DEBUG && set -v -x
+
+# summary of how this script can be called:
+#        * <postinst> `configure' <most-recently-configured-version>
+#        * <old-postinst> `abort-upgrade' <new version>
+#        * <conflictor's-postinst> `abort-remove' `in-favour' <package>
+#          <new-version>
+#        * <deconfigured's-postinst> `abort-deconfigure' `in-favour'
+#          <failed-install-package> <version> `removing'
+#          <conflicting-package> <version>
+# for details, see /usr/doc/packaging-manual/
+#
+# quoting from the policy:
+#     Any necessary prompting should almost always be confined to the
+#     post-installation script, and should be protected with a conditional
+#     so that unnecessary prompting doesn't happen if a package's
+#     installation fails and the `postinst' is called with `abort-upgrade',
+#     `abort-remove' or `abort-deconfigure'.
+
+case "$1" in
+    install)
+	;;
+    upgrade)
+	db_get snort-mysql/startup || true
+	if [ "$RET" = "manual" ]; then
+		#db_fset snort-mysql/please_restart_manually seen false
+		db_beginblock
+		db_input high snort-mysql/please_restart_manually || true
+		db_endblock
+		db_go
+		db_stop
+	fi
+	;;
+    configure)
+	# edit config file
+	db_get snort-mysql/startup || true; 		STARTUP=$RET
+	db_get snort-mysql/interface || true; 	INTERFACE="$RET"
+	db_get snort-mysql/address_range || true;	ADDRESS_RANGE="$RET"
+	db_get snort-mysql/disable_promiscuous || true; DISABLE_PROMISCUOUS=$RET
+        db_get snort-mysql/send_stats || true;        STATS_SEND="$RET"
+	db_get snort-mysql/stats_rcpt || true;	STATS_RCPT="$RET"
+	db_get snort-mysql/stats_treshold || true;	STATS_THRESHOLD="$RET"
+	db_get snort-mysql/options || true;		OPTIONS="$RET"
+
+	test "$DISABLE_PROMISCUOUS" = "true" && OPTIONS="$OPTIONS -p"
+	# Failsafe in case the values above are blank (jfs)
+	[ -z "$STATS_RCPT" ] && STATS_RCPT=root
+	[ -z "$STATS_THRESHOLD" ] && STATS_THRESHOLD=1
+	#STATS_RCPT=`echo "$STATS_RCPT" | sed -e 's/@/\\\\@/g' -e 's/,/\\\\,/g'`
+
+	cat <<EOF >$CONFIG
+# This file is used for options that are changed by Debian to leave
+# the original lib files untouched.
+# You have to use "dpkg-reconfigure snort" to change them.
+
+DEBIAN_SNORT_STARTUP="$STARTUP"
+DEBIAN_SNORT_HOME_NET="$ADDRESS_RANGE"
+DEBIAN_SNORT_OPTIONS="$OPTIONS"
+DEBIAN_SNORT_INTERFACE="$INTERFACE"
+DEBIAN_SNORT_SEND_STATS="$STATS_SEND"
+DEBIAN_SNORT_STATS_RCPT="$STATS_RCPT"
+DEBIAN_SNORT_STATS_THRESHOLD="$STATS_THRESHOLD"
+EOF
+
+	if [ -e /etc/snort/db-pending-config ] ; then
+	  STARTUP="manual"
+	  echo
+	  echo "/etc/snort/db-pending-config file found"
+	  echo "Snort will not start as its database is not yet configured."
+	  echo "Please configure the database as described in"
+	  echo "/usr/share/doc/snort-mysql/README-database.Debian"
+	  echo "and then remove /etc/snort/db-pending-config"
+	fi
+
+	if [ "$STARTUP" != "manual" ]; then
+	  if [ -f /etc/snort/snort.conf ]; then
+		# insert database config stuff in the configuration file,
+		# or configure it for syslog-logging.
+		db_get snort-mysql/configure_db
+		if  [ "$RET" = "true" ]; then
+			db_get snort-mysql/db_host || true; DB_HOST=$RET
+			db_get snort-mysql/db_database || true; DB_DATABASE=$RET
+			db_get snort-mysql/db_user || true; DB_USER=$RET
+			db_get snort-mysql/db_pass || true; DB_PASS=$RET
+
+			# Here we put the database stuff in the config file.
+			TEMPFILE=`mktemp`
+			cat /etc/snort/snort.conf | while read LINE
+			do
+				if [ "$LINE" = "# (#DBSTART#)" ]
+				then
+					echo "# (#DBSTART#)" >> $TEMPFILE
+					echo -n "output database: log, mysql, " >> $TEMPFILE
+					if [ $DB_USER ]
+					then
+						echo -n "user=$DB_USER " >> $TEMPFILE
+					fi
+					if [ $DB_PASS ]
+					then
+						echo -n "password=$DB_PASS " >> $TEMPFILE
+					fi
+					if [ $DB_DATABASE ]
+					then
+						echo -n "dbname=$DB_DATABASE " >> $TEMPFILE
+					fi
+					if [ $DB_HOST ]
+					then
+						echo -n "host=$DB_HOST " >> $TEMPFILE
+					fi
+					echo " " >> $TEMPFILE
+					echo "# (#DBEND#)" >> $TEMPFILE
+					break
+				else
+					echo $LINE >> $TEMPFILE
+				fi
+			done
+
+			WRITE=0
+			cat /etc/snort/snort.conf | while read LINE
+			do
+				if [ $WRITE -eq 1 ]
+				then
+					echo $LINE >> $TEMPFILE
+				fi
+
+				if [ "$LINE" = "# (#DBEND#)" ]
+				then
+					WRITE=1
+				fi
+			done
+			mv -f $TEMPFILE /etc/snort/snort.conf
+		fi
+
+		# Ensure the config file is readable by root.root and mode 600
+		if ! dpkg-statoverride --list /etc/snort/snort.conf >/dev/null
+		then
+			chown root:snort /etc/snort/snort.conf
+			chmod 640 /etc/snort/snort.conf
+		fi
+	  fi
+	fi
+	db_stop
+
+	# Check for left-over files from woody packages.
+	OLDCONF=/etc/snort/snort.rules.conf
+	if [ -f $OLDCONF ]; then
+		mv $OLDCONF $OLDCONF.OBSOLETE
+	fi
+
+	# Update the rc.d's
+	update-rc.d snort defaults >/dev/null
+
+	# in the case we reconfigure we have to restart and not just to start.
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+		invoke-rc.d snort stop || exit $?
+	else
+		/etc/init.d/snort stop || exit $?
+	fi
+	;;
+    abort-upgrade)
+	;;
+    *)
+	echo "postinst called with unknown argument \`$1'" >&2
+	exit 0
+	;;
+esac
+
+if [ "$STARTUP" = "dialup" ]; then
+
+	# Try to guess environments for all pppds we have no .env for...
+	for PPPD_PID in $(pidof pppd ipppd); do
+		# If we got an empty PID (however), we break here
+		test "$PPPD_PID" || continue
+
+		#
+		# This is a lot of shell voodoo, let's try to figure it out:
+		# 1. egrep:
+		#    It greps for our current pppd PID in all pppd and ipppd
+		#    pidfiles.
+		#    It *should* return exactly one file name: the one with
+		#    our current pppd PID in it; however, to be safe, we fence
+		#    it with a head -1.
+		# 2. basename $(egrep ...) .pid:
+		#    It takes the file name from the egrep and strips off its
+		#    path and the .pid suffix
+		# 3. sed:
+		#    Unfortunately the filenames of pppd and ipppd differ:
+		#    pppd uses $INTERFACE.pid, while ipppd uses
+		#    ipppd.$INTERFACE.pid.
+		#    The .pid is already stripped off by basename, thus, we
+		#    just strip off any "ipppd." prefix and end up in the
+		#    plain interface name.
+		#    Maybe pppd decides to change it's pidfile naming
+		#    convention according to ipppd somewhere in the future,
+		#    thus, we use '^i\?pppd\.' (sed eregex) and thus strip
+		#    off all "ipppd." and all "pppd." prefixes. This doesn't
+		#    harm anyways.
+		#    Because of the pppd pidfile naming convention, our
+		#    approach works always with ipppd and mostly with pppd:
+		#    the latter only, if the user did not decide to rename
+		#    his ppp interface to something else than ppp*
+		#    (not possible currently, afaics).
+		#
+		PPP_IFACE=$(basename $(egrep -l "^[[:space:]]*$PPPD_PID[[:space:]]*\$" /var/run/ppp*.pid /var/run/ipppd.*.pid 2> /dev/null | head -1) .pid | sed -e 's/^i\?pppd\.//')
+
+		#
+		# If we got no interface from pidfiles (because there are no
+		# pidfiles, for example), we assume the most common case:
+		# one pppd with default route set.
+		# This is ugly, but there is no other chance. Let's hope,
+		# nobody ever manages multiple pppds without pidfiles for
+		# them.
+		#
+		test "$PPP_IFACE" || PPP_IFACE=$(route -n |	awk '/^0\.0\.0\.0 / { print $8 }')
+
+		# If we couldn't discover an interface name, we break here
+		test "$PPP_IFACE" || continue
+
+		PPP_LOCAL=$(ifconfig $PPP_IFACE | awk '/inet addr:/ { gsub("addr:", ""); print $2 }')
+
+		# If we couldn't discover a local IP, we break here
+		test "$PPP_LOCAL" || continue
+
+		ENVFILE=/var/run/snort_$PPP_IFACE.env
+
+		# If we already have an .env for that interface, we break here
+		test -e "$ENVFILE" && continue
+
+		# Write .env for that interface
+		echo "Creating missing $ENVFILE"
+		echo "PPPD_PID=$PPPD_PID"    > "$ENVFILE"
+		echo "PPP_IFACE=$PPP_IFACE" >> "$ENVFILE"
+		echo "PPP_LOCAL=$PPP_LOCAL" >> "$ENVFILE"
+
+		# If such a snort is still running, just kill it
+		ps -ef | grep /usr/sbin/snort | grep "$PPP_LOCAL" |
+			grep "$PPP_IFACE" | awk '{ print $2 }' |
+			xargs --no-run-if-empty kill -s KILL >/dev/null
+	done
+fi
+
+if [ "$STARTUP" = "boot" ] || [ "$STARTUP" = "dialup" ]; then
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+		invoke-rc.d snort start || exit $?
+	else
+		/etc/init.d/snort start || exit $?
+	fi
+fi
+
+# dh_installdeb will replace this with shell code automatically
+# generated by other debhelper scripts.
+
+#DEBHELPER#
+
+exit 0

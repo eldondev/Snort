@@ -1,4 +1,4 @@
-/* $Id: strlcpyu.h,v 1.4 2007/07/06 15:57:48 ssturges Exp $ */
+/* $Id$ */
 /*
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **

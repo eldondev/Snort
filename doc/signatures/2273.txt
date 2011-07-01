@@ -56,7 +56,7 @@ one or more usernames.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Nigel Houghton <nigel.houghton@sourcefire.com>
 

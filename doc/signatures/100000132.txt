@@ -1,0 +1,70 @@
+Rule: 
+
+--
+Sid: 
+100000132
+
+-- 
+Summary: 
+This event is generated when a connection is made to the Internet via a proxy 
+server on your internal network. 
+
+-- 
+
+Impact: 
+If the server is not legitimate, anyone with access to it can use your 
+bandwidth to access the Internet; if users conduct malicious activity on the 
+Internet through this server, the activity will appear to have come from the 
+misconfigured machine.
+
+--
+Detailed Information:
+This rule looks for pieces of HTTP requests being made by a misconfigured 
+Squid, ISA, or NetCache proxy server. If it fires, and the machine the alert is 
+coming from is not a known proxy server, it indicates that the machine in 
+question is either improperly configured or has been compromised.
+
+False positives associated with this rule may be reduced considerably, or even 
+eliminated, by the use of a custom variable. By editing your snort.conf to 
+include "var KNOWN_PROXY_SERVERS = [<list of valid servers]" and modifying the 
+rule to read "alert tcp !$KNOWN_PROXY_SERVERS", all proxy activity associated 
+with these machines will be ignored.
+
+--
+Affected Systems:
+
+--
+
+Attack Scenarios: 
+This vulnerability may be exploited with a web browser or a script.
+
+-- 
+
+Ease of Attack: 
+Simple, as it can be exploited using a web browser.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Enforce access restrictions if this is a legitimate proxy server that is being 
+abused; remove the server from machines on which there was no legitimate 
+installation, and search for other signs of system compromise.
+
+--
+Contributors: 
+Alexandru Ionica <gremlin@networked.ro>
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+
+--

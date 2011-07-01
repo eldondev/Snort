@@ -1,4 +1,4 @@
-/*  $Id: pmap_prot.h,v 1.3 2003/10/20 15:03:45 chrisgreen Exp $ */
+/*  $Id$ */
 /*	$OpenBSD: pmap_prot.h,v 1.3 1998/02/10 06:25:32 deraadt Exp $	*/
 /*	$NetBSD: pmap_prot.h,v 1.4 1994/10/26 00:57:00 cgd Exp $	*/
 

@@ -1,6 +1,6 @@
-/* $Id: util.h,v 1.47 2011/06/08 00:33:08 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -29,13 +29,7 @@
 # include <sys/time.h>
 # include <sys/types.h>
 #endif
-#include<stdlib.h>
-#include<errno.h>
 
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-#include <string.h>
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
@@ -43,11 +37,11 @@
 #include "sf_types.h"
 #include "sflsq.h"
 #include "sfutil/sf_ipvar.h"
-#include "ipv6_port.h"
 
 /* Macros *********************************************************************/
+#define PCAP_CLOSE  // allow for rollback for now
 
-/* specifies that a function does not return
+/* specifies that a function does not return 
  * used for quieting Visual Studio warnings */
 #ifdef _MSC_VER
 # if _MSC_VER >= 1400
@@ -57,11 +51,6 @@
 # endif
 #else
 # define NORETURN
-#endif
-
-#if !defined(__GNUC__) || __GNUC__ < 2 || \
-    (__GNUC__ == 2 && __GNUC_MINOR__ < 5)
-#define	__attribute__(x)	/* delete __attribute__ if non-gcc or gcc1 */
 #endif
 
 #define SNORT_SNPRINTF_SUCCESS 0
@@ -188,45 +177,44 @@ void SignalWaitingParent(void);
 void CheckLogDir(void);
 char *read_infile(char *);
 void CleanupProtoNames(void);
-void CreatePidFile(const char *, pid_t);
+void ErrorMessage(const char *, ...);
+void LogMessage(const char *, ...);
+NORETURN void FatalError(const char *, ...);
+void CreatePidFile(char *);
 void ClosePidFile(void);
 void SetUidGid(int, int);
-void InitGroups(int, int);
 void SetChroot(char *, char **);
 void DropStats(int);
 void *SPAlloc(unsigned long, struct _SPMemControl *);
-void TimeStart(void);
-void TimeStop(void);
-
-#ifndef __GNUC__
-#define __attribute__(x)  /*NOTHING*/
-#endif
-void LogMessage(const char *, ...) __attribute__((format (printf, 1, 2)));
-void ErrorMessage(const char *, ...) __attribute__((format (printf, 1, 2)));
-NORETURN void FatalError(const char *, ...) __attribute__((format (printf, 1, 2)));
-int SnortSnprintf(char *, size_t, const char *, ...) __attribute__((format (printf, 3, 4)));
-int SnortSnprintfAppend(char *, size_t, const char *, ...) __attribute__((format (printf, 3, 4)));
-
+int SnortSnprintf(char *, size_t, const char *, ...);
+int SnortSnprintfAppend(char *, size_t, const char *, ...);
 char *SnortStrdup(const char *);
 int SnortStrncpy(char *, const char *, size_t);
 char *SnortStrndup(const char *, size_t);
 int SnortStrnlen(const char *, int);
 const char *SnortStrnPbrk(const char *s, int slen, const char *accept);
 const char *SnortStrnStr(const char *s, int slen, const char *searchstr);
-const char *SnortStrcasestr(const char *s, int slen, const char *substr);
+const char *SnortStrcasestr(const char *s, const char *substr);
 void *SnortAlloc(unsigned long);
 void *SnortAlloc2(size_t, const char *, ...);
 char *CurrentWorkingDir(void);
 char *GetAbsolutePath(char *dir);
 char *StripPrefixDir(char *prefix, char *dir);
-void PrintPacketData(const uint8_t *, const uint32_t);
-
-#ifndef SUP_IP6
-char * ObfuscateIpToText(const struct in_addr);
+#ifdef TIMESTATS
+void DropStatsPerTimeInterval(void);
+void ResetTimeStats(void);
+void InitTimeStats(void);
+#endif
+#ifdef PCAP_CLOSE
+/* cacheReturn = 0 is normal operation; 1 will cause the
+ * return value to be returned on the next call with 0 */
+int UpdatePcapPktStats(int cacheReturn);
 #else
-char * ObfuscateIpToText(sfip_t *);
+int UpdatePcapPktStats(void);
 #endif
 
+uint64_t GetPcapPktStatsRecv(void);
+uint64_t GetPcapPktStatsDrop(void);
 void TimeStats(void);
 
 #ifndef WIN32
@@ -236,8 +224,8 @@ int GetFilesUnderDir(const char *, SF_QUEUE *, const char *);
 
 char *GetUniqueName(char *);
 char *GetIP(char *);
-char *GetHostname(void);
-int GetLocalTimezone(void);
+char *GetHostname();
+int GetLocalTimezone();
 
 /***********************************************************
  If you use any of the functions in this section, you need
@@ -246,7 +234,7 @@ int GetLocalTimezone(void);
  leak.
 ***********************************************************/
 char *GetTimestamp(register const struct timeval *, int);
-char *GetCurrentTimestamp(void);
+char *GetCurrentTimestamp();
 char *base64(const u_char *, int);
 char *ascii(const u_char *, int);
 char *hex(const u_char *, int);
@@ -254,60 +242,5 @@ char *fasthex(const u_char *, int);
 long int xatol(const char *, const char *);
 unsigned long int xatou(const char *, const char *);
 unsigned long int xatoup(const char *, const char *); // return > 0
-
-static inline long SnortStrtol(const char *nptr, char **endptr, int base)
-{
-    long iRet;
-    errno = 0;
-    iRet = strtol(nptr, endptr, base);
-
-    return iRet;
-}
-
-static inline unsigned long SnortStrtoul(const char *nptr, char **endptr, int base)
-{
-        unsigned long iRet;
-        errno = 0;
-        iRet = strtoul(nptr, endptr, base);
-
-        return iRet;
-}
-
-static inline long SnortStrtolRange(const char *nptr, char **endptr, int base, long lo, long hi)
-{
-    long iRet = SnortStrtol(nptr, endptr, base);
-    if ((iRet > hi) || (iRet < lo))
-        *endptr = (char *)nptr;
-
-    return iRet;
-}
-
-static inline unsigned long SnortStrtoulRange(const char *nptr, char **endptr, int base, unsigned long lo, unsigned long hi)
-{
-    unsigned long iRet = SnortStrtoul(nptr, endptr, base);
-    if ((iRet > hi) || (iRet < lo))
-        *endptr = (char *)nptr;
-
-    return iRet;
-}
-
-static inline int IsEmptyStr(char *str)
-{
-    char *end;
-
-    if (str == NULL)
-        return 1;
-
-    end = str + strlen(str);
-
-    while ((str < end) && isspace((int)*str))
-        str++;
-
-    if (str == end)
-        return 1;
-
-    return 0;
-}
-
 
 #endif /*__UTIL_H__*/

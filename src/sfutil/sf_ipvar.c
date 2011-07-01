@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2011 Sourcefire, Inc.
+** Copyright (C) 1998-2009 Sourcefire, Inc.
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
@@ -29,10 +29,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "util.h"
 #include "sf_ipvar.h"
 #include "sf_vartable.h"
@@ -42,7 +38,7 @@
 
 static SFIP_RET sfvar_list_compare(sfip_node_t *, sfip_node_t *);
 
-static inline sfip_var_t *_alloc_var(void)
+static INLINE sfip_var_t *_alloc_var(void)
 {
     return (sfip_var_t*)calloc(1, sizeof(sfip_var_t));
 }
@@ -52,10 +48,8 @@ void sfvar_free(sfip_var_t *var)
     sfip_node_t *p, *next;
 
     if(!var) return;
-
+    
     if(var->name) free(var->name);
-
-    if(var->value) free(var->value);
 
     if(var->mode == SFIP_LIST)
     {
@@ -98,15 +92,15 @@ sfip_node_t *sfipnode_alloc(char *str, SFIP_RET *status)
             *status = SFIP_ALLOC_ERR;
          return NULL;
     }
-
+    
     /* Check if this string starts with a '!', if so,
      * then the node needs to be negated */
     if(*str == '!')
     {
         str++;
         ret->flags |= SFIP_NEGATED;
-    }
-
+    } 
+    
     /* Check if this is an "any" */
     if(!strncasecmp(str, "any", 3))
     {
@@ -125,7 +119,7 @@ sfip_node_t *sfipnode_alloc(char *str, SFIP_RET *status)
         {
             /* Failed to parse this string, so free and return */
             if(status)
-                *status = SFIP_ALLOC_ERR;
+                *status = SFIP_ALLOC_ERR; 
 
             free(ret);
             return NULL;
@@ -144,7 +138,7 @@ sfip_node_t *sfipnode_alloc(char *str, SFIP_RET *status)
         }
 #endif
 
-    }
+    } 
     else if( (ret->ip = sfip_alloc(str, status)) == NULL )
     {
         /* Failed to parse this string, so free and return */
@@ -161,7 +155,7 @@ sfip_node_t *sfipnode_alloc(char *str, SFIP_RET *status)
             *status = SFIP_NOT_ANY;
         free(ret->ip);
         free(ret);
-        return NULL;
+        return NULL;        
     }
 
     return ret;
@@ -183,7 +177,7 @@ SFIP_RET sfvar_add(sfip_var_t *dst, sfip_var_t *src)
     {
         return SFIP_ALLOC_ERR;
     }
-
+    
     dst->head = copiedvar->head;
     dst->neg_head = copiedvar->neg_head;
 
@@ -191,11 +185,11 @@ SFIP_RET sfvar_add(sfip_var_t *dst, sfip_var_t *src)
 
     if(dst->head)
     {
-        for(idx = dst->head; idx->next; idx = idx->next)
+        for(idx = dst->head; idx->next; idx = idx->next) 
             ;
 
         idx->next = oldhead;
-    }
+    } 
     else
     {
         dst->head = oldhead;
@@ -203,10 +197,10 @@ SFIP_RET sfvar_add(sfip_var_t *dst, sfip_var_t *src)
 
     if(dst->neg_head)
     {
-        for(idx = dst->neg_head; idx->next; idx = idx->next)
+        for(idx = dst->neg_head; idx->next; idx = idx->next) 
             ;
 
-        idx->next = oldneg;
+        idx->next = oldneg; 
     }
     else
     {
@@ -223,16 +217,16 @@ SFIP_RET sfvar_add_node(sfip_var_t *var, sfip_node_t *node, int negated)
     sfip_node_t **head;
 
     if(!var || !node) return SFIP_ARG_ERR;
-
+    
     /* XXX */
-    /* As of this writing, 11/20/06, nodes are always added to
+    /* As of this writing, 11/20/06, nodes are always added to 
      * the list, regardless of the mode (list or table). */
 
     if(negated)
-        head = &var->neg_head;
+        head = &var->neg_head;        
     else
         head = &var->head;
-
+        
 
     if(!(*head))
     {
@@ -242,7 +236,7 @@ SFIP_RET sfvar_add_node(sfip_var_t *var, sfip_node_t *node, int negated)
 
     /* "Anys" should always be inserted first */
     /* Otherwise, check if this IP is less than the head's IP */
-    if((node->flags & SFIP_ANY) ||
+    if((node->flags & SFIP_ANY) || 
        (sfip_compare(node->ip, (*head)->ip) == SFIP_LESSER))
     {
         node->next = *head;
@@ -277,7 +271,7 @@ SFIP_RET sfvar_add_node(sfip_var_t *var, sfip_node_t *node, int negated)
     return SFIP_SUCCESS;
 
     /* XXX Insert new node into routing table */
-//    sfrt_add(node->ip,
+//    sfrt_add(node->ip, 
 }
 
 static SFIP_RET sfvar_list_compare(sfip_node_t *list1, sfip_node_t *list2)
@@ -291,20 +285,20 @@ static SFIP_RET sfvar_list_compare(sfip_node_t *list1, sfip_node_t *list2)
         return SFIP_EQUAL;
 
     /* Check the ip lists for count mismatch */
-    for (tmp = list1; tmp != NULL; tmp = tmp->next)
+    for (tmp = list1; tmp != NULL; tmp = tmp->next) 
         total1++;
-    for (tmp = list2; tmp != NULL; tmp = tmp->next)
+    for (tmp = list2; tmp != NULL; tmp = tmp->next) 
         total2++;
-    if (total1 != total2)
+    if (total1 != total2) 
         return SFIP_FAILURE;
 
     /* Walk first list.  For each node, check if there is an equal
-     * counterpart in the second list.  This method breaks down of there are
+     * counterpart in the second list.  This method breaks down of there are 
      * duplicated nodes.  For instance, if one = {a, b} and two = {a, a}.
-     * Therefore, need additional data structure[s] ('usage') to check off
-     * which nodes have been accounted for already.
+     * Therefore, need additional data structure[s] ('usage') to check off 
+     * which nodes have been accounted for already. 
      *
-     * Also, the lists are not necessarily ordered, so comparing
+     * Also, the lists are not necessarily ordered, so comparing 
      * node-for-node won't work */
 
     /* Lists are of equal size */
@@ -337,18 +331,15 @@ static SFIP_RET sfvar_list_compare(sfip_node_t *list1, sfip_node_t *list2)
 }
 
 /* Check's if two variables have the same nodes */
-SFIP_RET sfvar_compare(const sfip_var_t *one, const sfip_var_t *two)
+SFIP_RET sfvar_compare(sfip_var_t *one, sfip_var_t *two)
 {
     /* If both NULL, consider equal */
     if(!one && !two)
         return SFIP_EQUAL;
 
     /* If one NULL and not the other, consider unequal */
-    if((one && !two) || (!one && two))
+    if((one && !two) || (!one && two)) 
         return SFIP_FAILURE;
-
-    if (sfvar_is_alias(one, two))
-        return SFIP_EQUAL;
 
     if (sfvar_list_compare(one->head, two->head) == SFIP_FAILURE)
         return SFIP_FAILURE;
@@ -359,12 +350,12 @@ SFIP_RET sfvar_compare(const sfip_var_t *one, const sfip_var_t *two)
     return SFIP_EQUAL;
 }
 
-/* Support function for sfvar_parse_iplist.  Used to
- * correctly match up end brackets.
- *  (Can't just do strchr(str, ']') because of the
+/* Support function for sfvar_parse_iplist.  Used to 
+ * correctly match up end brackets.  
+ *  (Can't just do strchr(str, ']') because of the 
  *  [a, [b], c] case, and can't do strrchr because
  *  of the [a, [b], [c]] case) */
-static char *_find_end_token(char *str)
+char *_find_end_token(char *str)
 {
     int stack = 0;
 
@@ -407,12 +398,12 @@ static void _negate_lists(sfip_var_t *var)
     sfip_node_t *node;
     sfip_node_t *temp;
 
-    for(node = var->head; node; node=node->next)
+    for(node = var->head; node; node=node->next) 
         _negate_node(node);
 
-    for(node = var->neg_head; node; node=node->next)
+    for(node = var->neg_head; node; node=node->next) 
         _negate_node(node);
-
+    
     /* Swap lists */
     temp = var->head;
     var->head = var->neg_head;
@@ -426,7 +417,7 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
     SFIP_RET ret;
     int neg_ip;
 
-    if(!var || !table || !str)
+    if(!var || !table || !str) 
         return SFIP_ARG_ERR;
 
     while(*str)
@@ -441,11 +432,11 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
         neg_ip = 0;
 
         /* Handle multiple negations */
-        for(; *str == '!'; str++)
+        for(; *str == '!'; str++) 
              neg_ip = !neg_ip;
 
         /* Find end of this token */
-        for(end = str+1;
+        for(end = str+1; 
            *end && !isspace((int)*end) && *end != LIST_CLOSE && *end != ',';
             end++) ;
 
@@ -461,7 +452,7 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
                 /* No trailing bracket found */
                 return SFIP_UNMATCHED_BRACKET;
             }
-
+        
             str++;
             list_tok = SnortStrndup(str, end - str);
 
@@ -474,7 +465,7 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
             }
 
             free(list_tok);
-        }
+        } 
         else if(*str == '$')
         {
             sfip_var_t *tmp_var;
@@ -511,7 +502,7 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
 
             sfvar_add(var, copy_var);
             sfvar_free(copy_var);
-        }
+        } 
         else if(*str == LIST_CLOSE)
         {
             /* This should be the last character, if not, then this is an
@@ -519,7 +510,7 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
             if(!(*(str+1)))
             {
                 free(tok);
-                return SFIP_SUCCESS;
+                return SFIP_SUCCESS; 
             }
 
             free(tok);
@@ -538,11 +529,11 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
                 free(tok);
                 return SFIP_NOT_ANY;
             }
-
+    
             /* This should be an IP address! */
             /* Allocate new node for this string and add it to "ret" */
             if((node = sfipnode_alloc(tok, &ret)) == NULL)
-            {
+            {     
                 free(tok);
                 return ret;
             }
@@ -580,16 +571,16 @@ SFIP_RET sfvar_parse_iplist(vartable_t *table, sfip_var_t *var,
 SFIP_RET sfvar_validate(sfip_var_t *var)
 {
     sfip_node_t *idx, *neg_idx;
-
+    
     if(!var->head || !var->neg_head)
         return SFIP_SUCCESS;
-
-    for(idx = var->head; idx; idx = idx->next)
+    
+    for(idx = var->head; idx; idx = idx->next) 
     {
         for(neg_idx = var->neg_head; neg_idx; neg_idx = neg_idx->next)
         {
             /* A smaller netmask means "less specific" */
-            if((sfip_bits(neg_idx->ip) <= sfip_bits(idx->ip)) &&
+            if(sfip_bits(neg_idx->ip) <= sfip_bits(idx->ip) &&
                 /* Verify they overlap */
                 (sfip_contains(neg_idx->ip, idx->ip) == SFIP_CONTAINS))
             {
@@ -597,51 +588,23 @@ SFIP_RET sfvar_validate(sfip_var_t *var)
             }
         }
     }
-
+    
     return SFIP_SUCCESS;
-}
-
-sfip_var_t * sfvar_create_alias(const sfip_var_t *alias_from, const char *alias_to)
-{
-    sfip_var_t *ret;
-
-    if ((alias_from == NULL) || (alias_to == NULL))
-        return NULL;
-
-    ret = sfvar_deep_copy(alias_from);
-    if (ret == NULL)
-        return NULL;
-
-    ret->name = SnortStrdup(alias_to);
-    ret->id = alias_from->id;
-
-    return ret;
-}
-
-int sfvar_is_alias(const sfip_var_t *one, const sfip_var_t *two)
-{
-    if ((one == NULL) || (two == NULL))
-        return 0;
-
-    if ((one->id != 0) && (one->id == two->id))
-        return 1;
-    return 0;
 }
 
 /* Allocates and returns a new variable, described by "variable". */
 sfip_var_t *sfvar_alloc(vartable_t *table, char *variable, SFIP_RET *status)
 {
-    sfip_var_t *ret, *tmpvar;
-    char *str, *end, *tmp;
-    SFIP_RET stat;
-
+    sfip_var_t *ret;
+    char *str, *end;
+    
     if(!variable || !(*variable))
     {
         if(status)
             *status = SFIP_ARG_ERR;
         return NULL;
     }
-
+    
     if( (ret = _alloc_var()) == NULL )
     {
         if(status)
@@ -652,14 +615,6 @@ sfip_var_t *sfvar_alloc(vartable_t *table, char *variable, SFIP_RET *status)
     /* Extract and save the variable's name */
     /* Start by skipping leading whitespace or line continuations: '\' */
     for(str = variable ; *str && (isspace((int)*str) || *str == '\\'); str++) ;
-    if (*str == 0)  /* Didn't get anything */
-    {
-        if (status)
-            *status = SFIP_ARG_ERR;
-
-        sfvar_free(ret);
-        return NULL;
-    }
 
     /* Find the end of the name */
     for(end = str; *end && !isspace((int)*end) && *end != '\\'; end++) ;
@@ -669,8 +624,7 @@ sfip_var_t *sfvar_alloc(vartable_t *table, char *variable, SFIP_RET *status)
         if(status)
             *status = SFIP_ARG_ERR;
 
-        sfvar_free(ret);
-        return NULL;
+         return NULL;
     }
 
     /* Set the new variable's name/key */
@@ -679,60 +633,22 @@ sfip_var_t *sfvar_alloc(vartable_t *table, char *variable, SFIP_RET *status)
         if(status)
             *status = SFIP_ALLOC_ERR;
 
-        sfvar_free(ret);
         return NULL;
     }
 
-    /* End points to the end of the name.  Skip past it and any whitespace
-     * or potential line continuations */
+    /* End points to the end of the name.  Skip past it */
     str = end;
-    for (; (*str != 0) && (isspace((int)*str) || (*str == '\\')); str++);
-    if (*str == 0)  /* Didn't get anything */
-    {
-        if (status)
-            *status = SFIP_ARG_ERR;
-
-        sfvar_free(ret);
-        return NULL;
-    }
-
-    /* Trim off whitespace and line continuations from the end of the string */
-    end = (str + strlen(str)) - 1;
-    for (; (end > str) && (isspace((int)*end) || (*end == '\\')); end--);
-    end++;
-
-    /* See if this is just an alias */
-    tmp = SnortStrndup(str, end - str);
-    tmpvar = sfvt_lookup_var(table, tmp);
-    free(tmp);
-    if (tmpvar != NULL)
-    {
-        sfip_var_t *aliased = sfvar_create_alias(tmpvar, ret->name);
-        if (aliased != NULL)
-        {
-            if (status != NULL)
-                *status = SFIP_SUCCESS;
-
-            sfvar_free(ret);
-            return aliased;
-        }
-    }
 
     /* Everything is treated as a list, even if it's one element that's not
      * surrounded by brackets */
-    stat = sfvar_parse_iplist(table, ret, str, 0);
-    if (status != NULL)
-        *status = stat;
-
-    if (stat != SFIP_SUCCESS)
+    if((*status = sfvar_parse_iplist(table, ret, str, 0)) != SFIP_SUCCESS)
     {
-        sfvar_free(ret);
         return NULL;
     }
 
-    if(ret->head &&
-            (ret->head->flags & SFIP_ANY && ret->head->flags & SFIP_NEGATED))
-    {
+    if(ret->head && 
+       (ret->head->flags & SFIP_ANY && ret->head->flags & SFIP_NEGATED))
+       {
         if(status)
             *status = SFIP_NOT_ANY;
 
@@ -752,12 +668,12 @@ sfip_var_t *sfvar_alloc(vartable_t *table, char *variable, SFIP_RET *status)
     return ret;
 }
 
-static inline sfip_node_t *_sfvar_deep_copy_list(const sfip_node_t *idx)
+static INLINE sfip_node_t *_sfvar_deep_copy_list(sfip_node_t *idx)
 {
     sfip_node_t *ret, *temp, *prev;
 
     ret = temp = NULL;
-
+    
     for( ; idx; idx = idx->next)
     {
 
@@ -787,11 +703,11 @@ static inline sfip_node_t *_sfvar_deep_copy_list(const sfip_node_t *idx)
         {
             ret = temp;
         }
-    }
+    } 
     return ret;
 }
 
-sfip_var_t *sfvar_deep_copy(const sfip_var_t *var)
+sfip_var_t *sfvar_deep_copy(sfip_var_t *var)
 {
     sfip_var_t *ret;
 
@@ -809,7 +725,7 @@ sfip_var_t *sfvar_deep_copy(const sfip_var_t *var)
 
 
 /* Support function for sfvar_ip_in  */
-static inline int _sfvar_ip_in4(sfip_var_t *var, sfip_t *ip)
+static INLINE int _sfvar_ip_in4(sfip_var_t *var, sfip_t *ip)
 {
     int match;
     sfip_node_t *pos_idx, *neg_idx;
@@ -819,23 +735,23 @@ static inline int _sfvar_ip_in4(sfip_var_t *var, sfip_t *ip)
     pos_idx = var->head;
     neg_idx = var->neg_head;
 
-    if(!pos_idx)
+    if(!pos_idx) 
     {
-        for( ; neg_idx; neg_idx = neg_idx->next)
+        for( ; neg_idx; neg_idx = neg_idx->next) 
         {
-            if(sfip_family(neg_idx->ip) != AF_INET)
+            if(sfip_family(neg_idx->ip) != AF_INET) 
                 continue;
-
+        
             if(sfip_fast_cont4(neg_idx->ip, ip))
             {
                 return 0;
             }
-        }
+        } 
 
         return 1;
     }
-
-    while(pos_idx)
+    
+    while(pos_idx)              
     {
         if(neg_idx)
         {
@@ -844,20 +760,20 @@ static inline int _sfvar_ip_in4(sfip_var_t *var, sfip_t *ip)
             {
                 return 0;
             }
-
+        
             neg_idx = neg_idx->next;
-        }
+        } 
         /* No more potential negations.  Check if we've already matched. */
         else if(match)
         {
             return 1;
         }
 
-        if(!match)
+        if(!match) 
         {
             if(sfip_is_set(pos_idx->ip))
             {
-                if(sfip_family(pos_idx->ip) == AF_INET &&
+                if(sfip_family(pos_idx->ip) == AF_INET && 
                    sfip_fast_cont4(pos_idx->ip, ip))
                 {
                     match = 1;
@@ -872,13 +788,13 @@ static inline int _sfvar_ip_in4(sfip_var_t *var, sfip_t *ip)
                 match = 1;
             }
         }
-    }
+    } 
 
     return 0;
 }
 
 /* Support function for sfvar_ip_in  */
-static inline int _sfvar_ip_in6(sfip_var_t *var, sfip_t *ip)
+static INLINE int _sfvar_ip_in6(sfip_var_t *var, sfip_t *ip)
 {
     int match;
     sfip_node_t *pos_idx, *neg_idx;
@@ -888,23 +804,23 @@ static inline int _sfvar_ip_in6(sfip_var_t *var, sfip_t *ip)
     pos_idx = var->head;
     neg_idx = var->neg_head;
 
-    if(!pos_idx)
+    if(!pos_idx) 
     {
-        for( ; neg_idx; neg_idx = neg_idx->next)
+        for( ; neg_idx; neg_idx = neg_idx->next) 
         {
-            if(sfip_family(neg_idx->ip) != AF_INET6)
+            if(sfip_family(neg_idx->ip) != AF_INET6) 
                 continue;
-
+        
             if(sfip_fast_cont6(neg_idx->ip, ip))
             {
                 return 0;
             }
-        }
+        } 
 
         return 1;
     }
-
-    while(pos_idx)
+    
+    while(pos_idx)              
     {
         if(neg_idx)
         {
@@ -913,21 +829,21 @@ static inline int _sfvar_ip_in6(sfip_var_t *var, sfip_t *ip)
             {
                 return 0;
             }
-
+        
             neg_idx = neg_idx->next;
-        }
+        } 
         /* No more potential negations.  Check if we've already matched. */
         else if(match)
         {
             return 1;
         }
 
-        if(!match)
+        if(!match) 
         {
             if(sfip_is_set(pos_idx->ip))
             {
 
-                if(sfip_family(pos_idx->ip) == AF_INET6 &&
+                if(sfip_family(pos_idx->ip) == AF_INET6 && 
                    sfip_fast_cont6(pos_idx->ip, ip))
                 {
                      match = 1;
@@ -942,7 +858,7 @@ static inline int _sfvar_ip_in6(sfip_var_t *var, sfip_t *ip)
                 match = 1;
             }
         }
-    }
+    } 
 
     return 0;
 }
@@ -962,14 +878,14 @@ int sfvar_ip_in(sfip_var_t *var, sfip_t *ip)
     {
 #endif
         /* Since this is a performance-critical function it uses different
-         * codepaths for IPv6 and IPv4 traffic, rather than the dual-stack
+         * codepaths for IPv6 and IPv4 traffic, rather than the dual-stack 
          * functions. */
 
-        if(sfip_family(ip) == AF_INET)
+        if(sfip_family(ip) == AF_INET) 
         {
             return _sfvar_ip_in4(var, ip);
         }
-        else
+        else 
         {
             return _sfvar_ip_in6(var, ip);
         }
@@ -978,90 +894,9 @@ int sfvar_ip_in(sfip_var_t *var, sfip_t *ip)
 #endif
 }
 
-static char buffer[1024];
-void sfip_set_print(const char *prefix, sfip_node_t *p)
-{
-    int ret;
-    for(; p; p = p->next)
-    {
-        buffer[0] = '\0';
-        if(!p->ip) continue;
-        if(p->flags & SFIP_NEGATED)
-        {
-            if (((p->ip->family == AF_INET6) && (p->ip->bits != 128)) ||
-                ((p->ip->family == AF_INET) && (p->ip->bits != 32)))
-            {
-                ret = SnortSnprintfAppend(buffer, sizeof(buffer), "!%s/%d", sfip_to_str(p->ip), p->ip->bits);
-            }
-            else
-            {
-                ret = SnortSnprintfAppend(buffer, sizeof(buffer), "!%s", sfip_to_str(p->ip));
-            }
-            if (ret != SNORT_SNPRINTF_SUCCESS)
-                return;
-        }
-        else
-        {
-            if (((p->ip->family == AF_INET6) && (p->ip->bits != 128)) ||
-                ((p->ip->family == AF_INET) && (p->ip->bits != 32)))
-            {
-                ret = SnortSnprintfAppend(buffer, sizeof(buffer), "%s/%d", sfip_to_str(p->ip), p->ip->bits);
-            }
-            else
-            {
-                ret = SnortSnprintfAppend(buffer, sizeof(buffer), "%s", sfip_to_str(p->ip));
-            }
-            if (ret != SNORT_SNPRINTF_SUCCESS)
-                return;
-        }
-        if (prefix)
-            LogMessage("%s%s\n", prefix, buffer);
-        else
-            LogMessage("%s\n", buffer);
-    }
-}
-
-void sfvar_print(const char *prefix, sfip_var_t *var)
-{
-   if (!var || !var->head)
-   {
-       return;
-   }
-
-    if(var->mode == SFIP_LIST)
-    {
-        if(var->head->flags & SFIP_ANY)
-        {
-            if (prefix)
-                LogMessage("%sany\n", prefix);
-            else
-                LogMessage("any\n");
-        }
-        else
-        {
-            sfip_set_print(prefix, var->head);
-        }
-    }
-    else if(var->mode == SFIP_TABLE)
-    {
-        // XXX
-    }
-}
-
-void sfip_set_print_to_file(FILE *f, sfip_node_t *p)
-{
-     for(; p; p = p->next)
-     {
-         if(!p->ip) continue;
-         if(p->flags & SFIP_NEGATED)
-             fprintf(f, "\t!%s\n", sfip_to_str(p->ip));
-         else
-             fprintf(f, "\t %s\n", sfip_to_str(p->ip));
-     }
-}
 
 /* Prints the variable "var" to the file descriptor 'f' */
-void sfvar_print_to_file(FILE *f, sfip_var_t *var)
+void sfvar_print(FILE *f, sfip_var_t *var)
 {
     if(!f) return;
 
@@ -1075,17 +910,29 @@ void sfvar_print_to_file(FILE *f, sfip_var_t *var)
 
     if(var->mode == SFIP_LIST)
     {
-        if(var->head->flags & SFIP_ANY)
+        if(var->head->flags & SFIP_ANY) 
             fprintf(f, "\t%p: <any>\n", (void*)var->head);
         else
-        {
-            sfip_set_print_to_file(f, var->head);
+        { 
+            sfip_set_print(f, var->head);
         }
     }
     else if(var->mode == SFIP_TABLE)
     {
         // XXX
     }
+}
+
+void sfip_set_print(FILE *f, sfip_node_t *p)
+{
+     for(; p; p = p->next)
+     {
+         if(!p->ip) continue;
+         if(p->flags & SFIP_NEGATED)
+             fprintf(f, "\t!%s\n", sfip_to_str(p->ip));
+         else
+             fprintf(f, "\t %s\n", sfip_to_str(p->ip));
+     }
 }
 
 int sfvar_flags(sfip_node_t *node)
@@ -1102,9 +949,9 @@ int main()
     sfip_vtable *table;
     sfip_var_t *var;
     sfip_t *ip;
-
+    
     /* Test parsing */
-    /* Allowable arguments:
+    /* Allowable arguments: 
      *      { <ip>[, <ip>, ... , <ip> }
      * Where an IP can be in CIDR notation, or be specified with a netmask.
      * IPs may also be negated with '!' */
@@ -1125,4 +972,4 @@ int main()
 }
 
 #endif
-
+    

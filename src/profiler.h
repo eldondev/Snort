@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2005-2011 Sourcefire, Inc.
+** Copyright (C) 2005-2009 Sourcefire, Inc.
 ** Author: Steven Sturges <ssturges@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,14 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: profiler.h,v 1.20 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __PROFILER_H__
 #define __PROFILER_H__
 
 #ifdef PERF_PROFILING
 
+#include "sf_types.h"
 #include "cpuclock.h"
 
 /* Sort preferences for rule profiling */
@@ -94,38 +95,38 @@
         ppstat.checks++; \
         PROFILE_START; \
         ppstat.ticks_start = ticks_start; \
-    }
+    } 
 
 #define PREPROC_PROFILE_REENTER_START(ppstat) \
     if (PROFILING_PREPROCS) { \
         PROFILE_START; \
         ppstat.ticks_start = ticks_start; \
-    }
+    } 
 
 #define PREPROC_PROFILE_TMPSTART(ppstat) \
     if (PROFILING_PREPROCS) { \
         PROFILE_START; \
         ppstat.ticks_start = ticks_start; \
-    }
+    } 
 
 #define PREPROC_PROFILE_END(ppstat) \
     if (PROFILING_PREPROCS) { \
         PROFILE_END; \
         ppstat.exits++; \
         ppstat.ticks += ticks_end - ppstat.ticks_start; \
-    }
+    } 
 
 #define PREPROC_PROFILE_REENTER_END(ppstat) \
     if (PROFILING_PREPROCS) { \
         PROFILE_END; \
         ppstat.ticks += ticks_end - ppstat.ticks_start; \
-    }
+    } 
 
 #define PREPROC_PROFILE_TMPEND(ppstat) \
     if (PROFILING_PREPROCS) { \
         PROFILE_END; \
         ppstat.ticks += ticks_end - ppstat.ticks_start; \
-    }
+    } 
 
 /************** Profiling API ******************/
 void ShowRuleProfiles(void);

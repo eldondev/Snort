@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2006-2011 Sourcefire, Inc.
+ * Copyright (C) 2006-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -25,57 +25,57 @@
  * @date    Thu July 20 10:16:26 EDT 2006
  *
  * Route implements two different routing table lookup mechanisms.  The table
- * lookups have been adapted to return a void pointer so any information can
- * be associated with each CIDR block.
+ * lookups have been adapted to return a void pointer so any information can 
+ * be associated with each CIDR block.  
  *
- * As of this writing, the two methods used are Stefan Nilsson and Gunnar
- * Karlsson's LC-trie, and a multibit-trie method similar to Gupta et-al.'s
- * DIR-n-m.  Presently, the LC-trie is used primarily for testing purposes as
+ * As of this writing, the two methods used are Stefan Nilsson and Gunnar 
+ * Karlsson's LC-trie, and a multibit-trie method similar to Gupta et-al.'s 
+ * DIR-n-m.  Presently, the LC-trie is used primarily for testing purposes as 
  * the current implementation does not allow for fast dynamic inserts.
  *
- * The intended use is for a user to optionally specify large IP blocks and
- * then more specific information will be written into the routing tables
+ * The intended use is for a user to optionally specify large IP blocks and 
+ * then more specific information will be written into the routing tables 
  * from RNA.  Ideally, information will only move from less specific to more
  * specific.  If a more general information is to overwrite existing entries,
  * the table should be free'ed and rebuilt.
- *
+ * 
  *
  * Implementation:
  *
- * The routing tables associate an index into a "data" table with each CIDR.
- * Each entry in the data table stores a pointer to actual data.  This
- * implementation was chosen so each routing entry only needs one word to
- * either index the data array, or point to another table.
+ * The routing tables associate an index into a "data" table with each CIDR.  
+ * Each entry in the data table stores a pointer to actual data.  This 
+ * implementation was chosen so each routing entry only needs one word to 
+ * either index the data array, or point to another table.  
  *
  * Inserts are performed by specifying a CIDR and a pointer to its associated
- * data.  Since a new routing table entry may overwrite previous entries,
+ * data.  Since a new routing table entry may overwrite previous entries, 
  * a flag selects whether the insert favors the most recent or favors the most
- * specific.  Favoring most specific should be the default behvior.  If
- * the user wishes to overwrite routing entries with more general data, the
+ * specific.  Favoring most specific should be the default behvior.  If 
+ * the user wishes to overwrite routing entries with more general data, the 
  * table should be flushed, rather than using favor-most-recent.
- *
+ * 
  * Before modifying the routing or data tables, the insert function performs a
- * lookup on the CIDR-to-be-insertted.  If no entry or an entry *of differing
+ * lookup on the CIDR-to-be-insertted.  If no entry or an entry *of differing 
  * bit length* is found, the data is insertted into the data table, and its
- * index is used for the new routing table entry.  If an entry is found that
- * is as specific as the new CIDR, the index stored points to where the new
+ * index is used for the new routing table entry.  If an entry is found that 
+ * is as specific as the new CIDR, the index stored points to where the new 
  * data is written into the data table.
- *
- * If more specific CIDR blocks overwrote the data table, then the more
+ * 
+ * If more specific CIDR blocks overwrote the data table, then the more 
  * general routing table entries that were not overwritten will be referencing
  * the wrong data.  Alternatively, less specific entries can only overwrite
  * existing routing table entries if favor-most-recent inserts are used.
  *
  * Because there is no quick way to clean the data-table if a user wishes to
  * use a favor-most-recent insert for more general data, the user should flush
- * the table with sfrt_free and create one anew.  Alternatively, a small
+ * the table with sfrt_free and create one anew.  Alternatively, a small 
  * memory leak occurs with the data table, as it will be storing pointers that
  * no routing table entry cares about.
  *
  *
- * The API calls that should be used are:
+ * The API calls that should be used are: 
  *  sfrt_new    - create new table
- *  sfrt_insert - insert entry
+ *  sfrt_insert - insert entry 
  *  sfrt_lookup - lookup entry
  *  sfrt_free   - free table
 */
@@ -84,7 +84,6 @@
 #include "config.h"
 #endif
 
-#include "sf_types.h"
 #include "sfrt.h"
 
 char *rt_error_messages[] =
@@ -103,9 +102,9 @@ char *rt_error_messages[] =
 #endif
 };
 
-/* Create new lookup table
- * @param   table_type Type of table. Uses the types enumeration in route.h
- * @param   ip_type    IPv4 or IPv6. Uses the types enumeration in route.h
+/* Create new lookup table 
+ * @param   table_type Type of table. Uses the types enumeration in route.h 
+ * @param   ip_type    IPv4 or IPv6. Uses the types enumeration in route.h 
  * @param   data_size  Max number of unique data entries
  *
  * Returns the new table. */
@@ -132,7 +131,7 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
      * applies to DIR-n-m. */
 #ifdef SUPPORT_LCTRIE
 #if SIZEOF_LONG_INT == 8
-    if(data_size >= 0x800000000000000 && table_type == LCT)
+    if(data_size >= 0x800000000000000 && table_type == LCT) 
 #else
     if(data_size >= 0x8000000 && table_type != LCT)
 #endif
@@ -175,7 +174,7 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
 
     /* index 0 will be used for failed lookups, so set this to 1 */
     table->num_ent = 1;
-
+    
     switch(table_type)
     {
 #ifdef SUPPORT_LCTRIE
@@ -192,7 +191,7 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
             return NULL;
 
             break;
-#endif
+#endif            
         /* Setup DIR-n-m table */
         case DIR_24_8:
         case DIR_16x2:
@@ -238,15 +237,15 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
         case DIR_8x4:
             table->rt = sfrt_dir_new(mem_cap, 4, 8,8,8,8);
             break;
-        /* There is no reason to use 4x8 except for benchmarking and
-         * comparison purposes. */
+        /* There is no reason to use 4x8 except for benchmarking and 
+         * comparison purposes. */ 
         case DIR_4x8:
             table->rt = sfrt_dir_new(mem_cap, 8, 4,4,4,4,4,4,4,4);
             break;
-        /* There is no reason to use 2x16 except for benchmarking and
-         * comparison purposes. */
+        /* There is no reason to use 2x16 except for benchmarking and 
+         * comparison purposes. */ 
         case DIR_2x16:
-            table->rt = sfrt_dir_new(mem_cap, 16,
+            table->rt = sfrt_dir_new(mem_cap, 16, 
                             2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2);
             break;
 #ifdef SUP_IP6
@@ -264,7 +263,7 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
             break;
         case DIR_8x16:
             table->rt = sfrt_dir_new(mem_cap, 4, 8,8,8,8);
-            table->rt6 = sfrt_dir_new(mem_cap, 16,
+            table->rt6 = sfrt_dir_new(mem_cap, 16, 
                             8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8);
             break;
 #endif
@@ -274,7 +273,7 @@ table_t *sfrt_new(char table_type, char ip_type, long data_size, uint32_t mem_ca
     {
         free(table->data);
         free(table);
-        return NULL;
+        return NULL; 
     }
 
 #ifdef SUP_IP6
@@ -402,25 +401,6 @@ void sfrt_iterate(table_t* table, sfrt_iterator_callback userfunc)
     return;
 }
 
-int sfrt_iterate2(table_t* table, sfrt_iterator_callback3 userfunc)
-{
-    uint32_t index;
-    if (!table)
-        return 0;
-
-    for (index = 0; index < table->num_ent; index++)
-    {
-        if (table->data[index])
-        {
-            int ret = userfunc(table->data[index]);
-            if (ret != 0)
-                return ret;
-        }
-    }
-
-    return 0;
-}
-
 void sfrt_cleanup2(
     table_t* table,
     sfrt_iterator_callback2 cleanup_func,
@@ -470,7 +450,7 @@ GENERIC sfrt_search(void *adr, unsigned char len, table_t *table)
 #else
     uint32_t ip;
 #endif
-    tuple_t tuple;
+    tuple_t tuple; 
     void *rt = NULL;
 
     if ((adr == NULL) || (table == NULL) || (len == 0))
@@ -532,7 +512,7 @@ int sfrt_insert(void *adr, unsigned char len, GENERIC ptr,
 #else
     uint32_t ip;
 #endif
-    tuple_t tuple;
+    tuple_t tuple; 
     void *rt = NULL;
 
     if(!adr)
@@ -547,7 +527,7 @@ int sfrt_insert(void *adr, unsigned char len, GENERIC ptr,
     {
         return RT_INSERT_FAILURE;
     }
-
+        
     if( (table->ip_type == IPv4 && len > 32) ||
         (table->ip_type == IPv6 && len > 128) )
     {
@@ -560,7 +540,7 @@ int sfrt_insert(void *adr, unsigned char len, GENERIC ptr,
     ip = *(uint32_t*)adr;
 #endif
 
-    /* Check if we can reuse an existing data table entry by
+    /* Check if we can reuse an existing data table entry by 
      * seeing if there is an existing entry with the same length. */
     /* Only perform this if the table is not an LC-trie */
 #ifdef SUPPORT_LCTRIE
@@ -600,12 +580,12 @@ int sfrt_insert(void *adr, unsigned char len, GENERIC ptr,
 #endif
         if( table->num_ent >= table->max_size)
         {
-            return RT_POLICY_TABLE_EXCEEDED;
+            return RT_POLICY_TABLE_EXCEEDED; 
         }
 
         index = table->num_ent;
         table->num_ent++;
-    }
+    } 
     else
     {
         index = tuple.index;
@@ -614,22 +594,22 @@ int sfrt_insert(void *adr, unsigned char len, GENERIC ptr,
     /* Insert value into policy table */
     table->data[ index ] = ptr;
 
-    /* The actual value that is looked-up is an index
+    /* The actual value that is looked-up is an index 
      * into the data table. */
     res = table->insert(ip, len, index, behavior, rt);
 
-    /* Check if we ran out of memory. If so, need to decrement
+    /* Check if we ran out of memory. If so, need to decrement 
      * table->num_ent */
     if(res == MEM_ALLOC_FAILURE)
     {
         /* From the control flow above, it's possible table->num_ent was not
          * incremented.  It should be safe to decrement here, because the only
-         * time it will be incremented above is when we are potentially
+         * time it will be incremented above is when we are potentially 
          * mallocing one or more new entries (It's not incremented when we
          * overwrite an existing entry). */
-        table->num_ent--;
+        table->num_ent--;    
     }
-
+    
     return res;
 }
 
@@ -639,7 +619,7 @@ uint32_t sfrt_num_entries(table_t *table)
     {
         return 0;
     }
-
+    
     /* There is always a root node, so subtract 1 for it */
     return table->num_ent - 1;
 }
@@ -651,13 +631,13 @@ uint32_t sfrt_usage(table_t *table)
     {
         return 0;
     }
-
+    
     usage = table->allocated + table->usage( table->rt );
 
 #ifdef SUP_IP6
     if (table->rt6)
     {
-        usage += table->usage( table->rt6 );
+        usage += table->usage( table->rt6 ); 
     }
 #endif
 
@@ -679,9 +659,9 @@ int main()
     for(index=0; index<NUM_IPS; index++)
     {
         ip_list[index] = (uint32_t)rand()%NUM_IPS;
-        data[index%NUM_DATA] = index%26 + 65;    /* Random letter */
+        data[index%NUM_DATA] = index%26 + 65;    /* Random letter */ 
     }
-
+        
     dir = sfrt_new(DIR_16x2, IPv4, NUM_IPS, 20);
 
     if(!dir)
@@ -692,27 +672,27 @@ int main()
 
     for(index=0; index < NUM_IPS; index++)
     {
-        if(sfrt_insert(&ip_list[index], 32, &data[index%NUM_DATA],
+        if(sfrt_insert(&ip_list[index], 32, &data[index%NUM_DATA], 
                        RT_FAVOR_SPECIFIC, dir) != RT_SUCCESS)
         {
             printf("DIR Insertion failure\n");
             return 1;
         }
 
-        printf("%d\t %x: %c -> %c\n", index, ip_list[index],
+        printf("%d\t %x: %c -> %c\n", index, ip_list[index], 
               data[index%NUM_DATA], *(uint32_t*)sfrt_lookup(&ip_list[index], dir));
 
-    }
+    }   
 
     for(index=0; index < NUM_IPS; index++)
     {
         val = *(uint32_t*)sfrt_lookup(&ip_list[index], dir);
-        printf("\t@%d\t%x: %c.  originally:\t%c\n",
+        printf("\t@%d\t%x: %c.  originally:\t%c\n", 
                             index, ip_list[index], val, data[index%NUM_DATA]);
-    }
+    }   
 
     printf("Usage: %d bytes\n", ((dir_table_t*)(dir->rt))->allocated);
-
+    
     sfrt_free(dir);
     return 0;
 }

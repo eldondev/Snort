@@ -1,7 +1,8 @@
 Rule:
 
 --
-Sid: 1327
+Sid:
+1327
 
 --
 Summary:
@@ -64,11 +65,7 @@ Nigel Houghton <nigel.houghton@sourcefire.com>
 Additional References:
 
 CERT:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2001-0144
 http://www.kb.cert.org/vuls/id/945216
-
-Securityfocus:
-http://www.securityfocus.com/bid/2347
 
 Analysis by David Dittrich:
 http://staff.washington.edu/dittrich/misc/ssh-analysis.txt

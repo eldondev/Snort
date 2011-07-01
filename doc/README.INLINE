@@ -1,0 +1,179 @@
+Creator: Jed Haile <jed@grep.net>
+Current Maintainer: Rob McMillen <rvmcmil@cablespeed.com>
+                    William Metcalf <william.metcalf@gmail.com>
+                    Victor Julien <victor@nk.nl>
+
+Snort-Inline takes packets from iptables instead of libpcap.  It then uses 
+new rule types to help iptables make pass or drop decisions based on 
+snort rules.  
+
+In order for Snort Inline to work properly, you must download and compile
+the iptables code to include "make install-devel" (www.iptables.org).  
+This will install the libipq library that allows Snort Inline to interface 
+with iptables.  Also, you must build and install LibNet, which is available
+from www.packetfactory.net.
+
+The Snort Inline FAQ can be found at http://snort-inline.com/FAQ.html.
+
+NEW RULE TYPES AND WHAT THEY DO:
+
+drop - The drop rule type will tell iptables to drop the packet and log it 
+       via usual snort means.
+reject - The reject rule type will tell iptables to drop the packet, log it 
+         via usual snort means, and send a TCP reset if the protocol is 
+         TCP or an icmp port unreachable if the protocol is UDP.
+sdrop - The sdrop rule type will tell iptables to drop the packet.  Nothing
+        is logged.
+
+RESETS: We now have two options on how to send out resets. We can still use
+a RAW socket which is the default behavior for Snort Inline in which case
+we need to have an interface that has an ip assigned. If there is not an
+interface with an ip address assigned with access to the source of the packet,
+the packet will be logged and the reset packet will never make it onto the 
+network.
+
+We can also now perform resets via a physical device when using iptables.
+We take the indev name from ip_queue and use this as the interface on which
+to send resets. We no longer need a ip loaded on the bridge, and can remain
+pretty stealthy as the config layer2_resets in snort.conf takes a source
+mac address which we substitue for the mac of the bridge. For example:
+
+CONFIG OPTIONS
+
+config layer2resets
+
+tells Snort Inline to use layer2 rests and uses the mac address of the bridge 
+as the source mac in the packet.
+
+config layer2resets: 00:06:76:DD:5F:E3  
+
+will tell Snort Inline to use layer2 resets and uses the src mac of 
+00:06:76:DD:5F:E3 in the rest packet.
+ 
+STREAM4 OPTIONS
+
+There are two additional stream4 options:
+
+inline_state (no args)
+    This option causes snort to drop TCP packets that are not associated with 
+    an existing TCP session, and is not a valid TCP initiator.
+
+midstream_drop_alerts (no args)
+    By default, when running in inline mode, snort will silently drop any
+    packets that were picked up in midstream and would have caused an alert
+    to be generated, if not for the 'flow: established' option.  This is to
+    mitigate stick/snot type attacks when the user hasn't enabled 
+    inline_state.  If the user wants to see the alerts that are silently
+    dropped, then enable this keyword.  Note that by enabling this keyword,
+    the user has opened themselves up to stick/snot type attacks.
+ 
+ALSO...
+
+Additionally, Jed's content replace code allows you to modify packets
+before they leave the network.  For example:
+
+alert tcp any any <> any 80 (msg: "tcp replace"; content:"GET"; replace:"BET";)
+alert udp any any <> any 53 (msg: "udp replace"; \
+    content: "yahoo"; replace: "xxxxx";)
+
+these rules will comb tcp port 80 traffic looking for GET, and udp port 53 
+traffic looking for yahoo.  Once they are found, they are replaced with BET 
+and xxxxx, respectively.  The only catch is that the replace must be the same 
+length as the content.
+
+RULE APPLICATION ORDER:
+
+The current Rule application order: 
+	->activation->dynamic->drop->sdrop->reject->alert->pass->log
+
+This will ensure that a drop rule has precedence over an alert or log rule.
+Also, the -o flag now changes the rule application order to:
+	->activation->dynamic->pass->drop->sdrop->reject->alert->log
+
+INSTALL
+
+./configure --enable-inline
+make
+make install
+
+DROP RULES
+
+Mike Clark <mike@honeynet.org> has taken the time and energy to go through
+the snort ruleset to identify and consolidate rules that would meet the
+drop criteria.  These rules are located in the rules directory in 
+drop.rules, and should be considered "alpha".  There is also a sample 
+drop.conf file located in the etc directory of the snort_inline.tgz.  The 
+latest and greatest set of drop rules can always be found at:
+
+http://www.honeynet.org/papers/honeynet/tools/
+
+Additionally, we have included a convert.sh script in the etc/ directory
+that will convert all alert rules to drop rules.  All you have to do is 
+copy it to the location of your snort rules and run it.  It will convert
+all alert rules to drop rules; change HOME_NET to HONEYNET; and reverse
+the flow of the rules.  Why reverse the flow of the rules?  Because the
+original purpose of Snort Inline is to control a compromised network;
+therefore, we need to drop packets leaving the Honeynet not entering it.
+
+HONEYNET SNORT_INLINE TOOLKIT
+
+This is a statically compiled Snort Inline binary put together by the
+Honeynet Project for the Linux Operating System.  It comes with a set
+of drop.rules, the snort binary (sometimes snort_inline), a snort-inline
+rotation shell script, and a good README.  It can be found at:
+
+http://www.honeynet.org/papers/honeynet/tools/
+
+RUN
+
+First, you need to ensure that the ip_queue module is loaded.  Then,
+you need to send traffic to Snort Inline using the QUEUE target.  For
+example,
+
+iptables -A OUTPUT -p tcp --dport 80 -j QUEUE
+
+sends all tcp traffic leaving the firewall going to port 80 to the QUEUE
+target.  This is what sends the packet from kernel space to user space 
+(Snort Inline).  A quick way to get all outbound traffic going to the
+QUEUE is to use the rc.firewall script created and maintained by the 
+Honeynet Project (http://www.honeynet.org/papers/honeynet/tools/)
+This script is well documented and allows you to direct packets
+to Snort Inline by simply changing the QUEUE variable to yes.
+
+Finally, start Snort Inline.
+
+snort -QDc ../etc/drop.conf -l /var/log/snort
+
+-Q => get packets from iptables.
+-D => run in daemon mode.  pid in /var/run/snort.pid
+-c => read the following configuration file.
+-l => log to the following directory.
+
+Ideally, Snort Inline will be run using only its own drop.rules.  If
+you want to use Snort for just alerting, a separate process should be
+running with its own ruleset.
+
+TROUBLESHOOTING
+
+If you execute Snort Inline, and you see something like this:
+
+Initializing Output Plugins!
+Reading from iptables
+Log directory = /var/log/snort
+Initializing Inline mode
+InlineInit: : Failed to send netlink message: Connection refused
+
+more than likely, the ip_queue module is not loaded or ip_queue 
+support is not compiled into your kernel.  Either recompile
+your kernel to support ip_queue, or load the module.
+
+The ip_queue module is loaded by executing:
+
+insmod ip_queue
+
+Also, if you want to ensure Snort Inline is getting packets, you can 
+start it in the following manner:
+
+snort -Qvc <configuration file>
+
+This will display the header of every packet that Snort Inline sees. 

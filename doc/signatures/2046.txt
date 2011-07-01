@@ -6,7 +6,8 @@ Sid:
 
 --
 Summary:
-The IMAP daemon distributed by Washington University (Wu-imapd) is subject to a buffer overflow condition which may result in a denial of service.
+The IMAP daemon distributed by Washington University (Wu-imapd) is
+subject to a buffer overflow condition which may result in a denial of service.
 
 --
 Impact:
@@ -14,37 +15,23 @@ Possible code execution and Denial of Service.
 
 --
 Detailed Information:
-If a valid user of an IMAP service using wu-imapd makes a partial request of mailbox attributes, a buffer overflow occurs in the daemon resulting in the crash of the process.
+If a valid user of an IMAP service using wu-imapd makes a partial
+request of mailbox attributes, a buffer overflow occurs in the daemon
+resulting in the crash of the process.
 
-Execution of arbitrary code may be possible with the privileges of the user running imapd.
+Execution of arbitrary code may be possible with the privileges of the
+user running imapd.
 
 Exploits are widely available for this vulnerability.
 
 --
 Affected Systems:
-Washington University wu-imapd 2000.0 c
-   + Conectiva Linux 6.0, 7.0 and 8.0
-   + EnGarde Secure Linux 1.0.1
-
-Washington University wu-imapd 2000.0 b
-   + MandrakeSoft Corporate Server 1.0.1
-   + MandrakeSoft Linux Mandrake 7.1, 7.2, 8.0, 8.0 ppc, 8.1, 8.1 ia64 and 8.2
-
-Washington University wu-imapd 2000.0 a
-
-Washington University wu-imapd 2000.0
-   + Caldera OpenLinux Server 3.1 and 3.1.1
-   + Caldera OpenLinux Workstation 3.1 and 3.1.1
-
-Washington University wu-imapd 2001.0 a
-   + HP Secure OS software for Linux 1.0
-   + RedHat Linux 6.2 alpha, i386 and SPARC
-   + RedHat Linux 7.0 alpha and i386
-   + RedHat Linux 7.1 alpha, i386 and ia64
-   + RedHat Linux 7.2 i386 and ia64
-   + Trustix Secure Linux 1.1, 1.2 and 1.5
-
-Washington University wu-imapd 2001.0
+	Washington University wu-imapd 2000.0 c
+	Washington University wu-imapd 2000.0 b
+	Washington University wu-imapd 2000.0 a
+	Washington University wu-imapd 2000.0
+	Washington University wu-imapd 2001.0 a
+	Washington University wu-imapd 2001.0
 
 --
 Attack Scenarios:
@@ -67,21 +54,15 @@ None Known
 Corrective Action:
 Apply the appropriate patches for the affected systems.
 
-Upgrade wu-imapd to version 2002.0a
+Upgrade to the latest non-affected version of the software.
 
 --
 Contributors:
-Sourcefire Research Team
+Sourcefire Vulnerability Research Team
 Brian Caswell <bmc@sourcefire.com>
 Nigel Houghton <nigel.houghton@sourcefire.com>
 
 --
 Additional References:
-
-Bugtraq:
-http://www.securityfocus.com/bid/4713
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2002-0379
 
 --

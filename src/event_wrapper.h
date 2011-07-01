@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -26,7 +26,6 @@
 #include "detect.h"
 #include "decode.h"
 #include "rules.h"
-#include "treenodes.h"
 
 /* 
  * this has been upgarded to reroute traffic to fpLogEvent() 
@@ -51,8 +50,6 @@ OptTreeNode * GenerateSnortEventOtn(
                             uint32_t classification,
                             uint32_t priority,
                             char *msg );
-
-RuleTreeNode* GenerateSnortEventRtn(OptTreeNode*, tSfPolicyId);
 
 int LogTagData(Packet *p,
                uint32_t gen_id,

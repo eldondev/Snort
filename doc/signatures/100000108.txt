@@ -1,0 +1,63 @@
+Rule: 
+
+--
+Sid: 
+100000108
+
+-- 
+Summary: 
+This event is generated when an SQL injection attempt is made against the 
+OpenBB web bulliten board system.
+
+-- 
+
+Impact: 
+Attackers may run arbitrary database commands with the privileges of the 
+affected script.
+
+--
+Detailed Information:
+This rule looks specifically for attacks against the board.php module of the 
+OpenBB program. Attackers must supply a variable whose value is numeric, 
+followed by a space, in order to exploit this vulnerability.
+
+--
+Affected Systems:
+OpenBB 1.0.5
+OpenBB 1.1.0
+
+--
+
+Attack Scenarios: 
+A web browser or a script may be used to exploit this vulnerability.
+
+-- 
+
+Ease of Attack: 
+Simple, as example attacks that can be used with a web browser are publicly 
+available.
+
+-- 
+
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+
+Corrective Action: 
+Currently, no vendor-supplied patches are available. A descripton of an 
+unverified workaround is available in the Additional References section.
+
+--
+Contributors: 
+Alex Kirk <alex.kirk@sourcefire.com>
+
+-- 
+Additional References:
+http://www.securityfocus.com/archive/1/319714
+
+-- 

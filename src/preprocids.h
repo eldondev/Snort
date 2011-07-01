@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -36,11 +36,8 @@
 **  another module, it must come first in the order.
 */
 
-// currently 32 bits (preprocessors)
-// are available.
-
 #define PP_BO                      0
-//#define PP_DCERPC                  1
+#define PP_DCERPC                  1
 #define PP_DNS                     2
 #define PP_FRAG3                   3
 #define PP_FTPTELNET               4
@@ -56,19 +53,31 @@
 #define PP_TELNET                 14
 #define PP_ARPSPOOF               15
 #define PP_DCE2                   16
-#define PP_SDF                    17
-#define PP_NORMALIZE              18
-#define PP_ISAKMP                 19  // used externally
-#define PP_SKYPE                  20  // used externally
-#define PP_SIP                    21
-#define PP_POP                    22
-#define PP_IMAP                   23
+
+// used externally
+#define PP_ISAKMP                 17
+#define PP_SKYPE                  18
+
+// currently 32 bits (preprocessors)
+// are available.  most of these can
+// be deleted:
+#if 0
+#define PP_ASN1DECODE             17
+#define PP_CONVERSATION           18
+#define PP_FLOW                   19
+#define PP_FRAG2                  20
+#define PP_FNORD                  21
+#define PP_HTTPFLOW               22
+#define PP_LOADBALANCING          24
+#define PP_PORTSCAN               25
+#define PP_PORTSCAN2              26
+#define PP_PORTSCAN_IGNORE_HOSTS  27
+#endif
 
 #define PP_ALL_ON         0xFFFFFFFF
 #define PP_ALL_OFF        0x00000000
 
 #define PRIORITY_FIRST           0x0
-#define PRIORITY_NORMALIZE       0x4
 #define PRIORITY_NETWORK        0x10
 #define PRIORITY_TRANSPORT     0x100
 #define PRIORITY_TUNNEL        0x105

@@ -38,7 +38,8 @@ Simple. Exploit code is available.
 
 --
 False Positives:
-None known.
+This rule may generate an event if the password for a valid user contains 
+the character "%".
 
 --
 False Negatives:

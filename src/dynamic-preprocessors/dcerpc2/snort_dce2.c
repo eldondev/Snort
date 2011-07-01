@@ -1,5 +1,5 @@
 /****************************************************************************
- * Copyright (C) 2008-2011 Sourcefire, Inc.
+ * Copyright (C) 2008-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -17,13 +17,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************************
- *
+ * 
  ****************************************************************************/
-
-#include <daq.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "snort_dce2.h"
 #include "dce2_config.h"
@@ -44,23 +39,43 @@
 #include "sfrt.h"
 #include "profiler.h"
 #include "sfPolicy.h"
+#include <pcap.h>
 
 /********************************************************************
  * Global variables
  ********************************************************************/
+SFSnortPacket *dce2_smb_seg_rpkt = NULL;
+SFSnortPacket *dce2_smb_trans_rpkt = NULL;
+SFSnortPacket *dce2_smb_co_cli_seg_rpkt = NULL;
+SFSnortPacket *dce2_smb_co_srv_seg_rpkt = NULL;
+SFSnortPacket *dce2_smb_co_cli_frag_rpkt = NULL;
+SFSnortPacket *dce2_smb_co_srv_frag_rpkt = NULL;
+SFSnortPacket *dce2_tcp_co_seg_rpkt = NULL;
+SFSnortPacket *dce2_tcp_co_cli_frag_rpkt = NULL;
+SFSnortPacket *dce2_tcp_co_srv_frag_rpkt = NULL;
+SFSnortPacket *dce2_udp_cl_frag_rpkt = NULL;
+#ifdef SUP_IP6
+SFSnortPacket *dce2_smb_seg_rpkt6 = NULL;
+SFSnortPacket *dce2_smb_trans_rpkt6 = NULL;
+SFSnortPacket *dce2_smb_co_cli_seg_rpkt6 = NULL;
+SFSnortPacket *dce2_smb_co_srv_seg_rpkt6 = NULL;
+SFSnortPacket *dce2_smb_co_cli_frag_rpkt6 = NULL;
+SFSnortPacket *dce2_smb_co_srv_frag_rpkt6 = NULL;
+SFSnortPacket *dce2_tcp_co_seg_rpkt6 = NULL;
+SFSnortPacket *dce2_tcp_co_cli_frag_rpkt6 = NULL;
+SFSnortPacket *dce2_tcp_co_srv_frag_rpkt6 = NULL;
+SFSnortPacket *dce2_udp_cl_frag_rpkt6 = NULL;
+#endif
 
 DCE2_CStack *dce2_pkt_stack = NULL;
 DCE2_ProtoIds dce2_proto_ids;
-
-static SFSnortPacket* dce2_rpkt[DCE2_RPKT_TYPE__MAX] = {
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-};
 
 static int dce2_detected = 0;
 
 /********************************************************************
  * Extern variables
  ********************************************************************/
+extern DynamicPreprocessorData _dpd;
 extern DCE2_MemState dce2_mem_state;
 extern DCE2_Stats dce2_stats;
 
@@ -90,6 +105,15 @@ static DCE2_Ret DCE2_ConfirmTransport(DCE2_SsnData *, SFSnortPacket *);
 static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *, SFSnortPacket *);
 static void DCE2_SetNoInspect(DCE2_SsnData *);
 
+static void DCE2_InitTcpRpkt(SFSnortPacket *);
+static void DCE2_InitUdpRpkt(SFSnortPacket *);
+static void DCE2_InitCommonRpkt(SFSnortPacket *);
+#ifdef SUP_IP6
+static void DCE2_InitTcp6Rpkt(SFSnortPacket *p);
+static void DCE2_InitUdp6Rpkt(SFSnortPacket *p);
+static void DCE2_InitCommonRpkt6(SFSnortPacket *);
+#endif
+static SFSnortPacket * DCE2_AllocPkt(void);
 static void DCE2_SsnFree(void *);
 
 /*********************************************************************
@@ -199,17 +223,6 @@ static DCE2_SsnData * DCE2_NewSession(SFSnortPacket *p, tSfPolicyId policy_id)
             {
                 DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Stream inserted - not inspecting.\n"));
                 return NULL;
-            }
-            else
-            {
-                if ((DCE2_SsnFromClient(p) && (rs_dir == SSN_DIR_SERVER))
-                        || (DCE2_SsnFromServer(p) && (rs_dir == SSN_DIR_CLIENT))
-                        || (rs_dir == SSN_DIR_BOTH))
-                {
-                    /* Reassembly was already set for this session, but stream
-                     * decided not to use the packet so it's probably not good */
-                    return NULL;
-                }
             }
         }
     }
@@ -426,9 +439,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
     if (DCE2_SsnFromClient(p) && !DCE2_SsnSeenClient(sd))
     {
-#if 0
-        // This code should be obsoleted by the junk data check in dce2_smb.c
-
         /* Check to make sure we can continue processing */
         if (DCE2_ConfirmTransport(sd, p) != DCE2_RET__SUCCESS)
         {
@@ -444,7 +454,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
             return DCE2_RET__NOT_INSPECTED;
         }
-#endif
 
         DCE2_SsnSetSeenClient(sd);
 
@@ -456,9 +465,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
     }
     else if (DCE2_SsnFromServer(p) && !DCE2_SsnSeenServer(sd))
     {
-#if 0
-        // This code should be obsoleted by the junk data check in dce2_smb.c
-
         /* Check to make sure we can continue processing */
         if (DCE2_ConfirmTransport(sd, p) != DCE2_RET__SUCCESS)
         {
@@ -474,7 +480,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
             return DCE2_RET__NOT_INSPECTED;
         }
-#endif
 
         DCE2_SsnSetSeenServer(sd);
 
@@ -500,8 +505,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
             DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Client last => seq: %u, next seq: %u\n",
                            sd->cli_seq, sd->cli_nseq));
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "This packet => seq: %u, next seq: %u\n",
-                           pkt_seq, pkt_seq + p->payload_size));
         }
         else
         {
@@ -512,8 +515,6 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
             DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Server last => seq: %u, next seq: %u\n",
                            sd->srv_seq, sd->srv_nseq));
-            DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "This packet => seq: %u, next seq: %u\n",
-                           pkt_seq, pkt_seq + p->payload_size));
         }
 
         *overlap_bytes = 0;
@@ -534,7 +535,7 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
                  * reassembly on both sides and not looking at non-reassembled packets
                  * Actually this can happen if the stream seg list is empty */
                 DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Overlap => seq: %u, next seq: %u\n",
-                            pkt_seq, pkt_seq + p->payload_size));
+                               pkt_seq, pkt_seq + p->payload_size));
 
                 if (DCE2_SsnMissedPkts(sd))
                     DCE2_SsnClearMissedPkts(sd);
@@ -547,15 +548,13 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
                     dce2_stats.overlapped_bytes += *overlap_bytes;
 
                     DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN,
-                                "Setting overlap bytes: %u\n", *overlap_bytes));
+                                   "Setting overlap bytes: %u\n", *overlap_bytes));
                 }
                 else
                 {
                     return DCE2_RET__NOT_INSPECTED;
                 }
             }
-
-            DCE2_DEBUG_CODE(DCE2_DEBUG__MAIN, DCE2_PrintPktData(p->payload, p->payload_size););
         }
         else if (DCE2_SsnMissedPkts(sd))
         {
@@ -573,10 +572,14 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
             if (DCE2_ConfirmTransport(sd, p) != DCE2_RET__SUCCESS)
             {
                 DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "Couldn't confirm transport - "
-                            "not inspecting\n"));
+                               "not inspecting\n"));
+
+                DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "This packet => seq: %u, next seq: %u\n"
+                               "Setting current and next to the same thing, since we're "
+                               "not inspecting this packet.\n", sd->cli_seq, sd->cli_nseq));
 
                 *ssn_seq = pkt_seq;
-                *ssn_nseq = pkt_seq + p->payload_size;
+                *ssn_nseq = pkt_seq;
 
                 return DCE2_RET__NOT_INSPECTED;
             }
@@ -590,6 +593,9 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
 
         *ssn_seq = pkt_seq;
         *ssn_nseq = pkt_seq + p->payload_size;
+
+        DEBUG_WRAP(DCE2_DebugMsg(DCE2_DEBUG__MAIN, "This packet => seq: %u, next seq: %u\n",
+                       *ssn_seq, *ssn_nseq));
     }
 
     return DCE2_RET__SUCCESS;
@@ -614,7 +620,7 @@ static DCE2_Ret DCE2_SetSsnState(DCE2_SsnData *sd, SFSnortPacket *p)
  *
  * Returns:
  *  DCE2_TransType
- *      DCE2_TRANS_TYPE__NONE if a transport could not be
+ *      DCE2_TRANS_TYPE__NONE if a transport could not be 
  *          determined or target based labeled the session as
  *          traffic we are not interested in.
  *      DCE2_TRANS_TYPE__SMB if the traffic is determined to be
@@ -894,16 +900,399 @@ static DCE2_Ret DCE2_ConfirmTransport(DCE2_SsnData *sd, SFSnortPacket *p)
  *********************************************************************/
 void DCE2_InitRpkts(void)
 {
-    int i;
     dce2_pkt_stack = DCE2_CStackNew(DCE2_PKT_STACK__SIZE, NULL, DCE2_MEM_TYPE__INIT);
-
     if (dce2_pkt_stack == NULL)
     {
         DCE2_Die("%s(%d) Failed to allocate memory for packet stack.",
                  __FILE__, __LINE__);
     }
-    for ( i = 0; i < DCE2_RPKT_TYPE__MAX; i++ )
-        dce2_rpkt[i] = _dpd.encodeNew();
+
+    dce2_smb_seg_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_seg_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_seg_rpkt);
+
+    dce2_smb_trans_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_trans_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_trans_rpkt);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_trans_rpkt->payload, FLAG_FROM_CLIENT);
+
+    dce2_smb_co_cli_seg_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_co_cli_seg_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_co_cli_seg_rpkt);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_cli_seg_rpkt->payload, FLAG_FROM_CLIENT);
+
+    dce2_smb_co_srv_seg_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_co_srv_seg_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_co_srv_seg_rpkt);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_srv_seg_rpkt->payload, FLAG_FROM_SERVER);
+
+    dce2_smb_co_cli_frag_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_co_cli_frag_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_co_cli_frag_rpkt);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_cli_frag_rpkt->payload, FLAG_FROM_CLIENT);
+    DCE2_CoInitRdata((uint8_t *)dce2_smb_co_cli_frag_rpkt->payload + DCE2_MOCK_HDR_LEN__SMB_CLI,
+                     FLAG_FROM_CLIENT);
+
+    dce2_smb_co_srv_frag_rpkt = DCE2_AllocPkt();
+    if (dce2_smb_co_srv_frag_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_smb_co_srv_frag_rpkt);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_srv_frag_rpkt->payload, FLAG_FROM_SERVER);
+    DCE2_CoInitRdata((uint8_t *)dce2_smb_co_srv_frag_rpkt->payload + DCE2_MOCK_HDR_LEN__SMB_SRV,
+                        FLAG_FROM_SERVER);
+
+    dce2_tcp_co_seg_rpkt = DCE2_AllocPkt();
+    if (dce2_tcp_co_seg_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_tcp_co_seg_rpkt);
+
+    dce2_tcp_co_cli_frag_rpkt = DCE2_AllocPkt();
+    if (dce2_tcp_co_cli_frag_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_tcp_co_cli_frag_rpkt);
+    DCE2_CoInitRdata((uint8_t *)dce2_tcp_co_cli_frag_rpkt->payload, FLAG_FROM_CLIENT);
+
+    dce2_tcp_co_srv_frag_rpkt = DCE2_AllocPkt();
+    if (dce2_tcp_co_srv_frag_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcpRpkt(dce2_tcp_co_srv_frag_rpkt);
+    DCE2_CoInitRdata((uint8_t *)dce2_tcp_co_srv_frag_rpkt->payload, FLAG_FROM_SERVER);
+
+    dce2_udp_cl_frag_rpkt = DCE2_AllocPkt();
+    if (dce2_udp_cl_frag_rpkt == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitUdpRpkt(dce2_udp_cl_frag_rpkt);
+    DCE2_ClInitRdata((uint8_t *)dce2_udp_cl_frag_rpkt->payload);
+
+#ifdef SUP_IP6
+    dce2_smb_seg_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_seg_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_seg_rpkt6);
+
+    dce2_smb_trans_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_trans_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_trans_rpkt6);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_trans_rpkt6->payload, FLAG_FROM_CLIENT);
+
+    dce2_smb_co_cli_seg_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_co_cli_seg_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_co_cli_seg_rpkt6);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_cli_seg_rpkt6->payload, FLAG_FROM_CLIENT);
+
+    dce2_smb_co_srv_seg_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_co_srv_seg_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_co_srv_seg_rpkt6);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_srv_seg_rpkt6->payload, FLAG_FROM_SERVER);
+
+    dce2_smb_co_cli_frag_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_co_cli_frag_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_co_cli_frag_rpkt6);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_cli_frag_rpkt6->payload, FLAG_FROM_CLIENT);
+    DCE2_CoInitRdata((uint8_t *)dce2_smb_co_cli_frag_rpkt6->payload + DCE2_MOCK_HDR_LEN__SMB_CLI,
+                     FLAG_FROM_CLIENT);
+
+    dce2_smb_co_srv_frag_rpkt6 = DCE2_AllocPkt();
+    if (dce2_smb_co_srv_frag_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_smb_co_srv_frag_rpkt6);
+    DCE2_SmbInitRdata((uint8_t *)dce2_smb_co_srv_frag_rpkt6->payload, FLAG_FROM_SERVER);
+    DCE2_CoInitRdata((uint8_t *)dce2_smb_co_srv_frag_rpkt6->payload + DCE2_MOCK_HDR_LEN__SMB_SRV,
+                        FLAG_FROM_SERVER);
+
+    dce2_tcp_co_seg_rpkt6 = DCE2_AllocPkt();
+    if (dce2_tcp_co_seg_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_tcp_co_seg_rpkt6);
+
+    dce2_tcp_co_cli_frag_rpkt6 = DCE2_AllocPkt();
+    if (dce2_tcp_co_cli_frag_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_tcp_co_cli_frag_rpkt6);
+    DCE2_CoInitRdata((uint8_t *)dce2_tcp_co_cli_frag_rpkt6->payload, FLAG_FROM_CLIENT);
+
+    dce2_tcp_co_srv_frag_rpkt6 = DCE2_AllocPkt();
+    if (dce2_tcp_co_srv_frag_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitTcp6Rpkt(dce2_tcp_co_srv_frag_rpkt6);
+    DCE2_CoInitRdata((uint8_t *)dce2_tcp_co_srv_frag_rpkt6->payload, FLAG_FROM_SERVER);
+
+    dce2_udp_cl_frag_rpkt6 = DCE2_AllocPkt();
+    if (dce2_udp_cl_frag_rpkt6 == NULL)
+    {
+        DCE2_Die("%s(%d) Failed to allocate memory for reassembly packet.",
+                 __FILE__, __LINE__);
+    }
+
+    DCE2_InitUdp6Rpkt(dce2_udp_cl_frag_rpkt6);
+    DCE2_ClInitRdata((uint8_t *)dce2_udp_cl_frag_rpkt6->payload);
+#endif
+}
+
+/*********************************************************************
+ * Function: DCE2_InitTcpRpkt()
+ *
+ * Purpose: Allocate and initialize reassembly packet for TCP.
+ *
+ * Arguments: None
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+static void DCE2_InitTcpRpkt(SFSnortPacket *p)
+{
+    DCE2_InitCommonRpkt(p);
+
+    ((IPV4Header *)p->ip4_header)->proto = IPPROTO_TCP;
+    p->tcp_header = (TCPHeader *)((uint8_t *)p->ip4_header + IP_HDR_LEN);
+    SET_TCP_HDR_OFFSET((TCPHeader *)p->tcp_header, 0x5);
+    ((TCPHeader *)p->tcp_header)->flags = TCPHEADER_PUSH | TCPHEADER_ACK;
+    p->payload = (uint8_t *)p->tcp_header + TCP_HDR_LEN;
+
+#ifdef SUP_IP6    
+    _dpd.ip6Build((void *)p, p->ip4_header, AF_INET);
+#endif
+}
+
+/*********************************************************************
+ * Function: DCE2_InitUdpRpkt()
+ *
+ * Purpose: Allocate and initialize reassembly packet for UDP.
+ *
+ * Arguments: None
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+void DCE2_InitUdpRpkt(SFSnortPacket *p)
+{
+    DCE2_InitCommonRpkt(p);
+
+    ((IPV4Header *)p->ip4_header)->proto = IPPROTO_UDP;
+    p->udp_header = (UDPHeader *)((uint8_t *)p->ip4_header + IP_HDR_LEN);
+    p->payload = (uint8_t *)p->udp_header + UDP_HDR_LEN;
+
+#ifdef SUP_IP6    
+    _dpd.ip6Build((void *)p, p->ip4_header, AF_INET);
+#endif
+}
+
+/*********************************************************************
+ * Function: DCE2_InitCommonRpkt()
+ *
+ * Purpose: Initializes fields common to both UDP and TCP.
+ *
+ * Arguments:
+ *  SFSnortPacket * - the packet to initialize
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+static void DCE2_InitCommonRpkt(SFSnortPacket *p)
+{
+    p->pkt_data = ((uint8_t *)p->pcap_header) + sizeof(struct pcap_pkthdr);
+
+    p->vlan_tag_header = (void *)((uint8_t *)p->pkt_data + SUN_SPARC_TWIDDLE);
+    p->ether_header = (void *)((uint8_t *)p->vlan_tag_header + VLAN_HDR_LEN);
+
+    ((EtherHeader *)p->ether_header)->ethernet_type = htons(0x0800);
+
+    p->ip4_header = (IPV4Header *)((uint8_t *)p->ether_header + ETHER_HDR_LEN);
+    SET_IP4_VER((IPV4Header *)p->ip4_header, 0x4);
+    SET_IP4_HLEN((IPV4Header *)p->ip4_header, 0x5);
+    ((IPV4Header *)p->ip4_header)->time_to_live = 0xF0;
+    ((IPV4Header *)p->ip4_header)->type_service = 0x10;
+}
+
+#ifdef SUP_IP6
+/*********************************************************************
+ * Function: DCE2_InitTcp6Rpkt()
+ *
+ * Purpose: Allocate and initialize reassembly packet for IPv6 TCP.
+ *
+ * Arguments: None
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+static void DCE2_InitTcp6Rpkt(SFSnortPacket *p)
+{
+    DCE2_InitCommonRpkt6(p);
+
+    p->inner_ip6h.next = ((IPV4Header *)p->ip4_header)->proto = IPPROTO_TCP;
+    p->tcp_header = (TCPHeader *)((uint8_t *)p->ip4_header + IP6_HEADER_LEN);
+    SET_TCP_HDR_OFFSET((TCPHeader *)p->tcp_header, 0x5);
+    ((TCPHeader *)p->tcp_header)->flags = TCPHEADER_PUSH | TCPHEADER_ACK;
+
+    p->payload = (uint8_t *)p->tcp_header + TCP_HDR_LEN;
+}
+
+/*********************************************************************
+ * Function: DCE2_InitUdp6Rpkt()
+ *
+ * Purpose: Allocate and initialize reassembly packet for IPv6 UDP.
+ *
+ * Arguments: None
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+static void DCE2_InitUdp6Rpkt(SFSnortPacket *p)
+{
+    DCE2_InitCommonRpkt6(p);
+
+    p->inner_ip6h.next = ((IPV4Header *)p->ip4_header)->proto = IPPROTO_UDP;
+    p->udp_header = (UDPHeader *)((uint8_t *)p->ip4_header + IP6_HEADER_LEN);
+    p->payload = (uint8_t *)p->udp_header + UDP_HDR_LEN;
+}
+
+/*********************************************************************
+ * Function: DCE2_InitCommonRpkt6()
+ *
+ * Purpose: Initializes fields common to both IPv6 UDP and TCP.
+ *
+ * Arguments:
+ *  SFSnortPacket * - the packet to initialize
+ *
+ * Returns: None
+ *
+ *********************************************************************/
+static void DCE2_InitCommonRpkt6(SFSnortPacket *p)
+{
+    p->pkt_data = ((uint8_t *)p->pcap_header) + sizeof(struct pcap_pkthdr);
+
+    p->vlan_tag_header = 
+        (void *)((uint8_t *)p->pkt_data + SUN_SPARC_TWIDDLE);
+    p->ether_header = 
+        (void *)((uint8_t *)p->vlan_tag_header + VLAN_HDR_LEN);
+
+    ((EtherHeader *)p->ether_header)->ethernet_type = htons(0x0800);
+
+    p->ip4_header = (IPV4Header *)((uint8_t *)p->ether_header + ETHER_HDR_LEN);
+    SET_IP4_VER((IPV4Header *)p->ip4_header, 0x4);
+    SET_IP4_HLEN((IPV4Header *)p->ip4_header, 0x5);
+    ((IPV4Header *)p->ip4_header)->type_service = 0x10;
+    p->inner_ip6h.hop_lmt = ((IPV4Header *)p->ip4_header)->time_to_live = 0xF0;
+    p->inner_ip6h.len = IP6_HEADER_LEN >> 2;
+ 
+    _dpd.ip6SetCallbacks((void *)p, AF_INET6, SET_CALLBACK_IP);
+    p->ip6h = &p->inner_ip6h;
+    p->ip4h = &p->inner_ip4h;
+}
+#endif
+
+/*********************************************************************
+ * Function: DCE2_AllocPkt()
+ *
+ * Purpose: Allocates a packet struct.
+ *
+ * Arguments: None
+ *
+ * Returns:
+ *  SFSnortPacket * - the packet to allocated
+ *
+ *********************************************************************/
+static SFSnortPacket * DCE2_AllocPkt(void)
+{
+    SFSnortPacket *p = (SFSnortPacket *)DCE2_Alloc(sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+
+    if (p == NULL)
+        return NULL;
+
+    p->pcap_header = (struct pcap_pkthdr *)DCE2_Alloc(DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+
+    if (p->pcap_header == NULL)
+    {
+        DCE2_Free((void *)p, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        return NULL;
+    }
+
+    return p;
 }
 
 /*********************************************************************
@@ -914,103 +1303,163 @@ void DCE2_InitRpkts(void)
  * Arguments:
  *  SFSnortPacket *  - pointer to packet off wire
  *  const uint8_t *  - pointer to data to attach to reassembly packet
- *  uint16_t - length of data
+ *  uint16_t - length of data 
  *
  * Returns:
  *  SFSnortPacket * - pointer to reassembly packet
  *
  *********************************************************************/
-
 SFSnortPacket * DCE2_GetRpkt(const SFSnortPacket *wire_pkt, DCE2_RpktType rpkt_type,
                              const uint8_t *data, uint32_t data_len)
 {
-    DCE2_Ret status;
     SFSnortPacket *rpkt;
-    uint16_t payload_len = 0;
+    uint16_t caplen, ip_len, payload_len;
+    DCE2_Ret status;
     uint16_t data_overhead = 0;
     int rpkt_flag;
-
-    rpkt = dce2_rpkt[rpkt_type];
-    _dpd.encodeFormat(ENC_DYN_FWD, wire_pkt, rpkt);
+    int vlanHeaderLen = 0;
 
     switch (rpkt_type)
     {
         case DCE2_RPKT_TYPE__SMB_SEG:
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
+                rpkt = dce2_smb_seg_rpkt;
+            else
+                rpkt = dce2_smb_seg_rpkt6;
+#else
+            rpkt = dce2_smb_seg_rpkt;
+#endif
             rpkt_flag = FLAG_SMB_SEG;
             break;
 
         case DCE2_RPKT_TYPE__SMB_TRANS:
-            // TBD these memset()s could be encapsulated by the various
-            // init functions which should also return the data_overhead.
-            // Better still pass in rpkt and let the init function update
-            // payload, etc.  Also, some memsets could probably be avoided
-            // by explicitly setting the unitialized header fields.
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
+                rpkt = dce2_smb_trans_rpkt;
+            else
+                rpkt = dce2_smb_trans_rpkt6;
+#else
+            rpkt = dce2_smb_trans_rpkt;
+#endif
             data_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI;
-            memset((void*)rpkt->payload, 0, data_overhead);
-            DCE2_SmbInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_CLIENT);
+
             rpkt_flag = FLAG_SMB_TRANS;
             break;
 
         case DCE2_RPKT_TYPE__SMB_CO_SEG:
-            if (DCE2_SsnFromClient(wire_pkt))
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_SmbInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_CLIENT);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_smb_co_cli_seg_rpkt;
+                else
+                    rpkt = dce2_smb_co_srv_seg_rpkt;
             }
             else
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_SmbInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_SERVER);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_smb_co_cli_seg_rpkt6;
+                else
+                    rpkt = dce2_smb_co_srv_seg_rpkt6;
             }
+#else
+            if (DCE2_SsnFromClient(wire_pkt))
+                rpkt = dce2_smb_co_cli_seg_rpkt;
+            else
+                rpkt = dce2_smb_co_srv_seg_rpkt;
+#endif
+            if (DCE2_SsnFromClient(wire_pkt))
+                data_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI;
+            else
+                data_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV;
+
             rpkt_flag = FLAG_DCE_SEG;
             break;
 
         case DCE2_RPKT_TYPE__SMB_CO_FRAG:
-            if (DCE2_SsnFromClient(wire_pkt))
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI + DCE2_MOCK_HDR_LEN__CO_CLI;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_SmbInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_CLIENT);
-                DCE2_CoInitRdata((uint8_t *)rpkt->payload +
-                    DCE2_MOCK_HDR_LEN__SMB_CLI, FLAG_FROM_CLIENT);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_smb_co_cli_frag_rpkt;
+                else
+                    rpkt = dce2_smb_co_srv_frag_rpkt;
             }
             else
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV + DCE2_MOCK_HDR_LEN__CO_SRV;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_SmbInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_SERVER);
-                DCE2_CoInitRdata((uint8_t *)rpkt->payload +
-                    DCE2_MOCK_HDR_LEN__SMB_SRV, FLAG_FROM_SERVER);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_smb_co_cli_frag_rpkt6;
+                else
+                    rpkt = dce2_smb_co_srv_frag_rpkt6;
             }
+#else
+            if (DCE2_SsnFromClient(wire_pkt))
+                rpkt = dce2_smb_co_cli_frag_rpkt;
+            else
+                rpkt = dce2_smb_co_srv_frag_rpkt;
+#endif
+            if (DCE2_SsnFromClient(wire_pkt))
+                data_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI + DCE2_MOCK_HDR_LEN__CO_CLI;
+            else
+                data_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV + DCE2_MOCK_HDR_LEN__CO_SRV;
+
             rpkt_flag = FLAG_DCE_FRAG;
             break;
 
         case DCE2_RPKT_TYPE__TCP_CO_SEG:
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
+                rpkt = dce2_tcp_co_seg_rpkt;
+            else
+                rpkt = dce2_tcp_co_seg_rpkt6;
+#else
+            rpkt = dce2_tcp_co_seg_rpkt;
+#endif
             rpkt_flag = FLAG_DCE_SEG;
             break;
 
         case DCE2_RPKT_TYPE__TCP_CO_FRAG:
-            if (DCE2_SsnFromClient(wire_pkt))
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__CO_CLI;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_CoInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_CLIENT);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_tcp_co_cli_frag_rpkt;
+                else
+                    rpkt = dce2_tcp_co_srv_frag_rpkt;
             }
             else
             {
-                data_overhead = DCE2_MOCK_HDR_LEN__CO_SRV;
-                memset((void*)rpkt->payload, 0, data_overhead);
-                DCE2_CoInitRdata((uint8_t *)rpkt->payload, FLAG_FROM_SERVER);
+                if (DCE2_SsnFromClient(wire_pkt))
+                    rpkt = dce2_tcp_co_cli_frag_rpkt6;
+                else
+                    rpkt = dce2_tcp_co_srv_frag_rpkt6;
             }
+#else
+            if (DCE2_SsnFromClient(wire_pkt))
+                rpkt = dce2_tcp_co_cli_frag_rpkt;
+            else
+                rpkt = dce2_tcp_co_srv_frag_rpkt;
+#endif
+            if (DCE2_SsnFromClient(wire_pkt))
+                data_overhead = DCE2_MOCK_HDR_LEN__CO_CLI;
+            else
+                data_overhead = DCE2_MOCK_HDR_LEN__CO_SRV;
+
             rpkt_flag = FLAG_DCE_FRAG;
             break;
 
         case DCE2_RPKT_TYPE__UDP_CL_FRAG:
+#ifdef SUP_IP6
+            if (IS_IP4(wire_pkt))
+                rpkt = dce2_udp_cl_frag_rpkt;
+            else
+                rpkt = dce2_udp_cl_frag_rpkt6;
+#else
+            rpkt = dce2_udp_cl_frag_rpkt;
+#endif
             data_overhead = DCE2_MOCK_HDR_LEN__CL;
-            memset((void*)rpkt->payload, 0, data_overhead);
-            DCE2_ClInitRdata((uint8_t *)rpkt->payload);
+
             rpkt_flag = FLAG_DCE_FRAG;
             break;
 
@@ -1021,15 +1470,163 @@ SFSnortPacket * DCE2_GetRpkt(const SFSnortPacket *wire_pkt, DCE2_RpktType rpkt_t
             return NULL;
     }
 
-    payload_len = rpkt->max_payload;
+#ifdef SUP_IP6
+    if (IS_IP4(wire_pkt))
+    {
+        if (wire_pkt->tcp_header != NULL)
+        {
+            caplen = ETHER_HDR_LEN + IP_HDR_LEN + TCP_HDR_LEN;
+            ip_len = (uint16_t)(IP_HDR_LEN + TCP_HDR_LEN);
+            payload_len = IP_MAXPKT - (IP_HDR_LEN + TCP_HDR_LEN);
+        }
+        else if (wire_pkt->udp_header != NULL)
+        {
+            caplen = ETHER_HDR_LEN + IP_HDR_LEN + UDP_HDR_LEN;
+            ip_len = (uint16_t)(IP_HDR_LEN + UDP_HDR_LEN);
+            payload_len = IP_MAXPKT - (IP_HDR_LEN + UDP_HDR_LEN);
+        }
+        else
+        {
+            DCE2_Log(DCE2_LOG_TYPE__ERROR,
+                     "%s(%d) Not a TCP or UDP packet.",
+                     __FILE__, __LINE__);
+            return NULL;
+        }
+    }
+    else
+    {
+        if (wire_pkt->tcp_header != NULL)
+        {
+            caplen = ETHER_HDR_LEN + IP6_HDR_LEN + TCP_HDR_LEN;
+            ip_len = (uint16_t)(IP6_HDR_LEN + TCP_HDR_LEN);
+            payload_len = IP_MAXPKT - (IP6_HDR_LEN + TCP_HDR_LEN);
+        }
+        else if (wire_pkt->udp_header != NULL)
+        {
+            caplen = ETHER_HDR_LEN + IP6_HDR_LEN + UDP_HDR_LEN;
+            ip_len = (uint16_t)(IP6_HDR_LEN + UDP_HDR_LEN);
+            payload_len = IP_MAXPKT - (IP6_HDR_LEN + UDP_HDR_LEN);
+        }
+        else
+        {
+            DCE2_Log(DCE2_LOG_TYPE__ERROR,
+                     "%s(%d) Not a TCP or UDP packet.",
+                     __FILE__, __LINE__);
+            return NULL;
+        }
+    }
+#else
+    if (wire_pkt->tcp_header != NULL)
+    {
+        caplen = ETHER_HDR_LEN + IP_HDR_LEN + TCP_HDR_LEN;
+        ip_len = (uint16_t)(IP_HDR_LEN + TCP_HDR_LEN);
+        payload_len = IP_MAXPKT - (IP_HDR_LEN + TCP_HDR_LEN);
+    }
+    else if (wire_pkt->udp_header != NULL)
+    {
+        caplen = ETHER_HDR_LEN + IP_HDR_LEN + UDP_HDR_LEN;
+        ip_len = (uint16_t)(IP_HDR_LEN + UDP_HDR_LEN);
+        payload_len = IP_MAXPKT - (IP_HDR_LEN + UDP_HDR_LEN);
+    }
+    else
+    {
+        DCE2_Log(DCE2_LOG_TYPE__ERROR,
+                 "%s(%d) Not a TCP or UDP packet.",
+                 __FILE__, __LINE__);
+        return NULL;
+    }
+#endif
+
+#ifdef SUP_IP6
+    if (wire_pkt->family == AF_INET)
+    {
+        IP_COPY_VALUE(rpkt->inner_ip4h.ip_src, (&wire_pkt->ip4h->ip_src));
+        IP_COPY_VALUE(rpkt->inner_ip4h.ip_dst, (&wire_pkt->ip4h->ip_dst));
+
+        ((IPV4Header *)rpkt->ip4_header)->source.s_addr = wire_pkt->ip4h->ip_src.ip32[0];
+        ((IPV4Header *)rpkt->ip4_header)->destination.s_addr = wire_pkt->ip4h->ip_dst.ip32[0];
+    }
+    else
+    {
+        IP_COPY_VALUE(rpkt->inner_ip6h.ip_src, (&wire_pkt->ip6h->ip_src));
+        IP_COPY_VALUE(rpkt->inner_ip6h.ip_dst, (&wire_pkt->ip6h->ip_dst));
+    }
+
+    rpkt->family = wire_pkt->family;
+
+#else
+    ((IPV4Header *)rpkt->ip4_header)->source.s_addr = wire_pkt->ip4_header->source.s_addr;
+    ((IPV4Header *)rpkt->ip4_header)->destination.s_addr = wire_pkt->ip4_header->destination.s_addr;
+#endif
+
+    if (wire_pkt->tcp_header != NULL)
+    {
+        ((TCPHeader *)rpkt->tcp_header)->source_port = wire_pkt->tcp_header->source_port;
+        ((TCPHeader *)rpkt->tcp_header)->destination_port = wire_pkt->tcp_header->destination_port;
+    }
+    else
+    {
+        ((UDPHeader *)rpkt->udp_header)->source_port = wire_pkt->udp_header->source_port;
+        ((UDPHeader *)rpkt->udp_header)->destination_port = wire_pkt->udp_header->destination_port;
+    }
+
+    rpkt->src_port = wire_pkt->src_port;
+    rpkt->dst_port = wire_pkt->dst_port;
+    rpkt->proto_bits = wire_pkt->proto_bits;
+
+    if (wire_pkt->ether_header != NULL)
+    {
+        status = DCE2_Memcpy((void *)((EtherHeader *)rpkt->ether_header)->ether_source,
+                             (void *)wire_pkt->ether_header->ether_source,
+                             (size_t)6,
+                             (void *)rpkt->ether_header->ether_source,
+                             (void *)((uint8_t *)rpkt->ether_header->ether_source + 6));
+
+        if (status != DCE2_RET__SUCCESS)
+        {
+            DCE2_Log(DCE2_LOG_TYPE__ERROR,
+                     "%s(%d) Failed to copy ether source into reassembly packet.",
+                     __FILE__, __LINE__);
+            return NULL;
+        }
+
+        status = DCE2_Memcpy((void *)((EtherHeader *)rpkt->ether_header)->ether_destination,
+                             (void *)wire_pkt->ether_header->ether_destination,
+                             (size_t)6,
+                             (void *)rpkt->ether_header->ether_destination,
+                             (void *)((uint8_t *)rpkt->ether_header->ether_destination + 6));
+
+        if (status != DCE2_RET__SUCCESS)
+        {
+            DCE2_Log(DCE2_LOG_TYPE__ERROR,
+                     "%s(%d) Failed to copy ether dest into reassembly packet.",
+                     __FILE__, __LINE__);
+            return NULL;
+        }
+
+        ((EtherHeader *)rpkt->ether_header)->ethernet_type = ((EtherHeader *)wire_pkt->ether_header)->ethernet_type;
+
+        if (((EtherHeader *)wire_pkt->ether_header)->ethernet_type == htons(ETHERNET_TYPE_8021Q))
+        {
+            status = SafeMemcpy((void *)rpkt->vlan_tag_header,
+                    (void *)wire_pkt->vlan_tag_header,
+                    (size_t)VLAN_HDR_LEN,
+                    (void *)rpkt->vlan_tag_header,
+                    (void *)((uint8_t *)rpkt->vlan_tag_header + VLAN_HDR_LEN));
+
+            if (status != SAFEMEM_SUCCESS)
+                return NULL;
+
+            vlanHeaderLen = VLAN_HDR_LEN;
+        }
+    }
 
     if ((data_len + data_overhead) > payload_len)
         data_len = payload_len - data_overhead;
 
-    status = DCE2_Memcpy(
-        (void *)(rpkt->payload + data_overhead),
-        (void *)data, (size_t)data_len, (void *)rpkt->payload,
-        (void *)((uint8_t *)rpkt->payload + payload_len));
+    status = DCE2_Memcpy((void *)(rpkt->payload + data_overhead), (void *)data, (size_t)data_len,
+                         (void *)rpkt->payload,
+                         (void *)((uint8_t *)rpkt->payload + payload_len));
 
     if (status != DCE2_RET__SUCCESS)
     {
@@ -1040,18 +1637,23 @@ SFSnortPacket * DCE2_GetRpkt(const SFSnortPacket *wire_pkt, DCE2_RpktType rpkt_t
     }
 
     rpkt->payload_size = (uint16_t)(data_overhead + data_len);
-    _dpd.encodeUpdate(rpkt);
 
+    if (IsUDP(((SFSnortPacket *)wire_pkt)))
+        ((UDPHeader *)rpkt->udp_header)->data_length = ntohs((uint16_t)(rpkt->payload_size + UDP_HDR_LEN));
+
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->caplen = caplen + rpkt->payload_size + vlanHeaderLen;
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->len = rpkt->pcap_header->caplen;
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->ts.tv_sec = wire_pkt->pcap_header->ts.tv_sec;
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->ts.tv_usec = wire_pkt->pcap_header->ts.tv_usec;
+
+    ip_len += rpkt->payload_size;
 #ifdef SUP_IP6
     if (wire_pkt->family == AF_INET)
-    {
-        rpkt->ip4h->ip_len = rpkt->ip4_header->data_length;
-    }
+        rpkt->ip4h->ip_len = ((IPV4Header *)rpkt->ip4_header)->data_length = htons(ip_len);
     else
-    {
-        IP6RawHdr* ip6h = (IP6RawHdr*)rpkt->raw_ip6_header;
-        if ( ip6h ) rpkt->ip6h->len = ip6h->payload_len;
-    }
+        rpkt->ip6h->len = htons(ip_len);
+#else
+    ((IPV4Header *)rpkt->ip4_header)->data_length = htons(ip_len);
 #endif
 
     rpkt->flags = FLAG_STREAM_EST;
@@ -1081,6 +1683,7 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
     int hdr_overhead = 0;
     const uint8_t *pkt_data_end;
     const uint8_t *payload_end;
+    uint16_t ip_len;
     DCE2_Ret status;
 
     if ((rpkt == NULL) || (data == NULL) || (data_len == 0))
@@ -1097,6 +1700,7 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
                 hdr_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI;
             else
                 hdr_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__SMB_CO_FRAG:
@@ -1104,6 +1708,7 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
                 hdr_overhead = DCE2_MOCK_HDR_LEN__SMB_CLI + DCE2_MOCK_HDR_LEN__CO_CLI;
             else
                 hdr_overhead = DCE2_MOCK_HDR_LEN__SMB_SRV + DCE2_MOCK_HDR_LEN__CO_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__TCP_CO_FRAG:
@@ -1111,6 +1716,7 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
                 hdr_overhead = DCE2_MOCK_HDR_LEN__CO_CLI;
             else
                 hdr_overhead = DCE2_MOCK_HDR_LEN__CO_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__UDP_CL_FRAG:
@@ -1124,7 +1730,7 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
     if (rpkt->payload_size < hdr_overhead)
         return DCE2_RET__ERROR;
 
-    pkt_data_end = rpkt->pkt_data + rpkt->max_payload;
+    pkt_data_end = rpkt->pkt_data + DCE2_PKT_SIZE;
     payload_end = rpkt->payload + rpkt->payload_size;
 
     if ((payload_end + data_len) > pkt_data_end)
@@ -1142,24 +1748,29 @@ DCE2_Ret DCE2_AddDataToRpkt(SFSnortPacket *rpkt, DCE2_RpktType rtype,
     }
 
     rpkt->payload_size += (uint16_t)data_len;
-    // there is room for optimization here since the update was done
-    // earlier - that my be eliminated, but only in this case one
-    // approach is to move the updates to push pkt - but don't want
-    // to update non-dce2 pseudo pkts; perhaps a flag check there
-    // will suffice.
-    _dpd.encodeUpdate(rpkt);
+
+    if (IsUDP(rpkt))
+        ((UDPHeader *)rpkt->udp_header)->data_length = ntohs((uint16_t)(rpkt->payload_size + UDP_HDR_LEN));
+
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->caplen += data_len;
+    ((struct pcap_pkthdr *)rpkt->pcap_header)->len = rpkt->pcap_header->caplen;
 
 #ifdef SUP_IP6
     if (rpkt->family == AF_INET)
     {
-        rpkt->ip4h->ip_len = rpkt->ip4_header->data_length;
+        ip_len = (uint16_t)(ntohs(rpkt->ip4h->ip_len) + data_len);
+        rpkt->ip4h->ip_len = ((IPV4Header *)rpkt->ip4_header)->data_length = htons(ip_len);
     }
     else
     {
-        IP6RawHdr* ip6h = (IP6RawHdr*)rpkt->raw_ip6_header;
-        if ( ip6h ) rpkt->ip6h->len = ip6h->payload_len;
+        ip_len = (uint16_t)(ntohs(rpkt->ip6h->len) + data_len);
+        rpkt->ip6h->len = htons(ip_len);
     }
+#else
+    ip_len = (uint16_t)(ntohs(rpkt->ip4_header->data_length) + data_len);
+    ((IPV4Header *)rpkt->ip4_header)->data_length = htons(ip_len);
 #endif
+
     return DCE2_RET__SUCCESS;
 }
 
@@ -1183,10 +1794,8 @@ DCE2_Ret DCE2_PushPkt(SFSnortPacket *p)
 
         PREPROC_PROFILE_START(dce2_pstat_log);
 
-        _dpd.pushAlerts();
         _dpd.logAlerts((void *)top_pkt);
         _dpd.resetAlerts();
-        _dpd.popAlerts();
 
         PREPROC_PROFILE_END(dce2_pstat_log);
     }
@@ -1223,10 +1832,8 @@ void DCE2_PopPkt(void)
         return;
     }
 
-    _dpd.pushAlerts();
     _dpd.logAlerts((void *)pop_pkt);
     _dpd.resetAlerts();
-    _dpd.popAlerts();
 
     PREPROC_PROFILE_END(dce2_pstat_log);
 }
@@ -1262,9 +1869,7 @@ void DCE2_Detect(DCE2_SsnData *sd)
 
     PREPROC_PROFILE_START(dce2_pstat_detect);
 
-    _dpd.pushAlerts();
     _dpd.detect(top_pkt);
-    _dpd.popAlerts();
 
     PREPROC_PROFILE_END(dce2_pstat_detect);
 
@@ -1283,24 +1888,24 @@ void DCE2_Detect(DCE2_SsnData *sd)
  * Returns:
  *
  *********************************************************************/
-// TBD this function could be called on the actual rpkt
-// to very easily get the exact available payload space and
-// then truncate the data as needed.  That avoids the calculations
-// here which inevitably include tacit assumptions about the
-// rpkt which may not be true (nor future proof).
 uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
 {
     const SFSnortPacket *p = sd->wire_pkt;
     uint16_t overhead;
 
-    uint8_t* base, *last;
-    int n = p->next_layer_index - 1;
-    if ( n < 2 ) return 0;
+#ifndef SUP_IP6
+    overhead = IP_HDR_LEN;
+#else
+    if (IS_IP4(p))
+        overhead = IP_HDR_LEN;
+    else
+        overhead = IP6_HDR_LEN;
+#endif
 
-    base = p->proto_layers[1].proto_start;
-    last = p->proto_layers[n].proto_start + p->proto_layers[n].proto_length;
-
-    overhead = last - base;
+    if (IsTCP(((SFSnortPacket *)p)))
+        overhead += TCP_HDR_LEN;
+    else
+        overhead += UDP_HDR_LEN;
 
     switch (rtype)
     {
@@ -1313,6 +1918,7 @@ uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
                 overhead += DCE2_MOCK_HDR_LEN__SMB_CLI;
             else
                 overhead += DCE2_MOCK_HDR_LEN__SMB_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__SMB_CO_FRAG:
@@ -1320,6 +1926,7 @@ uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
                 overhead += DCE2_MOCK_HDR_LEN__SMB_CLI + DCE2_MOCK_HDR_LEN__CO_CLI;
             else
                 overhead += DCE2_MOCK_HDR_LEN__SMB_SRV + DCE2_MOCK_HDR_LEN__CO_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__TCP_CO_SEG:
@@ -1330,6 +1937,7 @@ uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
                 overhead += DCE2_MOCK_HDR_LEN__CO_CLI;
             else
                 overhead += DCE2_MOCK_HDR_LEN__CO_SRV;
+
             break;
 
         case DCE2_RPKT_TYPE__UDP_CL_FRAG:
@@ -1342,6 +1950,7 @@ uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
                      __FILE__, __LINE__, rtype);
             return 0;
     }
+
     return (IP_MAXPKT - overhead);
 }
 
@@ -1351,28 +1960,159 @@ uint16_t DCE2_GetRpktMaxData(DCE2_SsnData *sd, DCE2_RpktType rtype)
  * Purpose:
  *
  * Arguments:
- *
+ *       
  * Returns:
  *
- ******************************************************************/
+ ******************************************************************/ 
 void DCE2_FreeGlobals(void)
 {
-    int i;
-
     if (dce2_pkt_stack != NULL)
     {
         DCE2_CStackDestroy(dce2_pkt_stack);
         dce2_pkt_stack = NULL;
     }
 
-    for ( i = 0; i < DCE2_RPKT_TYPE__MAX; i++ )
+    if (dce2_smb_seg_rpkt != NULL)
     {
-        if ( dce2_rpkt[i] != NULL )
-        {
-            _dpd.encodeDelete(dce2_rpkt[i]);
-            dce2_rpkt[i] = NULL;
-        }
+        DCE2_Free((void *)dce2_smb_seg_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_seg_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_seg_rpkt = NULL;
     }
+
+    if (dce2_smb_trans_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_trans_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_trans_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_trans_rpkt = NULL;
+    }
+
+    if (dce2_smb_co_cli_seg_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_cli_seg_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_cli_seg_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_cli_seg_rpkt = NULL;
+    }
+
+    if (dce2_smb_co_srv_seg_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_srv_seg_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_srv_seg_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_srv_seg_rpkt = NULL;
+    }
+
+    if (dce2_smb_co_cli_frag_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_cli_frag_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_cli_frag_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_cli_frag_rpkt = NULL;
+    }
+
+    if (dce2_smb_co_srv_frag_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_srv_frag_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_srv_frag_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_srv_frag_rpkt = NULL;
+    }
+
+    if (dce2_tcp_co_seg_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_seg_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_seg_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_seg_rpkt = NULL;
+    }
+
+    if (dce2_tcp_co_cli_frag_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_cli_frag_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_cli_frag_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_cli_frag_rpkt = NULL;
+    }
+
+    if (dce2_tcp_co_srv_frag_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_srv_frag_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_srv_frag_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_srv_frag_rpkt = NULL;
+    }
+
+    if (dce2_udp_cl_frag_rpkt != NULL)
+    {
+        DCE2_Free((void *)dce2_udp_cl_frag_rpkt->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_udp_cl_frag_rpkt, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_udp_cl_frag_rpkt = NULL;
+    }
+
+#ifdef SUP_IP6
+    if (dce2_smb_seg_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_seg_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_seg_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_seg_rpkt6 = NULL;
+    }
+
+    if (dce2_smb_trans_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_trans_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_trans_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_trans_rpkt6 = NULL;
+    }
+
+    if (dce2_smb_co_cli_seg_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_cli_seg_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_cli_seg_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_cli_seg_rpkt6 = NULL;
+    }
+
+    if (dce2_smb_co_srv_seg_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_srv_seg_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_srv_seg_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_srv_seg_rpkt6 = NULL;
+    }
+
+    if (dce2_smb_co_cli_frag_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_cli_frag_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_cli_frag_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_cli_frag_rpkt6 = NULL;
+    }
+
+    if (dce2_smb_co_srv_frag_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_smb_co_srv_frag_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_smb_co_srv_frag_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_smb_co_srv_frag_rpkt6 = NULL;
+    }
+
+    if (dce2_tcp_co_seg_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_seg_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_seg_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_seg_rpkt6 = NULL;
+    }
+
+    if (dce2_tcp_co_cli_frag_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_cli_frag_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_cli_frag_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_cli_frag_rpkt6 = NULL;
+    }
+
+    if (dce2_tcp_co_srv_frag_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_tcp_co_srv_frag_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_tcp_co_srv_frag_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_tcp_co_srv_frag_rpkt6 = NULL;
+    }
+
+    if (dce2_udp_cl_frag_rpkt6 != NULL)
+    {
+        DCE2_Free((void *)dce2_udp_cl_frag_rpkt6->pcap_header, DCE2_PKTH_SIZE, DCE2_MEM_TYPE__INIT);
+        DCE2_Free((void *)dce2_udp_cl_frag_rpkt6, sizeof(SFSnortPacket), DCE2_MEM_TYPE__INIT);
+        dce2_udp_cl_frag_rpkt6 = NULL;
+    }
+#endif
 
     DCE2_EventsFree();
 }

@@ -1,7 +1,7 @@
 
 /****************************************************************************
  *
- * Copyright (C) 2003-2011 Sourcefire, Inc.
+ * Copyright (C) 2003-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -22,7 +22,7 @@
  
 /**
  * @file   log_text.h
- * @author Russ Combs <rcombs@sourcefire.com>
+ * @author Russ Combs <cmg@sourcefire.com>
  * @date   Fri Jun 27 10:34:37 2003
  * 
  * @brief  logging to text file
@@ -43,7 +43,6 @@ void LogIPPkt(TextLog*, int type, Packet*);
 void LogTimeStamp(TextLog*, Packet*);
 void LogTrHeader(TextLog*, Packet*);
 void Log2ndHeader(TextLog*, Packet*);
-void LogIpAddrs(TextLog*, Packet*);
 void LogIPHeader(TextLog*, Packet*);
 void LogTCPHeader(TextLog*, Packet*);
 void LogUDPHeader(TextLog*, Packet*);
@@ -61,7 +60,7 @@ static void LogEmbeddedICMPHeader(TextLog*, const ICMPHdr*);
 static void LogICMPEmbeddedIP(TextLog*, Packet*);
 static void LogReference(TextLog*, ReferenceNode*);
 static void ScOutputCharData(TextLog*, char* data, int len);
-static void LogNetData (TextLog*, const u_char* data, const int len, Packet *);
+static void LogNetData (TextLog*, const u_char* data, const int len);
 #endif
 
 #if 0

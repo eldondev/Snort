@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_ttl_check.c,v 1.33 2011/06/08 00:33:10 jjordan Exp $ */
+/* $Id$ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -27,11 +27,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "sf_types.h"
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
-#include "snort_debug.h"
+#include "debug.h"
 #include "plugbase.h"
 #include "parser.h"
 #include "plugin_enum.h"
@@ -52,8 +50,6 @@ extern PreprocStats ruleOTNEvalPerfStats;
 #define TTL_CHECK_GT 2
 #define TTL_CHECK_LT 3
 #define TTL_CHECK_RG 4
-#define TTL_CHECK_GT_EQ 5
-#define TTL_CHECK_LT_EQ 6
 
 typedef struct _TtlCheckData
 {
@@ -67,7 +63,7 @@ void ParseTtl(char *, OptTreeNode *);
 int CheckTtl(void *option_data, Packet *p);
 
 /****************************************************************************
- *
+ * 
  * Function: SetupTtlCheck()
  *
  * Purpose: Register the ttl option keyword with its setup function
@@ -80,7 +76,7 @@ int CheckTtl(void *option_data, Packet *p);
 void SetupTtlCheck(void)
 {
     /* map the keyword to an initialization/processing function */
-    RegisterRuleOption("ttl", TtlCheckInit, NULL, OPT_TYPE_DETECTION, NULL);
+    RegisterRuleOption("ttl", TtlCheckInit, NULL, OPT_TYPE_DETECTION);
 #ifdef PERF_PROFILING
     RegisterPreprocessorProfile("ttl_check", &ttlCheckPerfStats, 3, &ruleOTNEvalPerfStats);
 #endif
@@ -112,7 +108,7 @@ int TtlCheckCompare(void *l, void *r)
 
     if (!left || !right)
         return DETECTION_OPTION_NOT_EQUAL;
-
+    
     if ((left->ttl == right->ttl) &&
         (left->h_ttl == right->h_ttl) &&
         (left->oper == right->oper))
@@ -124,7 +120,7 @@ int TtlCheckCompare(void *l, void *r)
 }
 
 /****************************************************************************
- *
+ * 
  * Function: TtlCheckInit(char *, OptTreeNode *)
  *
  * Purpose: Parse the ttl keyword arguments and link the detection module
@@ -138,7 +134,7 @@ int TtlCheckCompare(void *l, void *r)
  ****************************************************************************/
 void TtlCheckInit(char *data, OptTreeNode *otn, int protocol)
 {
-    /* multiple declaration check */
+    /* multiple declaration check */ 
     if(otn->ds_list[PLUGIN_TTL_CHECK])
     {
         FatalError("%s(%d): Multiple IP ttl options in rule\n", file_name,
@@ -150,7 +146,7 @@ void TtlCheckInit(char *data, OptTreeNode *otn, int protocol)
     otn->ds_list[PLUGIN_TTL_CHECK] = (TtlCheckData *)
             SnortAlloc(sizeof(TtlCheckData));
 
-    /* this is where the keyword arguments are processed and placed into the
+    /* this is where the keyword arguments are processed and placed into the 
        rule option's data structure */
     ParseTtl(data, otn);
 
@@ -161,7 +157,7 @@ void TtlCheckInit(char *data, OptTreeNode *otn, int protocol)
 
 
 /****************************************************************************
- *
+ * 
  * Function: ParseTtl(char *, OptTreeNode *)
  *
  * Purpose: Parse the TTL keyword's arguments
@@ -178,74 +174,36 @@ void ParseTtl(char *data, OptTreeNode *otn)
     TtlCheckData *ds_ptr;  /* data struct pointer */
     void *ds_ptr_dup;
     char ttlrel;
-    char *endTok;
-    int ttl;
-    char *origData = data;
-    char *curPtr  = data;
-    int equals_present = 0, rel_present =0;
 
     /* set the ds pointer to make it easier to reference the option's
        particular data struct */
     ds_ptr = (TtlCheckData *)otn->ds_list[PLUGIN_TTL_CHECK];
 
-    if(data == NULL)
-    {
-        FatalError("%s(%d) => No arguments to 'ttl' \n"
-                                , file_name, file_line);
-    }
-
     while(isspace((int)*data)) data++;
 
     ttlrel = *data;
-    curPtr = data;
 
     switch (ttlrel) {
         case '-':
             ds_ptr->h_ttl = -1; /* leading dash flag */
-            data++;
-            rel_present = 1;
-            break;
         case '>':
         case '<':
-            curPtr++;
-            while(isspace((int)*curPtr)) curPtr++;
-            if((*curPtr) == '=')
-            {
-                equals_present = 1;
-                data = curPtr;
-            }
         case '=':
             data++;
-            rel_present = 1;
             break;
-       default:
+       default:     
             ttlrel = '=';
     }
     while(isspace((int)*data)) data++;
 
-    ttl = SnortStrtol(data, &endTok, 10);
-    /* next char after first number must either be - or NULL */
-    if ((endTok == data) || ((*endTok != '-') && (*endTok != '\0')))
-    {
-        FatalError("%s(%d) => Invalid parameter '%s' to 'ttl' (not a "
-                "number?) \n", file_name, file_line, origData);
-    }
+    ds_ptr->ttl = atoi(data);
 
-    if (ttl< 0 || ttl > 255)
-    {
-        FatalError("%s(%d) => Invalid number '%s' to 'ttl' (should be between 0 to  "
-                                "255) \n", file_name, file_line, origData);
-    }
-    ds_ptr->ttl = ttl;
-
-    data = endTok;
+    /* skip digit */
+    while(isdigit((int)*data)) data++;
+    /* and spaces.. if any */ 
+    while(isspace((int)*data)) data++;
     if (*data == '-')
     {
-        if(rel_present || (ds_ptr->h_ttl == -1 ))
-        {
-            FatalError("%s(%d) => Invalid parameter '%s' to 'ttl' (not a "
-                "number?) \n", file_name, file_line, origData);
-        }
         data++;
         ttlrel = '-';
     }
@@ -253,17 +211,11 @@ void ParseTtl(char *data, OptTreeNode *otn)
     {
         case '>':
             fpl = AddOptFuncToList(CheckTtl, otn);
-            if(equals_present)
-                ds_ptr->oper = TTL_CHECK_GT_EQ;
-            else
-                ds_ptr->oper = TTL_CHECK_GT;
+            ds_ptr->oper = TTL_CHECK_GT;
             break;
-        case '<':
+        case '<':     
             fpl = AddOptFuncToList(CheckTtl, otn);
-            if(equals_present)
-                ds_ptr->oper = TTL_CHECK_LT_EQ;
-            else
-                ds_ptr->oper = TTL_CHECK_LT;
+            ds_ptr->oper = TTL_CHECK_LT;
             break;
         case '=':
             fpl = AddOptFuncToList(CheckTtl, otn);
@@ -271,35 +223,19 @@ void ParseTtl(char *data, OptTreeNode *otn)
             break;
         case '-':
             while(isspace((int)*data)) data++;
-            if (ds_ptr->h_ttl != -1)
+            if (ds_ptr->h_ttl != -1 && atoi(data) == 0)
             {
-                if(*data=='\0')
-                {
-                    ds_ptr->h_ttl = 255;
-                }
-                else
-                {
-                    ttl = SnortStrtol(data, &endTok, 10);
-                    if ((endTok == data) || (*endTok != '\0') || (ds_ptr->ttl > ttl))
-                    {
-                        FatalError("%s(%d) => Invalid parameter '%s' to 'ttl' "
-                                "(not a number or invalid range?) \n", file_name, file_line, origData);
-                    }
-                    if (ttl< 0 || ttl > 255)
-                    {
-                        FatalError("%s(%d) => Invalid number '%s' to 'ttl' (should be between 0 to  "
-                                "255) \n", file_name, file_line, origData);
-                    }
-                    if (ttl == 0)
-                        ds_ptr->h_ttl = 255;
-                    else
-                        ds_ptr->h_ttl = ttl;
-                }
+                ds_ptr->h_ttl = 255;
             }
-            else /* leading dash*/
+            else
+            {
+                ds_ptr->h_ttl = atoi(data);
+            }
+            /* sanity check.. */
+            if (ds_ptr->h_ttl < ds_ptr->ttl) 
             {
                 ds_ptr->h_ttl = ds_ptr->ttl;
-                ds_ptr->ttl   = 0;
+                ds_ptr->ttl   = atoi(data);
             }
             fpl = AddOptFuncToList(CheckTtl, otn);
             ds_ptr->oper = TTL_CHECK_RG;
@@ -343,7 +279,7 @@ int CheckTtl(void *option_data, Packet *p)
         case TTL_CHECK_EQ:
             if (ttlCheckData->ttl == GET_IPH_TTL(p))
                 rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             else
             {
                 DebugMessage(DEBUG_PLUGIN, "CheckTtlEq: Not equal to %d\n",
@@ -354,7 +290,7 @@ int CheckTtl(void *option_data, Packet *p)
         case TTL_CHECK_GT:
             if (ttlCheckData->ttl < GET_IPH_TTL(p))
                 rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             else
             {
                 DebugMessage(DEBUG_PLUGIN, "CheckTtlEq: Not greater than %d\n",
@@ -365,7 +301,7 @@ int CheckTtl(void *option_data, Packet *p)
         case TTL_CHECK_LT:
             if (ttlCheckData->ttl > GET_IPH_TTL(p))
                 rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             else
             {
                 DebugMessage(DEBUG_PLUGIN, "CheckTtlEq: Not less than %d\n",
@@ -373,37 +309,14 @@ int CheckTtl(void *option_data, Packet *p)
             }
 #endif
             break;
-        case TTL_CHECK_GT_EQ:
-            if (ttlCheckData->ttl <= GET_IPH_TTL(p))
-                rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
-            else
-            {
-                DebugMessage(DEBUG_PLUGIN, "CheckTtlEq: Not greater than or equal to %d\n",
-                    ttlCheckData->ttl);
-            }
-#endif
-            break;
-        case TTL_CHECK_LT_EQ:
-            if (ttlCheckData->ttl >= GET_IPH_TTL(p))
-                rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
-            else
-            {
-                DebugMessage(DEBUG_PLUGIN, "CheckTtlEq: Not less than or equal to %d\n",
-                    ttlCheckData->ttl);
-            }
-#endif
-            break;
-
          case TTL_CHECK_RG:
             if ((ttlCheckData->ttl <= GET_IPH_TTL(p)) &&
                 (ttlCheckData->h_ttl >= GET_IPH_TTL(p)))
                 rval = DETECTION_OPTION_MATCH;
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
             else
             {
-                DebugMessage(DEBUG_PLUGIN, "CheckTtlLT: Not Within the range %d - %d (%d)\n",
+                DebugMessage(DEBUG_PLUGIN, "CheckTtlLT: Not Within the range %d - %d (%d)\n", 
                      ttlCheckData->ttl,
                      ttlCheckData->h_ttl,
                      GET_IPH_TTL(p));

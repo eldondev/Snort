@@ -6,23 +6,35 @@ Sid:
 
 --
 Summary:
-This event is generated when an attempt is made to exploit a file globbing vulnerability associated with WU-FTPD.
+This event is generated when an attempt is made to exploit a file
+globbing vulnerability associated with WU-FTPD.
 
 --
 Impact:
-Remote root access.  A successful attack can allow remote execution of commands with privileges of WU-FTPD, most often root.
+Serious. Remote root access. A successful attack can allow remote
+execution of commands with privileges of WU-FTPD, most often root.
 
 --
 Detailed Information:
-An exploit in Washington University FTP daemon (WU-FTPD) code associated with file globbing can allow execution of arbitrary code with the privileges of WU-FTPD, typically root.  WU-FTPD invokes the glob function when certain characters are used in a file name argument supplied by an FTP client.  The glob function fails to properly handle illegal strings such as "~{" and "~[".  The problem is compounded when the glob function returns an error condition that is incorrectly handled, which may lead to the corruption of process memory space.  This exploit requires login access to a vulnerable server either via an anonymous or established user account.
+An exploit in Washington University FTP daemon (WU-FTPD) code associated
+with file globbing can allow execution of arbitrary code with the
+privileges of WU-FTPD, typically root. WU-FTPD invokes the glob function
+when certain characters are used in a file name argument supplied by an
+FTP client. The glob function fails to properly handle illegal strings
+such as "~{" and "~[". The problem is compounded when the glob function
+returns an error condition that is incorrectly handled, which may lead
+to the corruption of process memory space. This exploit requires login
+access to a vulnerable server either via an anonymous or established
+user account.
 
 --
 Affected Systems:
-Many operating systems running WU-FTPD 2.6.1, 2.6.0, and 2.5.0.
+	WU-FTPD 2.6.1, 2.6.0, and 2.5.0.
 
 --
 Attack Scenarios:
-An attacker may login to a vulnerable WU-FTP server and enter a malformed file argument to gain access and execute arbitrary commands.
+An attacker may login to a vulnerable WU-FTP server and enter a
+malformed file argument to gain access and execute arbitrary commands.
 
 --
 Ease of Attack:
@@ -38,7 +50,9 @@ None Known.
 
 --
 Corrective Action:
-Upgrade to the latest non-affected version of the software or apply the appropriate patch.
+Upgrade to the latest non-affected version of the software
+
+Apply the appropriate vendor supplied patch.
 
 Do not enable anonymous FTP access unless required.  
 
@@ -51,13 +65,6 @@ Judy Novak <judy.novak@sourcefire.com>
 
 --
 Additional References:
-
-CVE:
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CAN-2001-0886
-http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2001-0550
-
-Bugtraq:
-http://www.securityfocus.com/bid/3581
 
 CERT:
 http://www.kb.cert.org/vuls/id/886083

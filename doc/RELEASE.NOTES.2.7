@@ -1,0 +1,23 @@
+2007-07-09 - Snort 2.7.0
+
+[*] New Additions
+    * Stream5 is now the default stream processor and replaces both flow
+      and Stream4.  Refer to the Snort manual and README.stream5 for
+      details on how to configure it for OS target-specific TCP
+      processing.
+
+[*] Improvements
+    * Fixed header files to avoid conflicts with system files on BSD for
+      IPv6 data structures.
+
+    * Reduced memory footprint for smtp preprocessor.
+
+    * Ensured Snort frees memory from preprocessors before exit.  Only
+      outstanding memory in use is related to pattern matcher and
+      rules.
+
+[*] Security Improvements
+    * Further updates that use safer functions that perform bounds checking
+      when doing string or memory copies and snprintf buffer writes.
+      Ensure null termination on string buffers and perform initialization
+      on memory allocations.

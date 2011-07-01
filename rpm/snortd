@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: snortd,v 1.3 2005/05/05 18:23:45 jhewlett Exp $
+# $Id$
 #
 # snortd         Start/Stop the snort IDS daemon.
 #

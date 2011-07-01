@@ -1,9 +1,0 @@
-Makefile
-Makefile.in
-build
-*.ncb
-*.opt
-*.plg
-Debug
-Release
-include

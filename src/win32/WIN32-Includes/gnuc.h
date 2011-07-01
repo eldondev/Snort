@@ -1,4 +1,4 @@
-/* @(#) $Header: /cvsroot/snort/src/win32/WIN32-Includes/gnuc.h,v 1.5 2003/10/20 15:03:43 chrisgreen Exp $ (LBL) */
+/* @(#) $Header$ (LBL) */
 
 /* Define __P() macro, if necessary */
 

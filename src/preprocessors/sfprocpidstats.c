@@ -1,9 +1,9 @@
 /*
-** $Id: sfprocpidstats.c,v 1.15 2011/06/08 00:33:16 jjordan Exp $
+** $Id$
 **
 **  sfprocpidstats.c
 **
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Dan Roelker <droelker@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -26,10 +26,6 @@
 **    This file gets the correct CPU usage for SMP linux machines.
 **
 */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "sfprocpidstats.h"
 
 #ifdef LINUX_SMP
@@ -40,7 +36,6 @@
 #include <sys/types.h>
 #include <string.h>
 #include <math.h>
-#include <errno.h>
 
 #include "util.h"
 
@@ -122,17 +117,13 @@ static int GetCpuNum(void)
             return 0;
 
         iRet = sscanf(buf, "%10s %*u %*u %*u %*u", acCpuName);
-
-        if(errno == ERANGE)
-            errno = 0;
-
-        if(iRet < 1 || iRet == EOF )
+        if(iRet < 1 || iRet == EOF)
         {
             return 0;
         }
 
         acCpuName[sizeof(acCpuName)-1] = 0x00;
-
+            
         if(strncmp(acCpuName, "cpu", 3))
         {
             break;
@@ -193,27 +184,6 @@ int sfInitProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
     return 0;
 }
 
-void FreeProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
-{
-    if (gpStatCPUs != NULL)
-    {
-        free(gpStatCPUs);
-        gpStatCPUs = NULL;
-    }
-
-    if (gpStatCPUs_2 != NULL)
-    {
-        free(gpStatCPUs_2);
-        gpStatCPUs_2 = NULL;
-    }
-
-    if (sfProcPidStats->SysCPUs != NULL)
-    {
-        free(sfProcPidStats->SysCPUs);
-        sfProcPidStats->SysCPUs = NULL;
-    }
-}
-
 int sfProcessProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
 {
     static int iError = 0;
@@ -257,7 +227,7 @@ int sfProcessProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
 
         if(gpStatCPUs_2[iCtr].user > gpStatCPUs[iCtr].user)
         {
-            sfProcPidStats->SysCPUs[iCtr].user = (((double)(gpStatCPUs_2[iCtr].user -
+            sfProcPidStats->SysCPUs[iCtr].user = (((double)(gpStatCPUs_2[iCtr].user - 
                                                  gpStatCPUs[iCtr].user)) /
                                                  ulCPUjiffies) * 100.0;
             if(sfProcPidStats->SysCPUs[iCtr].user < .01)
@@ -272,7 +242,7 @@ int sfProcessProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
 
         if(gpStatCPUs_2[iCtr].sys > gpStatCPUs[iCtr].sys)
         {
-            sfProcPidStats->SysCPUs[iCtr].sys = (((double)(gpStatCPUs_2[iCtr].sys -
+            sfProcPidStats->SysCPUs[iCtr].sys = (((double)(gpStatCPUs_2[iCtr].sys - 
                                                 gpStatCPUs[iCtr].sys)) /
                                                 ulCPUjiffies) * 100.0;
             if(sfProcPidStats->SysCPUs[iCtr].sys < .01)
@@ -287,7 +257,7 @@ int sfProcessProcPidStats(SFPROCPIDSTATS *sfProcPidStats)
 
         if(gpStatCPUs_2[iCtr].idle > gpStatCPUs[iCtr].idle)
         {
-            sfProcPidStats->SysCPUs[iCtr].idle = (((double)(gpStatCPUs_2[iCtr].idle -
+            sfProcPidStats->SysCPUs[iCtr].idle = (((double)(gpStatCPUs_2[iCtr].idle - 
                                                  gpStatCPUs[iCtr].idle)) /
                                                  ulCPUjiffies) * 100.0;
             if(sfProcPidStats->SysCPUs[iCtr].idle < .01)

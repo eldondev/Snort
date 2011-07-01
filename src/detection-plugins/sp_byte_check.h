@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -18,14 +18,13 @@
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-/* $Id: sp_byte_check.h,v 1.13 2011/02/09 23:22:57 jjordan Exp $ */
+/* $Id$ */
 
 #ifndef __SP_BYTE_CHECK_H__
 #define __SP_BYTE_CHECK_H__
 
 #include "sf_engine/sf_snort_plugin_api.h"
 #include "decode.h"
-#include "plugbase.h"
 
 #define BT_LESS_THAN            CHECK_LT
 #define BT_EQUALS               CHECK_EQ
@@ -51,11 +50,8 @@ typedef struct _ByteTestData
     uint8_t not_flag;
     uint8_t relative_flag;
     uint8_t data_string_convert_flag;
-    int8_t endianess;
+    uint8_t endianess;
     uint32_t base;
-    int8_t cmp_value_var;
-    int8_t offset_var;
-    RuleOptByteOrderFunc byte_order_func;
 } ByteTestData;
 
 void SetupByteTest(void);

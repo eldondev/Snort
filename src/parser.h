@@ -1,8 +1,8 @@
-/*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+/*             
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 ** Copyright (C) 2000-2001 Andrew R. Baker <andrewb@uab.edu>
-**
+**             
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License Version 2 as
 ** published by the Free Software Foundation.  You may not use, modify or
@@ -13,13 +13,13 @@
 ** but WITHOUT ANY WARRANTY; without even the implied warranty of
 ** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ** GNU General Public License for more details.
-**
+**     
 ** You should have received a copy of the GNU General Public License
 ** along with this program; if not, write to the Free Software
 ** Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-*/
+*/  
 
-/* $Id: parser.h,v 1.35 2011/06/08 00:33:06 jjordan Exp $ */
+/* $Id$ */
 #ifndef __PARSER_H__
 #define __PARSER_H__
 
@@ -31,7 +31,6 @@
 #include <sfPolicy.h>
 
 #include "rules.h"
-#include "treenodes.h"
 #include "decode.h"
 #include "sflsq.h"
 #include "snort.h"
@@ -42,13 +41,13 @@
 #define SNORT_CONF_KEYWORD__ACTIVATE   "activate"
 #define SNORT_CONF_KEYWORD__ALERT      "alert"
 #define SNORT_CONF_KEYWORD__DROP       "drop"
-#define SNORT_CONF_KEYWORD__BLOCK      "block"
 #define SNORT_CONF_KEYWORD__DYNAMIC    "dynamic"
 #define SNORT_CONF_KEYWORD__LOG        "log"
 #define SNORT_CONF_KEYWORD__PASS       "pass"
-#define SNORT_CONF_KEYWORD__REJECT    "reject"
-#define SNORT_CONF_KEYWORD__SDROP     "sdrop"
-#define SNORT_CONF_KEYWORD__SBLOCK    "sblock"
+#ifdef GIDS
+# define SNORT_CONF_KEYWORD__REJECT    "reject"
+# define SNORT_CONF_KEYWORD__SDROP     "sdrop"
+#endif  /* GIDS */
 
 /* Include keyword */
 #define SNORT_CONF_KEYWORD__INCLUDE  "include"
@@ -64,7 +63,9 @@
 #define SNORT_CONF_KEYWORD__EVENT_FILTER         "event_filter"
 # define SNORT_CONF_KEYWORD__IPVAR               "ipvar"
 #define SNORT_CONF_KEYWORD__OUTPUT               "output"
-#define SNORT_CONF_KEYWORD__PORTVAR              "portvar"
+#ifdef PORTLISTS
+# define SNORT_CONF_KEYWORD__PORTVAR             "portvar"
+#endif  /* PORTLISTS */
 #define SNORT_CONF_KEYWORD__PREPROCESSOR         "preprocessor"
 #define SNORT_CONF_KEYWORD__RATE_FILTER          "rate_filter"
 #define SNORT_CONF_KEYWORD__RULE_STATE           "rule_state"
@@ -89,7 +90,6 @@
 #define CONFIG_OPT__CLASSIFICATION                  "classification"
 #define CONFIG_OPT__DAEMON                          "daemon"
 #define CONFIG_OPT__DECODE_DATA_LINK                "decode_data_link"
-#define CONFIG_OPT__DECODE_ESP                      "decode_esp"
 #define CONFIG_OPT__DEFAULT_RULE_STATE              "default_rule_state"
 #define CONFIG_OPT__DETECTION                       "detection"
 #define CONFIG_OPT__DETECTION_FILTER                "detection_filter"
@@ -115,7 +115,6 @@
 #define CONFIG_OPT__ENABLE_DECODE_DROPS             "enable_decode_drops"
 #define CONFIG_OPT__ENABLE_DECODE_OVERSIZED_ALERTS  "enable_decode_oversized_alerts"
 #define CONFIG_OPT__ENABLE_DECODE_OVERSIZED_DROPS   "enable_decode_oversized_drops"
-#define CONFIG_OPT__ENABLE_DEEP_TEREDO_INSPECTION   "enable_deep_teredo_inspection"
 #define CONFIG_OPT__ENABLE_IP_OPT_DROPS             "enable_ipopt_drops"
 #ifdef MPLS
 # define CONFIG_OPT__ENABLE_MPLS_MULTICAST          "enable_mpls_multicast"
@@ -128,17 +127,12 @@
 #define CONFIG_OPT__ENABLE_TCP_OPT_TTCP_DROPS       "enable_tcpopt_ttcp_drops"
 #define CONFIG_OPT__EVENT_FILTER                    "event_filter"
 #define CONFIG_OPT__EVENT_QUEUE                     "event_queue"
-#define CONFIG_OPT__EVENT_TRACE                     "event_trace"
-# define CONFIG_OPT__REACT                          "react"
-#ifdef ENABLE_RESPONSE3
-# define CONFIG_OPT__FLEXRESP2_INTERFACE            "flexresp2_interface"
+#ifdef ENABLE_RESPONSE2
 # define CONFIG_OPT__FLEXRESP2_ATTEMPTS             "flexresp2_attempts"
+# define CONFIG_OPT__FLEXRESP2_INTERFACE            "flexresp2_interface"
 # define CONFIG_OPT__FLEXRESP2_MEMCAP               "flexresp2_memcap"
 # define CONFIG_OPT__FLEXRESP2_ROWS                 "flexresp2_rows"
-#endif // ENABLE_RESPONSE3
-#ifdef ACTIVE_RESPONSE
-# define CONFIG_OPT__RESPONSE                       "response"
-#endif
+#endif /* ENABLE_RESPONSE2 */
 #define CONFIG_OPT__FLOWBITS_SIZE                   "flowbits_size"
 #define CONFIG_OPT__IGNORE_PORTS                    "ignore_ports"
 #define CONFIG_OPT__ALERT_VLAN                      "include_vlan_in_alerts"
@@ -146,11 +140,6 @@
 #define CONFIG_OPT__IPV6_FRAG                       "ipv6_frag"
 #define CONFIG_OPT__LAYER2RESETS                    "layer2resets"
 #define CONFIG_OPT__LOG_DIR                         "logdir"
-#define CONFIG_OPT__DAQ_TYPE                        "daq"
-#define CONFIG_OPT__DAQ_MODE                        "daq_mode"
-#define CONFIG_OPT__DAQ_VAR                         "daq_var"
-#define CONFIG_OPT__DAQ_DIR                         "daq_dir"
-#define CONFIG_OPT__DIRTY_PIG                       "dirty_pig"
 #ifdef TARGET_BASED
 # define CONFIG_OPT__MAX_ATTRIBUTE_HOSTS            "max_attribute_hosts"
 # define CONFIG_OPT__MAX_METADATA_SERVICES          "max_metadata_services"
@@ -160,15 +149,11 @@
 # define CONFIG_OPT__MPLS_PAYLOAD_TYPE              "mpls_payload_type"
 #endif  /* MPLS */
 #define CONFIG_OPT__MIN_TTL                         "min_ttl"
-#ifdef NORMALIZER
-#define CONFIG_OPT__NEW_TTL                         "new_ttl"
-#endif
 #define CONFIG_OPT__NO_LOG                          "nolog"
 #define CONFIG_OPT__NO_PCRE                         "nopcre"
 #define CONFIG_OPT__NO_PROMISCUOUS                  "no_promisc"
 #define CONFIG_OPT__OBFUSCATE                       "obfuscate"
 #define CONFIG_OPT__ORDER                           "order"
-#define CONFIG_OPT__PAF_MAX                         "paf_max"
 #define CONFIG_OPT__PCRE_MATCH_LIMIT                "pcre_match_limit"
 #define CONFIG_OPT__PCRE_MATCH_LIMIT_RECURSION      "pcre_match_limit_recursion"
 #define CONFIG_OPT__PKT_COUNT                       "pkt_count"
@@ -192,26 +177,24 @@
 #define CONFIG_OPT__SET_GID                         "set_gid"
 #define CONFIG_OPT__SET_UID                         "set_uid"
 #define CONFIG_OPT__SHOW_YEAR                       "show_year"
-#define CONFIG_OPT__SO_RULE_MEMCAP                  "so_rule_memcap"
 #define CONFIG_OPT__STATEFUL                        "stateful"
 #define CONFIG_OPT__TAGGED_PACKET_LIMIT             "tagged_packet_limit"
 #define CONFIG_OPT__THRESHOLD                       "threshold"
+#ifdef TIMESTATS
+# define CONFIG_OPT__TIMESTATS_INTERVAL             "timestats_interval"
+#endif  /* TIMESTATS */
 #define CONFIG_OPT__UMASK                           "umask"
 #define CONFIG_OPT__UTC                             "utc"
 #define CONFIG_OPT__VERBOSE                         "verbose"
-#define CONFIG_OPT__VLAN_AGNOSTIC                   "vlan_agnostic"
-#define CONFIG_OPT__LOG_IPV6_EXTRA                  "log_ipv6_extra_data"
 #ifdef DYNAMIC_PLUGIN
-#define CONFIG_OPT__DUMP_DYNAMIC_RULES_PATH         "dump-dynamic-rules-path"
+#define CONFIG_OPT__DUMP_DYNAMIC_RULES_PATH          "dump-dynamic-rules-path"
 #endif
 
 
-extern SnortConfig *snort_conf_for_parsing;
 
 /* exported values */
 extern char *file_name;
 extern int file_line;
-
 
 /* rule setup funcs */
 SnortConfig * ParseSnortConf(void);
@@ -229,15 +212,15 @@ int GetPcaps(SF_LIST *, SF_QUEUE *);
 void ParserCleanup(void);
 void FreeRuleLists(SnortConfig *);
 void VarTablesFree(SnortConfig *);
+#ifdef PORTLISTS
 void PortTablesFree(rule_port_tables_t *);
-int CompareIPNodes(IpAddrNode *, IpAddrNode *);
+#endif
 
 void ResolveOutputPlugins(SnortConfig *, SnortConfig *);
 void ConfigureOutputPlugins(SnortConfig *);
 void ConfigurePreprocessors(SnortConfig *, int);
 
 NORETURN void ParseError(const char *, ...);
-void ParseWarning(const char *, ...);
 void ParseMessage(const char *, ...);
 
 void ConfigAlertBeforePass(SnortConfig *, char *);
@@ -280,8 +263,6 @@ void ConfigDumpPayloadVerbose(SnortConfig *, char *);
 void ConfigEnableDecodeDrops(SnortConfig *, char *);
 void ConfigEnableDecodeOversizedAlerts(SnortConfig *, char *);
 void ConfigEnableDecodeOversizedDrops(SnortConfig *, char *);
-void ConfigEnableDeepTeredoInspection(SnortConfig *sc, char *args);
-void ConfigEnableEspDecoding(SnortConfig *sc, char *args);
 void ConfigEnableIpOptDrops(SnortConfig *, char *);
 #ifdef MPLS
 void ConfigEnableMplsMulticast(SnortConfig *, char *);
@@ -293,17 +274,12 @@ void ConfigEnableTcpOptObsoleteDrops(SnortConfig *, char *);
 void ConfigEnableTTcpDrops(SnortConfig *, char *);
 void ConfigEventFilter(SnortConfig *, char *);
 void ConfigEventQueue(SnortConfig *, char *);
-void ConfigEventTrace(SnortConfig *, char *);
-#ifdef ENABLE_RESPONSE3
-void ConfigFlexresp2Interface(SnortConfig *, char *);
+#ifdef ENABLE_RESPONSE2
 void ConfigFlexresp2Attempts(SnortConfig *, char *);
+void ConfigFlexresp2Interface(SnortConfig *, char *);
 void ConfigFlexresp2Memcap(SnortConfig *, char *);
 void ConfigFlexresp2Rows(SnortConfig *, char *);
 #endif
-#ifdef ACTIVE_RESPONSE
-void ConfigResponse(SnortConfig*, char*);
-#endif
-void ConfigReact(SnortConfig*, char*);
 void ConfigFlowbitsSize(SnortConfig *, char *);
 void ConfigIgnorePorts(SnortConfig *, char *);
 void ConfigIncludeVlanInAlert(SnortConfig *, char *);
@@ -311,11 +287,6 @@ void ConfigInterface(SnortConfig *, char *);
 void ConfigIpv6Frag(SnortConfig *, char *);
 void ConfigLayer2Resets(SnortConfig *, char *);
 void ConfigLogDir(SnortConfig *, char *);
-void ConfigDaqType(SnortConfig *, char *);
-void ConfigDaqMode(SnortConfig *, char *);
-void ConfigDaqVar(SnortConfig *, char *);
-void ConfigDaqDir(SnortConfig *, char *);
-void ConfigDirtyPig(SnortConfig *, char *);
 #ifdef TARGET_BASED
 void ConfigMaxAttributeHosts(SnortConfig *, char *);
 void ConfigMaxMetadataServices(SnortConfig *, char *);
@@ -325,16 +296,12 @@ void ConfigMaxMplsLabelChain(SnortConfig *, char *);
 void ConfigMplsPayloadType(SnortConfig *, char *);
 #endif
 void ConfigMinTTL(SnortConfig *, char *);
-#ifdef NORMALIZER
-void ConfigNewTTL(SnortConfig *, char *);
-#endif
 void ConfigNoLog(SnortConfig *, char *);
 void ConfigNoLoggingTimestamps(SnortConfig *, char *);
 void ConfigNoPcre(SnortConfig *, char *);
 void ConfigNoPromiscuous(SnortConfig *, char *);
 void ConfigObfuscate(SnortConfig *, char *);
 void ConfigObfuscationMask(SnortConfig *, char *);
-void ConfigPafMax(SnortConfig *, char *);
 void ConfigRateFilter(SnortConfig *, char *);
 void ConfigRuleListOrder(SnortConfig *, char *);
 void ConfigPacketCount(SnortConfig *, char *);
@@ -361,7 +328,6 @@ void ConfigReferenceNet(SnortConfig *, char *);
 void ConfigSetGid(SnortConfig *, char *);
 void ConfigSetUid(SnortConfig *, char *);
 void ConfigShowYear(SnortConfig *, char *);
-void ConfigSoRuleMemcap(SnortConfig *, char *);
 void ConfigStateful(SnortConfig *, char *);
 void ConfigTaggedPacketLimit(SnortConfig *, char *);
 void ConfigThreshold(SnortConfig *, char *);
@@ -369,24 +335,21 @@ void ConfigThreshold(SnortConfig *, char *);
 void ConfigTimestatsInterval(SnortConfig *, char *);
 #endif
 void ConfigTreatDropAsAlert(SnortConfig *, char *);
-void ConfigTreatDropAsIgnore(SnortConfig *, char *);
 void ConfigUmask(SnortConfig *, char *);
 void ConfigUtc(SnortConfig *, char *);
 void ConfigVerbose(SnortConfig *, char *);
-void ConfigVlanAgnostic(SnortConfig *, char *);
-void ConfigLogIPv6Extra(SnortConfig *, char *);
 #ifdef DYNAMIC_PLUGIN
 void ConfigDumpDynamicRulesPath(SnortConfig *, char *);
 #endif
 
 int addRtnToOtn(
-        OptTreeNode *otn,
+        OptTreeNode *otn, 
         tSfPolicyId policyId,
         RuleTreeNode *rtn
         );
 
 RuleTreeNode* deleteRtnFromOtn(
-        OptTreeNode *otn,
+        OptTreeNode *otn, 
         tSfPolicyId policyId
         );
 
@@ -403,7 +366,7 @@ void GetNameValue (char* arg, char** nam, char** val, const char* err);
  *
  * @return pointer to deleted RTN, NULL otherwise.
  */
-static inline RuleTreeNode *getRtnFromOtn(OptTreeNode *otn, tSfPolicyId policyId)
+static INLINE RuleTreeNode *getRtnFromOtn(OptTreeNode *otn, tSfPolicyId policyId)
 {
     if (otn && otn->proto_nodes && (otn->proto_node_num > (unsigned)policyId))
     {
@@ -415,12 +378,12 @@ static inline RuleTreeNode *getRtnFromOtn(OptTreeNode *otn, tSfPolicyId policyId
 
 /**Get rtn from otn for the current policy.
  */
-static inline RuleTreeNode *getParserRtnFromOtn(OptTreeNode *otn)
+static INLINE RuleTreeNode *getParserRtnFromOtn(OptTreeNode *otn)
 {
     return getRtnFromOtn(otn, getParserPolicy());
 }
 
-static inline RuleTreeNode *getRuntimeRtnFromOtn(OptTreeNode *otn)
+static INLINE RuleTreeNode *getRuntimeRtnFromOtn(OptTreeNode *otn)
 {
     return getRtnFromOtn(otn, getRuntimePolicy());
 }

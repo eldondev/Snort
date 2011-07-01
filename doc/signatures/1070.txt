@@ -71,8 +71,5 @@ Alex Kirk <alex.kirk@sourcefire.com>
 
 --
 Additional References:
-CVE:  CVE-2000-0951
-Bugtraq:  BID 1756
-Bugtraq:  BID 2483
 
 --

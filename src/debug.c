@@ -1,6 +1,6 @@
-/* $Id: debug.c,v 1.29 2011/06/08 00:33:05 jjordan Exp $ */
+/* $Id$ */
 /*
-** Copyright (C) 2002-2011 Sourcefire, Inc.
+** Copyright (C) 2002-2009 Sourcefire, Inc.
 ** Copyright (C) 1998-2002 Martin Roesch <roesch@sourcefire.com>
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -27,13 +27,16 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "snort_debug.h"
+#include "debug.h"
+
 #include "snort.h"
 
-#ifdef DEBUG_MSGS
+#ifdef DEBUG
 int debuglevel = DEBUG_ALL;
 char *DebugMessageFile = NULL;
 int DebugMessageLine = 0;
+
+extern SnortConfig *snort_conf;
 
 int DebugThis(int level)
 {
@@ -74,7 +77,7 @@ void DebugMessageFunc(int level, char *fmt, ...)
         return;
 
     va_start(ap, fmt);
-
+        
     if ((snort_conf != NULL) && ScDaemonMode())
     {
         char buf[STD_BUF];
@@ -105,7 +108,7 @@ void DebugMessageFunc(int level, char *fmt, ...)
     va_end(ap);
 }
 
-#ifdef SF_WCHAR
+#ifdef HAVE_WCHAR_H
 void DebugWideMessageFunc(int level, wchar_t *fmt, ...)
 {
     va_list ap;
@@ -117,13 +120,13 @@ void DebugWideMessageFunc(int level, wchar_t *fmt, ...)
         return;
     }
     buf[STD_BUF]= (wchar_t)0;
-
+    
     /* filename and line number information */
     if (DebugMessageFile != NULL)
         printf("%s:%d: ", DebugMessageFile, DebugMessageLine);
 
     va_start(ap, fmt);
-
+        
     if (ScDaemonMode())
     {
 #ifdef WIN32
@@ -145,13 +148,13 @@ void DebugWideMessageFunc(int level, wchar_t *fmt, ...)
     va_end(ap);
 }
 #endif
-#else /* DEBUG_MSGS */
+#else
 void DebugMessageFunc(int level, char *fmt, ...)
 {
 }
-#ifdef SF_WCHAR
+#ifdef HAVE_WCHAR_H
 void DebugWideMessageFunc(int level, wchar_t *fmt, ...)
 {
 }
 #endif
-#endif /* DEBUG_MSGS */
+#endif /* DEBUG */

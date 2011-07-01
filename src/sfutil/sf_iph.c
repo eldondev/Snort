@@ -1,7 +1,7 @@
-/* $Id: sf_iph.c,v 1.14 2011/06/08 00:33:20 jjordan Exp $ */
+/* $Id$ */
 /****************************************************************************
  *
- * Copyright (C) 2007-2011 Sourcefire, Inc.
+ * Copyright (C) 2007-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -21,11 +21,7 @@
  ****************************************************************************/
 
 #include <string.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include "decode.h"
+#include "decode.h" 
 
 #ifdef SUP_IP6
 
@@ -37,11 +33,10 @@
 #define IP6_VER(x) ((x) >> 28)
 
 /* The 'Packet' structure is almost always allocated on the stack.
- * Likewise, return buffers will almost always be aswell.
+ * Likewise, return buffers will almost always be aswell. 
  * So, for performance reasons, argument validation can be disabled
- * and removed from the code at compile time to prevent unecessary extra
+ * and removed from the code at compile time to prevent unecessary extra 
  * conditionals from being checked at run-time. */
-#define ERR_CHK_LVL  0
 #if ERR_CHK_LVL == 2
 #define VALIDATE(x,y) if(!x || !y) return FAILURE;
 #elif ERR_CHK_LVL == 1
@@ -176,12 +171,12 @@ uint16_t orig_ip6_ret_off(Packet *p)
 
 uint8_t ip6_ret_ver(Packet *p)
 {
-    return (uint8_t)IP6_VER(p->ip6h->vcl);
+    return (uint8_t)IP6_VER(p->ip6h->vcl); 
 }
 
 uint8_t orig_ip6_ret_ver(Packet *p)
 {
-    return (uint8_t)IP6_VER(p->orig_ip6h->vcl);
+    return (uint8_t)IP6_VER(p->orig_ip6h->vcl); 
 }
 
 sfip_t *ip4_ret_dst(Packet *p)
@@ -253,28 +248,28 @@ uint16_t orig_ip4_ret_len(Packet *p)
 uint32_t ip4_ret_id(Packet *p)
 {
     VALIDATE(p,1);
-
+    
     return (uint32_t)p->ip4h->ip_id;
 }
 
 uint32_t orig_ip4_ret_id(Packet *p)
 {
     VALIDATE(p,1);
-
+    
     return (uint32_t)p->orig_ip4h->ip_id;
 }
 
 uint8_t ip4_ret_proto(Packet *p)
 {
     // VALIDATION()
-
+    
     return p->ip4h->ip_proto;
 }
 
 uint8_t orig_ip4_ret_proto(Packet *p)
 {
     // VALIDATION()
-
+    
     return p->orig_ip4h->ip_proto;
 }
 
@@ -290,7 +285,7 @@ uint16_t orig_ip4_ret_off(Packet *p)
 
 uint8_t ip4_ret_ver(Packet *p)
 {
-    return IP_VER(p->iph);
+    return IP_VER(p->iph); 
 }
 
 uint8_t orig_ip4_ret_ver(Packet *p)
@@ -346,7 +341,7 @@ void sfiph_build(Packet *p, const void *hdr, int family)
     {
         hdr4 = (IPHdr*)hdr;
 
-        /* The struct Snort uses is identical to the actual IP6 struct,
+        /* The struct Snort uses is identical to the actual IP6 struct, 
          * with the exception of the IP addresses. Copy over everything but
          * the IPs */
         memcpy(&p->inner_ip4h, hdr4, sizeof(IPHdr) - 8);
@@ -358,8 +353,8 @@ void sfiph_build(Packet *p, const void *hdr, int family)
     else
     {
         hdr6 = (IP6RawHdr*)hdr;
-
-        /* The struct Snort uses is identical to the actual IP6 struct,
+           
+        /* The struct Snort uses is identical to the actual IP6 struct, 
          * with the exception of the IP addresses. Copy over everything but
          * the IPs*/
         memcpy(&p->inner_ip6h, hdr6, sizeof(IP6RawHdr) - 32);
@@ -397,7 +392,7 @@ void sfiph_orig_build(Packet *p, const void *hdr, int family)
     {
         hdr4 = (IPHdr*)hdr;
 
-        /* The struct Snort uses is identical to the actual IP6 struct,
+        /* The struct Snort uses is identical to the actual IP6 struct, 
          * with the exception of the IP addresses. Copy over everything but
          * the IPs */
         memcpy(&p->inner_orig_ip4h, hdr4, sizeof(IPHdr) - 8);
@@ -409,8 +404,8 @@ void sfiph_orig_build(Packet *p, const void *hdr, int family)
     else
     {
         hdr6 = (IP6RawHdr*)hdr;
-
-        /* The struct Snort uses is identical to the actual IP6 struct,
+           
+        /* The struct Snort uses is identical to the actual IP6 struct, 
          * with the exception of the IP addresses. Copy over everything but
          * the IPs*/
         memcpy(&p->inner_orig_ip6h, hdr6, sizeof(IP6RawHdr) - 32);

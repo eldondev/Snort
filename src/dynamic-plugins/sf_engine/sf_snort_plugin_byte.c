@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * Author: Steve Sturges
  *         Andy Mullican
@@ -26,71 +26,13 @@
  *
  * Byte operations for dynamic rule engine
  */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include <stdlib.h>
-
-#include "sf_dynamic_define.h"
 #include "sf_snort_packet.h"
 #include "sf_snort_plugin_api.h"
-#include "sfghash.h"
-#include "sf_snort_detection_engine.h"
 
 extern int checkCursorSimple(const u_int8_t *cursor, int flags, const u_int8_t *start, const u_int8_t *end, int offset);
 extern int setCursorInternal(void *p, int flags, int offset, const u_int8_t **cursor);
 
 #define BYTE_STRING_LEN     11
-
-
-int ByteDataInitialize(Rule *rule, ByteData *byte)
-{
-    void *memoryLocation;
-
-    /* Initialize byte_extract pointers */
-    if (byte->offset_refId)
-    {
-        if (!rule->ruleData)
-        {
-            DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
-                                       byte->offset_refId, rule->info.genID, rule->info.sigID);
-        }
-
-        memoryLocation = sfghash_find((SFGHASH*)rule->ruleData, byte->offset_refId);
-        if (memoryLocation)
-        {
-            byte->offset_location = memoryLocation;
-        }
-        else
-        {
-            DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
-                                       byte->offset_refId, rule->info.genID, rule->info.sigID);
-        }
-    }
-
-    if (byte->value_refId)
-    {
-        if (!rule->ruleData)
-        {
-            DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
-                                       byte->value_refId, rule->info.genID, rule->info.sigID);
-        }
-
-        memoryLocation = sfghash_find((SFGHASH*)rule->ruleData, byte->value_refId);
-        if (memoryLocation)
-        {
-            byte->value_location = memoryLocation;
-        }
-        else
-        {
-            DynamicEngineFatalMessage("ByteExtract variable '%s' in rule [%d:%d] is used before it is defined.\n",
-                                       byte->value_refId, rule->info.genID, rule->info.sigID);
-        }
-    }
-
-    return 0;
-}
 
 /*
  * extract byte value from data
@@ -115,17 +57,7 @@ int extractValueInternal(void *p, ByteData *byteData, u_int32_t *value, const u_
     if ( ret < 0 )
     {
         return ret;
-    }
-
-    /* Check for byte_extract variables and use them if present. */
-    if (byteData->offset_location)
-    {
-        byteData->offset = *byteData->offset_location;
-    }
-    if (byteData->value_location)
-    {
-        byteData->value = *byteData->value_location;
-    }
+    }    
 
     /* Check the start location */
     if (checkCursorSimple(cursor, byteData->flags, start, end, byteData->offset) <= 0)
@@ -140,9 +72,9 @@ int extractValueInternal(void *p, ByteData *byteData, u_int32_t *value, const u_
     {
         cursor = start;
     }
-
+    
     if (byteData->flags & EXTRACT_AS_BYTE)
-    {
+    {        
         if ( byteData->bytes != 1 && byteData->bytes != 2 && byteData->bytes != 4 )
         {
             return -5;  /* We only support 1, 2, or 4 bytes */
@@ -159,13 +91,13 @@ int extractValueInternal(void *p, ByteData *byteData, u_int32_t *value, const u_
             }
         }
         else
-        {
+        {            
             for (i = 0; i < byteData->bytes; i++)
             {
                 extracted |= *(cursor + byteData->offset + i) << 8*i;
             }
         }
-
+        
         *value = extracted;
         return 1;
     }
@@ -191,7 +123,7 @@ int extractValueInternal(void *p, ByteData *byteData, u_int32_t *value, const u_
             byteArray[i] = *(cursor + byteData->offset + i);
         }
         byteArray[i] = '\0';
-
+        
         extracted = strtoul(byteArray, &endPtr, base);
 
         if (endPtr == &byteArray[0])
@@ -220,22 +152,12 @@ ENGINE_LINKAGE int extractValue(void *p, ByteExtract *byteExtract, const u_int8_
     byteData.flags = byteExtract->flags;
     byteData.multiplier = byteExtract->multiplier;
     byteData.offset = byteExtract->offset;
-
-    /* The following fields are not used, but must be zeroed out. */
-    byteData.op = 0;
-    byteData.value = 0;
-    byteData.offset_refId = 0;
-    byteData.value_refId = 0;
-    byteData.offset_location = 0;
-    byteData.value_location = 0;
+    byteData.op = 0; /* Not used */
+    byteData.value = 0;  /* Not used */
 
     ret = extractValueInternal(p, &byteData, &extracted, cursor);
     if (ret > 0)
     {
-        if ((byteExtract->align == 2) || (byteExtract->align == 4))
-        {
-            extracted = extracted + byteExtract->align - (extracted % byteExtract->align);
-        }
         *location = extracted;
     }
 
@@ -316,7 +238,7 @@ ENGINE_LINKAGE int byteTest(void *p, ByteData *byteData, const u_int8_t *cursor)
         return 0;
 
     ret = checkValue(sp, byteData, value, cursor);
-
+    
     return ret;
 }
 
@@ -360,6 +282,6 @@ ENGINE_LINKAGE int byteJump(void *p, ByteData *byteData, const u_int8_t **cursor
     jumpValue += byteData->post_offset;
 
     ret = setCursorInternal(sp, byteData->flags, jumpValue, cursor);
-
+    
     return ret;
 }

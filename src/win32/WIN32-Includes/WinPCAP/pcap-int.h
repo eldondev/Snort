@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * @(#) $Header: /cvsroot/snort/src/win32/WIN32-Includes/WinPCAP/pcap-int.h,v 1.2 2010/06/09 22:05:32 jjordan Exp $ (LBL)
+ * @(#) $Header$ (LBL)
  */
 
 #ifndef pcap_int_h
@@ -215,7 +215,7 @@ struct pcap {
 	int dlt_count;
 	u_int *dlt_list;
 
-	DAQ_PktHdr_t pkt_header;	/* This is needed for the pcap_next_ex() to work */
+	struct pcap_pkthdr pcap_header;	/* This is needed for the pcap_next_ex() to work */
 
 #ifdef HAVE_REMOTE
 #ifndef WIN32	// Win32 already defines 'timeout'

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (C) 2005-2011 Sourcefire, Inc.
+ * Copyright (C) 2005-2009 Sourcefire, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
@@ -25,7 +25,6 @@
 #include "sfxhash.h"
 #include "stream5_common.h"
 #include "rules.h"
-#include "treenodes.h"
 
 typedef void(*Stream5SessionCleanup)(Stream5LWSession *ssn);
 
@@ -35,7 +34,6 @@ typedef struct _Stream5SessionCache
     uint32_t timeout;
     uint32_t max_sessions;
     uint32_t cleanup_sessions;
-    uint32_t prunes;
     Stream5SessionCleanup cleanup_fcn;
 } Stream5SessionCache;
 
@@ -47,10 +45,8 @@ typedef struct _IgnoredRuleList
     struct _IgnoredRuleList *next;
 } IgnoredRuleList;
 
-#if 0
-void PrintSessionKey(SessionKey *);
-#endif
 
+void PrintSessionKey(SessionKey *);
 Stream5SessionCache *InitLWSessionCache(int max_sessions,
                                         uint32_t session_timeout,
                                         uint32_t cleanup_sessions,

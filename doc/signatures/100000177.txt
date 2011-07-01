@@ -1,0 +1,64 @@
+Rule: 
+
+--
+Sid: 
+100000177
+
+-- 
+Summary: 
+This event is generated when an attempt is made to exploit a known 
+vulnerability in a Linksys WRT54G wireless router.
+
+-- 
+Impact: 
+Unauthorized administrative access to the router and it's configuration.
+
+--
+Detailed Information:
+A vulnerability exists in the Linksys WRT54G wireless router that may present 
+an attacker with the opportunity to take control of the victim hardware via a 
+POST request to the web interface.
+
+This is due to the apply.cgi script not performing proper checks on user 
+supplied input that may allow the attacker to overflow a fixed length buffer 
+and execute code of their choosing.
+
+--
+Affected Systems:
+Linksys WRT54G Wireless Router firmware 4.0.4.20.6 and prior
+
+--
+Attack Scenarios: 
+An attacker can supply a malformed POST request to the apply.cgi script on an 
+affected piece of hardware.
+
+-- 
+Ease of Attack: 
+Simple.
+
+-- 
+False Positives:
+None Known.
+
+--
+False Negatives:
+None Known.
+
+-- 
+Corrective Action: 
+Upgrade to the latest non-affected version of the software.
+
+Apply the appropriate vendor supplied firmware upgrade.
+
+--
+Contributors:
+Original Rule writer rmkml <rmkml@free.fr>
+Sourcefire Vulnerability Research Team
+Alex Kirk <akirk@sourcefire.com>
+Nigel Houghton <nigel.houghton@sourcefire.com>
+
+-- 
+Additional References:
+
+
+--

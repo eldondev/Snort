@@ -1,10 +1,10 @@
 /*
  * ftpp_ui_server_lookup.c
  *
- * Copyright (C) 2004-2011 Sourcefire, Inc.
+ * Copyright (C) 2004-2009 Sourcefire, Inc.
  * Steven A. Sturges <ssturges@sourcefire.com>
  * Kevin Liu <kliu@sourcefire.com>
- *
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License Version 2 as
  * published by the Free Software Foundation.  You may not use, modify or
@@ -35,10 +35,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "hi_util_kmap.h"
 #include "ftpp_ui_config.h"
@@ -105,9 +101,9 @@ int ftpp_ui_server_lookup_cleanup(SERVER_LOOKUP **ServerLookup)
 
 /*
  * Function: ftpp_ui_server_lookup_add(SERVER_LOOKUP *ServerLookup,
- *                                 char *ip, int len,
+ *                                 char *ip, int len, 
  *                                 FTP_SERVER_PROTO_CONF *ServerConf)
- *
+ * 
  * Purpose: Add a server configuration to the list.
  *          We add these keys like you would normally think to add
  *          them, because on low endian machines the least significant
@@ -117,14 +113,14 @@ int ftpp_ui_server_lookup_cleanup(SERVER_LOOKUP **ServerLookup)
  *
  * Arguments: ServerLookup => a pointer to the lookup structure
  *            IP           => the ftp server address
- *            len          => Length of the address
+ *            len          => Length of the address 
  *            ServerConf   => a pointer to the server configuration structure
  *
  * Returns: int => return code indicating error or success
  *
  */
 int ftpp_ui_server_lookup_add(
-    SERVER_LOOKUP *ServerLookup, sfip_t* Ip, FTP_SERVER_PROTO_CONF *ServerConf )
+    SERVER_LOOKUP *ServerLookup, sfip_t* Ip, FTP_SERVER_PROTO_CONF *ServerConf ) 
 {
     int iRet;
 
@@ -167,7 +163,7 @@ int ftpp_ui_server_lookup_add(
  */
 FTP_SERVER_PROTO_CONF *ftpp_ui_server_lookup_find(
     SERVER_LOOKUP *ServerLookup, snort_ip_p Ip, int *iError
-)
+) 
 {
     FTP_SERVER_PROTO_CONF *ServerConf = NULL;
 
@@ -202,14 +198,14 @@ FTP_SERVER_PROTO_CONF *ftpp_ui_server_lookup_find(
  * all elements.
  *
  * @param ServerLookup => a pointer to the lookup structure
- * @param userfunc => user defined callback function
+ * @param userfunc => user defined callback function 
  * @param iError => a pointer to an error code
  *
  * @returns iError => return code indicating error or success
  *
  */
 void ftpp_ui_server_iterate(
-    SERVER_LOOKUP *ServerLookup,
+    SERVER_LOOKUP *ServerLookup, 
     sfrt_iterator_callback userfunc,
     int *iError
     )
@@ -231,7 +227,7 @@ void ftpp_ui_server_iterate(
 }
 
 #if 0
-/** Obsoleted. After changing underlying KMAP to SFRT. SFRT provides an iterator with
+/** Obsoleted. After changing underlying KMAP to SFRT. SFRT provides an iterator with 
  * a callback function but does not support getFirst, getNext operations.
  */
 
@@ -319,11 +315,11 @@ FTP_SERVER_PROTO_CONF *ftpp_ui_server_lookup_next(SERVER_LOOKUP *ServerLookup,
 
     return ServerConf;
 }
-#endif
+#endif    
 
-/**Free pData buffer, which may be referenced multiple times. ReferenceCount
- * is the number of times the buffer is referenced.  For freeing the buffer,
- * we just decrement referenceCount till it reaches 0, at which time the
+/**Free pData buffer, which may be referenced multiple times. ReferenceCount 
+ * is the number of times the buffer is referenced.  For freeing the buffer, 
+ * we just decrement referenceCount till it reaches 0, at which time the 
  * buffer is also freed.
  */
 static void serverConfFree(void *pData)

@@ -8,7 +8,7 @@ http://www.snort.org
 ******************************************************************************
 COPYRIGHT
 
-Copyright (C)2001-2011 Sourcefire Inc.
+Copyright (C)2001-2008 Sourcefire Inc.
 Copyright (C)1998-2001 Martin Roesch
 
 This program is free software; you can redistribute it and/or modify
@@ -297,8 +297,8 @@ Longname options and their corresponding single char version
             Default is pass before alert, drop, etc.
 
     --treat-drop-as-alert
-            Converts drop, and reject rules into alert rules
-            during startup. sdrop rules are not loaded.
+            Converts drop, sdrop, and reject rules into alert rules
+            during startup.
 
     --process-all-events
             Process all triggered events in group order, per Rule Ordering
@@ -309,10 +309,6 @@ Longname options and their corresponding single char version
 
     --create-pidfile
             Create PID file, even when not in Daemon mode.
-
-    --enable-inline-test
-            Runs snort in "inline test mode". This option cannot be used 
-	    with -Q. 
 
 [*][FILTERS]:
 
@@ -353,4 +349,4 @@ www.snort.org.
 Please read the USAGE file or the snort_manual.pdf for more info!
 
 ******************************************************************************
-/* $Id: README,v 1.35 2011/02/09 23:22:34 jjordan Exp $ */
+/* $Id$ */

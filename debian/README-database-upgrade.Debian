@@ -1,0 +1,54 @@
+ DATABASE CHANGES
+------------------
+
+The database layout has changed a bit in different Snort releases:
+
+- DB schema v107
+[ introduced in Snort 2.6 ]
+  Added signature.sig_gid to the schema.
+
+  Upgrading from v106 -> v107 is as simple as:
+
+  mysql> ALTER TABLE signature ADD sig_gid INT UNSIGNED;
+  mysql> UPDATE `schema` SET vseq=107;
+  mysql> UPDATE `schema` SET ctime=now();
+
+  psql> ALTER TABLE signature ADD sig_gid INT8;
+  psql> UPDATE schema SET vseq=107;
+  psql> UPDATE schema SET ctime=now();
+
+
+- DB schema v106
+[ introduced in Snort 1.9 ]
+  Added the sensor.last_cid field to the schema so the
+  database can store the last used cid for a given sensor.
+  This field will ensure that a cid will never be reused.
+
+  Upgrading from v105 -> v106 is as simple as:
+
+  mysql> ALTER TABLE sensor ADD last_cid INT UNSIGNED NOT NULL;
+  mysql> UPDATE `schema` SET vseq=106;
+  mysql> UPDATE `schema` SET ctime=now();
+
+  psql> ALTER TABLE sensor ADD last_cid INT8;
+  psql> UPDATE schema SET vseq=106;
+  psql> UPDATE schema SET ctime=now();
+
+FINAL NOTE
+----------
+
+These changes have to be made as Database administrator. For MySQL
+you can use the debian-sys-maint's password available at
+/etc/mysql/debian.cnf and connect like this to fix the database:
+
+    mysql -u debian-sys-maint -h localhost -p SNORT_DB
+
+Where SNORT_DB is the name of your alert database (typically 'snort')
+
+For PostgreSQL you can 'su' to the postgres user in the system
+the database is installed in and run 
+
+    psql -h localhost -p SNORT_DB
+
+--- Javier Fernandez-Sanguino <jfs@debian.org> Thu, 01 May 2008 22:22:21 +0200
+

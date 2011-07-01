@@ -1,12 +1,12 @@
 .\" Process this file with
 .\" groff -man -Tascii snort.8
 .\"
-.\" $Id: snort.8,v 1.39 2011/06/08 00:32:59 jjordan Exp $
+.\" $Id$
 .TH SNORT 8 "February 2009"
 .SH NAME
 Snort \- open source network intrusion detection system
 .SH SYNOPSIS
-.B snort [-bCdDeEfHIMNOpqQsTUvVwWxXy?] [-A
+.B snort [-bCdDeEfHIMNoOpqQsTUvVwWxXy?] [-A
 .I alert-mode
 .B ] [-B
 .I address-conversion-mask
@@ -22,6 +22,8 @@ Snort \- open source network intrusion detection system
 .I home-net
 .B ] [-i
 .I interface
+.B ] [-J
+.I port
 .B ] [-k
 .I checksum-mode
 .B ] [-K
@@ -35,7 +37,7 @@ Snort \- open source network intrusion detection system
 .B ] [-n
 .I packet-count
 .B ] [-P
-.I snap-length
+.I snap-length 
 .B ] [-r
 .I tcpdump-file
 .B ] [-R
@@ -55,7 +57,7 @@ Snort \- open source network intrusion detection system
 .B ] [--pid-path
 .I pathname
 .B ] [--snaplen
-.I snap-length
+.I snap-length 
 .B ] [--help
 .B ] [--version
 .B ] [--dynamic-engine-lib
@@ -74,11 +76,10 @@ Snort \- open source network intrusion detection system
 .I directory
 .B ] [--alert-before-pass
 .B ] [--treat-drop-as-alert
-.B ] [--treat-drop-as-ignore
 .B ] [--process-all-events
-.B ] [--enable-inline-test
 .B ] [--create-pidfile
 .B ] [--nolock-pidfile
+.B ] [--disable-inline-initialization
 .B ] [--pcap-single=
 .I tcpdump-file
 .B ] [--pcap-filter=
@@ -92,85 +93,74 @@ Snort \- open source network intrusion detection system
 .B ] [--pcap-no-filter
 .B ] [--pcap-reset
 .B ] [--pcap-show
-.B ] [--exit-check
 .I count
 .B ] [--conf-error-out
 .B ] [--require-rule-sid
-.B ] [--daq
-.I type
-.B ] [--daq-mode
-.I mode
-.B ] [--daq-var
-.I name=value
-.B ] [--daq-dir
-.I dir
-.B ] [--daq-list
-.I [dir]
 .B ]
 .I expression
 .SH DESCRIPTION
 .B Snort
-is an open source network intrusion detection system, capable of performing
-real-time traffic analysis and packet logging on IP networks.  It can perform
-protocol analysis, content searching/matching and can be used to detect a
-variety of attacks and probes, such as buffer overflows, stealth port scans,
+is an open source network intrusion detection system, capable of performing 
+real-time traffic analysis and packet logging on IP networks.  It can perform 
+protocol analysis, content searching/matching and can be used to detect a 
+variety of attacks and probes, such as buffer overflows, stealth port scans, 
 CGI attacks, SMB probes, OS fingerprinting attempts, and much more.  Snort uses
-a flexible rules language to describe traffic that it should collect or pass,
+a flexible rules language to describe traffic that it should collect or pass, 
 as well as a detection engine that utilizes a modular plugin architecture.
 Snort also has a modular real-time alerting capability, incorporating alerting
-and logging plugins for syslog, a ASCII text files, UNIX sockets, database
+and logging plugins for syslog, a ASCII text files, UNIX sockets, database 
 (Mysql/PostgreSQL/Oracle/ODBC) or XML.
 .PP
 Snort has three primary uses.  It can be used as a straight packet sniffer like
 .BR tcpdump (1),
-a packet logger (useful for network traffic debugging, etc), or as a full
+a packet logger (useful for network traffic debugging, etc), or as a full 
 blown network intrusion detection system.
 .PP
-Snort logs packets in
+Snort logs packets in 
 .BR tcpdump (1)
-binary format, to a database or in Snort's decoded ASCII format to a hierarchy
-of logging directories that are named based on the IP address of the "foreign"
+binary format, to a database or in Snort's decoded ASCII format to a hierarchy 
+of logging directories that are named based on the IP address of the "foreign" 
 host.
 .SH OPTIONS
 .IP "-A alert-mode"
 Alert using the specified
 .I alert-mode.
-Valid alert modes include
+Valid alert modes include 
 .B fast, full, none,
 and
 .B unsock.
-.B Fast
+.B Fast 
 writes alerts to the default "alert" file in a single-line, syslog style alert
-message.
-.B Full
-writes the alert to the "alert" file with the full decoded header as well as
-the alert message.
+message.  
+.B Full 
+writes the alert to the "alert" file with the full decoded header as well as 
+the alert message.  
 .B None
-turns off alerting.
-.B Unsock
+turns off alerting.  
+.B Unsock 
 is an experimental mode that sends the alert information out over a UNIX socket
 to another process that attaches to that socket.
 .IP -b
 Log packets in a
 .BR tcpdump (1)
 formatted file.   All packets are logged in their native binary state to a
-tcpdump formatted log file named with the snort start timestamp and
+tcpdump formatted log file named with the snort start timestamp and 
 "snort.log".  This option results in much faster operation of the program
  since it doesn't have to spend time in the packet binary->text converters.
 Snort can keep up pretty well with 100Mbps networks in '-b' mode.  To choose
 an alternate name for the binary log file, use the '-L' switch.
 .IP "-B address-conversion-mask"
 Convert all IP addresses in
-.I home-net
+.I home-net 
 to addresses specified by
-.I address-conversion-mask.
+.I address-conversion-mask.  
 Used to obfuscate IP addresses within binary logs. Specify
 .I home-net
 with the '-h' switch.  Note this is
 .B not
 the same as $HOME_NET.
 .IP "-c config-file"
-Use the rules located in file
+Use the rules located in file 
 .I config-file.
 .IP -C
 Print the character data from the packet payload only (no hex).
@@ -178,7 +168,7 @@ Print the character data from the packet payload only (no hex).
 Dump the application layer data when displaying packets in verbose or packet
 logging mode.
 .IP -D
-Run Snort in daemon mode.  Alerts are sent to /var/log/snort/alert unless
+Run Snort in daemon mode.  Alerts are sent to /var/log/snort/alert unless 
 otherwise specified.
 .IP -e
 Display/log the link layer packet headers.
@@ -188,77 +178,79 @@ Log alerts to the Windows Event Log.
 .IP -f
 Activate PCAP line buffering
 .IP "-F bpf-file"
-Read BPF filters from
+Read BPF filters from 
 .I bpf-file.
 This is handy for people running Snort as a SHADOW replacement or with a love
-Of super complex BPF filters.  See the "expressions" section of this man page
+Of super complex BPF filters.  See the "expressions" section of this man page 
 for more info on writing BPF fileters.
 .IP "-g group"
-Change the group/GID Snort runs under to
+Change the group/GID Snort runs under to 
 .I group
-after initialization.  This switch allows Snort to drop root priveleges after
+after initialization.  This switch allows Snort to drop root priveleges after 
 it's initialization phase has completed as a security measure.
 .IP "-G id"
 Use id as a base event ID when logging events.  Useful for distinguishing
 events logged to the same database from multiple snort instances.
 .IP "-h home-net"
-Set the "home network" to
+Set the "home network" to 
 .I home-net.
 The format of this address variable is a network prefix plus a CIDR block, such
 as 192.168.1.0/24.  Once this variable is set, all decoded packet logging will
 be done relative to the home network address space.  This is useful because of
-the way that Snort formats its ASCII log data.  With this value set to the
+the way that Snort formats its ASCII log data.  With this value set to the 
 local network, all decoded output will be logged into decode directories
 with the address of the foreign computer as the directory name, which is
-very useful during traffic analysis. This option does not change "$HOME_NET" in
-IDS mode.
+very useful during traffic analysis.
 .IP "-H"
 Force hash tables to be deterministic instead of using a random number
 generator for the seed & scale.  Useful for testing and generating repeatable
 results with the same traffic.
 .IP "-i interface"
-Sniff packets on
+Sniff packets on 
 .I interface.
 .IP "-I"
 Print out the receiving interface name in alerts.
+.IP "-J port"
+Use port to read packets when running inline mode on system with divert
+socket.  
 .IP "-k checksum-mode"
 Tune the internal checksum verification functionality with
 .I alert-mode.
-Valid checksum modes include
+Valid checksum modes include 
 .B all, noip, notcp, noudp, noicmp,
 and
 .B none.
-.B All
+.B All 
 activates checksum verification for all supported protocols.
 .B Noip
-turns off IP checksum verification, which is handy if the gateway router is
+turns off IP checksum verification, which is handy if the gateway router is 
 already dropping packets that fail their IP checksum checks.
 .B Notcp
-turns off TCP checksum verification, all other checksum modes are
+turns off TCP checksum verification, all other checksum modes are 
 .B on.
 .B noudp
 turns off UDP checksum verification.
 .B Noicmp
-turns off ICMP checksum verification.
+turns off ICMP checksum verification. 
 .B None
 turns off the entire checksum verification subsystem.
 .IP "-K logging-mode"
 Select a packet logging mode.  The default is pcap.
 .I logging-mode.
-Valid logging modes include
+Valid logging modes include 
 .B pcap, ascii,
 and
 .B none.
-.B Pcap
+.B Pcap 
 logs packets through the pcap library into pcap (tcpdump) format.
-.B Ascii
+.B Ascii 
 logs packets in the old "directories and files" format with packet printouts in each file.
 .B None
 Turns off packet logging.
 .IP "-l log-dir"
-Set the output logging directory to
+Set the output logging directory to 
 .I log-dir.
-All plain text alerts and packet logs go into this directory.  If this option
+All plain text alerts and packet logs go into this directory.  If this option 
 is not specified, the default logging directory is set to /var/log/snort.
 .IP "-L binary-log-file"
 Set the filename of the binary log file to
@@ -266,13 +258,13 @@ Set the filename of the binary log file to
 If this switch is not used, the default name is a timestamp for the time that
 the file is created plus "snort.log".
 .IP "-m umask"
-Set the file mode creation mask to
+Set the file mode creation mask to 
 .I umask
 .IP "-M"
 Log console messages to syslog when not running daemon mode.  This switch
 has no impact on logging of alerts.
 .IP "-n packet-count"
-Process
+Process 
 .I packet-count
 packets and exit.
 .IP -N
@@ -286,18 +278,18 @@ to your favorite security mailing list!
 .IP -p
 Turn off promiscuous mode sniffing.
 .IP "-P snap-length"
-Set the packet snaplen to
-.I snap-length.
-By default, this is set to 1514.
+Set the packet snaplen to 
+.I snap-length
+\&.  By default, this is set to 1514.
 .IP "-q"
 Quiet operation.  Don't display banner and initialization information.
 .IP "-Q"
-Enable inline mode operation.
+Read packets from iptables/IPQ (Linux only) when running in-line mode.
 .IP "-r tcpdump-file"
-Read the tcpdump-formatted file
+Read the tcpdump-formatted file 
 .I tcpdump-file.
 This will cause Snort to read and process the file fed to it.  This is
-useful if, for instance, you've got a bunch of SHADOW files that you want to
+useful if, for instance, you've got a bunch of SHADOW files that you want to 
 process for content, or even if you've got a bunch of reassembled packet
 fragments which have been written into a tcpdump formatted file.
 .IP "-R name"
@@ -306,13 +298,13 @@ Use name as a suffix to the snort pidfile.
 Send alert messages to syslog.  On linux boxen, they will appear in
 /var/log/secure, /var/log/messages on many other platforms.
 .IP "-S variable=value"
-Set variable name "variable" to value "value".  This is useful for setting the
-value of a defined variable name in a Snort rules file to a command line
-specified value.  For instance, if you define a HOME_NET variable name inside
-of a Snort rules file, you can set this value from it's predefined value at the
+Set variable name "variable" to value "value".  This is useful for setting the 
+value of a defined variable name in a Snort rules file to a command line 
+specified value.  For instance, if you define a HOME_NET variable name inside 
+of a Snort rules file, you can set this value from it's predefined value at the 
 command line.
 .IP "-t chroot"
-Changes Snort's root directory to
+Changes Snort's root directory to 
 .I chroot
 after initialization.  Please note that all log/alert filenames are relative
 to the chroot directory if chroot is used.
@@ -322,14 +314,14 @@ command line switches and rules files that are handed to it and
 indicating that everything is ready to proceed.  This is a good
 switch to use if daemon mode is going to be used, it verifies that
 the Snort configuration that is about to be used is valid and won't fail at
-run time. Note, Snort looks for either /etc/snort.conf or ./snort.conf.
-If your config lives elsewhere, use the -c option to specify a valid
+run time. Note, Snort looks for either /etc/snort.conf or ./snort.conf. 
+If your config lives elsewhere, use the -c option to specify a valid 
 .I config-file.
 .IP "-u user"
 Change the user/UID Snort runs under to
 .I user
 after initialization.
-.IP -U
+.IP -U 
 Changes the timestamp in all logs to be in UTC
 .IP -v
 Be verbose.  Prints packets out to the console.  There is one big problem with
@@ -389,26 +381,26 @@ Process alert, drop, sdrop, or reject before pass.
 Default is pass before alert, drop, etc.
 .IP "--treat-drop-as-alert"
 Converts drop, sdrop, and reject rules into alert rules during startup.
-.IP "--treat-drop-as-ignore"
-Use drop, dsrop, and reject rules to ignore session traffic when not inline.
 .IP "--process-all-events"
 Process all triggered events in group order, per Rule Ordering
 configuration.  Default stops after first group.
-.IP "--enable-inline-test"
-Enable Inline-Test Mode Operation.
 .IP "--pid-path directory"
 Specify the path for Snort's PID file.
 .IP "--create-pidfile"
 Create PID file, even when not in Daemon mode.
 .IP "--nolock-pidfile"
 Do not try to lock Snort PID file.
+.IP "--disable-inline-initialization"
+Do not initialize IPTables when in inline mode.  To be used with -T
+to test for a valid configuration without requiring opening inline
+devices and adversely affecting traffic flow.
 .IP "--pcap-single=\fItcpdump-file\fP"
 Same as -r.  Added for completeness.
 .IP "--pcap-filter=\fIfilter\fP"
 Shell style filter to apply when getting pcaps from
 file or directory.  This filter will apply to any
 --pcap-file or --pcap-dir arguments following.  Use
---pcap-no-filter to delete filter for following
+--pcap-no-filter to delete filter for following 
 --pcap-file or --pcap-dir arguments or specifiy
 --pcap-filter again to forget previous filter and
 to apply to following --pcap-file or --pcap-dir arguments.
@@ -428,22 +420,12 @@ is not to reset state.
 .IP "--pcap-show"
 Print a line saying what pcap is currently being read.
 .IP "--exit-check=\fIcount\fP"
-Signal termination after <count> callbacks from DAQ_Acquire(), showing the
-time it takes from signaling until DAQ_Stop() is called.
+Signal termination after <count> callbacks from pcap_dispatch(), showing the
+time it takes from signaling until pcap_close() is called.
 .IP "--conf-error-out"
 Same as -x.
 .IP "--require-rule-sid"
 Require an SID for every rule to be correctly hreshold all rules.
-.IP "--daq <type>"
-Select packet acquisition module (default is pcap).
-.IP "--daq-mode <mode>"
-Select the DAQ operating mode.
-.IP "--daq-var <name=value>"
-Specify extra DAQ configuration variable.
-.IP "--daq-dir <dir>"
-Tell Snort where to find desired DAQ.
-.IP "--daq-list [<dir>]"
-List packet acquisition modules available in dir.
 
 .IP "\fI expression\fP"
 .RS
@@ -541,7 +523,7 @@ True if the IP destination field of the packet is \fIhost\fP,
 which may be either an address or a name.
 .IP "\fBsrc host \fIhost\fR"
 True if the IP source field of the packet is \fIhost\fP.
-.IP "\fBhost \fIhost\fP"
+.IP "\fBhost \fIhost\fP
 True if either the IP source or destination of the packet is \fIhost\fP.
 Any of the above host expressions can be prepended with the keywords,
 \fBip\fP, \fBarp\fP, or \fBrarp\fP as in:
@@ -558,16 +540,16 @@ which is equivalent to:
 .in -.5i
 If \fIhost\fR is a name with multiple IP addresses, each address will
 be checked for a match.
-.IP "\fBether dst \fIehost\fP"
+.IP "\fBether dst \fIehost\fP
 True if the ethernet destination address is \fIehost\fP.  \fIEhost\fP
 may be either a name from /etc/ethers or a number (see
 .IR ethers (3N)
 for numeric format).
-.IP "\fBether src \fIehost\fP"
+.IP "\fBether src \fIehost\fP
 True if the ethernet source address is \fIehost\fP.
-.IP "\fBether host \fIehost\fP"
+.IP "\fBether host \fIehost\fP
 True if either the ethernet source or destination address is \fIehost\fP.
-.IP "\fBgateway\fP \fIhost\fP"
+.IP "\fBgateway\fP \fIhost\fP
 True if the packet used \fIhost\fP as a gateway.  I.e., the ethernet
 source or destination address was \fIhost\fP but neither the IP source
 nor the IP destination was \fIhost\fP.  \fIHost\fP must be a name and
@@ -782,7 +764,7 @@ Generally, if the expression contains Shell metacharacters, it is
 easier to pass it as a single, quoted argument.
 Multiple arguments are concatenated with spaces before being parsed.
 .SH READING PCAPS
-Instead of having Snort listen on an interface, you can give it a packet
+Instead of having Snort listen on an interface, you can give it a packet 
 capture to read.  Snort will read and analyze the packets as if they came
 off the wire.  This can be useful for testing and debugging Snort.
 
@@ -809,7 +791,7 @@ foo2.pcap
 $ snort --pcap-file=foo.txt
 
 This will read foo1.pcap, foo2.pcap and all files under /home/foo/pcaps.
-Note that Snort will not try to determine whether the files under that
+Note that Snort will not try to determine whether the files under that 
 directory are really pcap files or not.
 
 .RE 0
@@ -864,7 +846,7 @@ $ snort --pcap-filter="*.pcap --pcap-file=foo.txt \\
 
 In this example, the first filter will be applied to foo.txt, then
 no filter will be applied to the files found under /home/foo/pcaps,
-so all files found under /home/foo/pcaps will be included.
+so all files found under /home/foo/pcaps will be included. 
 
 $ snort --pcap-filter="*.pcap --pcap-file=foo.txt \\
 .PP
@@ -875,7 +857,7 @@ $ snort --pcap-filter="*.pcap --pcap-file=foo.txt \\
 In this example, the first filter will be applied to foo.txt, then
 no filter will be applied to the files found under /home/foo/pcaps,
 so all files found under /home/foo/pcaps will be included, then the
-filter "*.cap" will be applied to files found under /home/foo/pcaps2.
+filter "*.cap" will be applied to files found under /home/foo/pcaps2. 
 
 .RE 0
 \fBResetting state\fR
@@ -883,8 +865,8 @@ filter "*.cap" will be applied to files found under /home/foo/pcaps2.
 .RS 5
 $ snort --pcap-dir=/home/foo/pcaps --pcap-reset
 
-The above example will read all of the files under /home/foo/pcaps, but
-after each pcap is read, Snort will be reset to a post-configuration
+The above example will read all of the files under /home/foo/pcaps, but 
+after each pcap is read, Snort will be reset to a post-configuration 
 state, meaning all buffers will be flushed, statistics reset, etc.  For
 each pcap, it will be like Snort is seeing traffic for the first time.
 
@@ -899,23 +881,23 @@ will print a line indicating which pcap is currently being read.
 .RE 0
 .PD
 .SH RULES
-Snort uses a simple but flexible rules language to describe network packet
+Snort uses a simple but flexible rules language to describe network packet 
 signatures and associate them with actions.  The current rules document can
-be found at http://www.snort.org/snort-rules.
+be found at http://www.snort.org/snort_rules.html.
 .SH NOTES
 The following signals have the specified effect when sent to the daemon process using the \fBkill(1)\fR command:
 .PP
 .IP SIGHUP
 Causes the daemon to close all opened files and restart.
 Please \fBnote\fR that this will only work if the \fBfull\fR pathname is
-used to invoke snort in daemon mode, otherwise snort will just exit with an
-error message being sent to
+used to invoke snort in daemon mode, otherwise snort will just exit with an 
+error message being sent to  
 .B syslogd(8)
 .
-.PP
+.PP 
 .IP SIGUSR1
 Causes the program to dump its current packet statistical information to the
-console or
+console or 
 .B syslogd(8)
 if in daemon mode.
 .

@@ -4,7 +4,7 @@
  *   Rule Index Map
  *   
  *   author: marc norton
- *   Copyright (C) 2005-2011 Sourcefire, Inc.
+ *   Copyright (C) 2005-2009 Sourcefire, Inc.
  */
 #ifndef SFRIM_H
 #define SFRIM_H
