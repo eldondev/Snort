@@ -1,0 +1,6 @@
+snort___*
+*.ncb
+*.opt
+*.plg
+*_Debug
+*_Release

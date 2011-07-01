@@ -1,0 +1,7 @@
+Makefile
+Makefile.in
+.libs
+sf_attribute_table.c
+sf_attribute_table.h
+sf_attribute_table_parser.c
+y.tab.c

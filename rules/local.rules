@@ -1,0 +1,6 @@
+# $Id: local.rules,v 1.13 2005/02/10 01:11:04 bmc Exp $
+# ----------------
+# LOCAL RULES
+# ----------------
+# This file intentionally does not come with signatures.  Put your local
+# additions here.

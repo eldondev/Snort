@@ -1,0 +1,6 @@
+Makefile
+Makefile.in
+sf_snort_packet.h
+sf_snort_plugin_api.h
+sf_snort_plugin_hdropts.c
+sf_snort_plugin_hdropts.c.new

@@ -1,0 +1,40 @@
+The BO Preprocessor
+===================
+
+The Back Orifice preprocessor attempts to identify and either alert on or drop
+Back Orifice traffic.  The preprocessor can detect traffic both from a client
+and from an infected host.
+
+Configuration
+=============
+
+Alerts are enabled by default and dropping is disabled by default.  To disable
+alerts, use the 'noalert' option.  To configuring dropping, use the 'drop'
+option.  Both 'noalert' and 'drop' take the following arguments:
+
+    client              BO traffic is from the client
+    server              BO traffic is from the server
+    general             BO traffic is from either direction
+    snort_attack        Attacks potentially targeted at Snort
+
+Configuration syntax:
+     preprocessor bo: noalert { client | server | general | snort_attack } \
+                      drop    { client | server | general | snort_attack }
+
+For example, to disable all alerting on server-side traffic, and to enable all
+dropping for traffic that is potentially attacking Snort:
+
+     preprocessor bo: noalert { general server } drop { snort_attack }
+
+Alerting
+========
+
+The Back Orifice detector uses GID 105 and uses the following SIDs:
+
+SID    Description
+---    -----------
+1      Back Orifice traffic detected
+2      Back Orifice Client Traffic Detected
+3      Back Orifice Server Traffic Detected
+4      Back Orifice Snort Buffer Attack
+

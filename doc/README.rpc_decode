@@ -1,0 +1,52 @@
+The RPC Decode Preprocessor
+===========================
+
+The RPC Decode preprocessor normalizes the RPC requests from remote machines by 
+converting all fragments into one continous stream.
+
+This is very useful for doing things like defeating hostile attackers trying
+to stealth themselves from IDSs by fragmenting the request so the string 0186A0
+is broken up.
+
+Configuration
+=============
+
+The RPC Decode preprocessor takes a list of integers representing the TCP ports
+that the user is interested in having normalized.  RPC Decode will assume that 
+there are RPC services running on the user-provided ports.
+
+RPC may be also sent in 
+alternate encodings besides the usual 4-byte encoding that is used by default. 
+
+Arguments should be separated by spaces.
+
+    alert_fragments - alert on any rpc fragmented TCP data
+
+    no_alert_multiple_requests - don't alert when >1 rpc query is in a packet
+
+    no_alert_large_fragments - don't alert when the fragmented sizes exceed the
+                               current packet size
+    no_alert_incomplete - don't alert when a single segment exceeds the current
+                          packet size
+
+For example, to specify that traffic destined to ports 111 and 32771 should be
+normalized, and that fragmented RPC data should generate alerts, use:
+    
+    preprocessor rpc_decode: 111 32771 alert_fragments
+
+Alerts
+======
+
+By default, RPC Decode will alert when multiple queries are in a given packet,
+when a complete query exceeds the packet size, and when 
+
+The RPC Decode preprocessor uses GID 106 and uses the following SIDs:
+
+SID   Description
+---   -----------
+1     Fragmented RPC Records
+2     Multiple Records in one packet
+3     Large RPC Record Fragment
+4     Incomplete RPC segment
+5     Zero-length RPC Fragment
+

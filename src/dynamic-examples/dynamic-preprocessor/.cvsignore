@@ -1,0 +1,7 @@
+Makefile
+Makefile.in
+*.o
+*.lo
+.libs
+*.la
+sf_dynamic_preproc_lib.c

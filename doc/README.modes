@@ -1,0 +1,74 @@
+Snort Modes.
+-----------
+Snort can operate in three different modes namely tap (passive), inline, and inline-test.
+Snort policies can be configured in these three modes too. 
+
+Explanation of Modes:
+--------------------
+
+*Inline * 
+When Snort is in Inline mode, it acts as an IPS allowing drop rules to trigger. Snort can be
+configured to run in inline mode using the command line argument -Q and snort config option 
+"policy_mode" as follows:
+
+config policy_mode:inline
+
+* Passive * 
+When Snort is in Passive mode, it acts as a IDS. Drop rules are not loaded (without --treat-drop-as-alert).
+Snort can be configured to passive mode using the snort config option "policy_mode" as follows:
+
+config policy_mode:tap
+
+* Inline-Test *
+Inline-Test mode simulates the inline mode of snort, allowing evaluation of inline behavior without 
+affecting traffic. The drop rules will be loaded and will be triggered as a Wdrop (Would Drop) alert. 
+Snort can be configured to run in inline-test mode using the command line option (--enable-inline-test)
+or using the snort config option "policy_mode" as follows:
+
+config policy_mode:inline_test
+
+Note: --enable-inline-test cannot be used in conjunction with -Q.
+
+
+Behavior of different modes with rule options.
+
+-------------------------------------------------------------------------------------
+		Inline Mode		Passive Mode		Inline-Test Mode			
+--------------------------------------------------------------------------------------
+			
+reject		Drop + Response		Alert + Response	Wdrop + Response
+react		Blocks and send notice	Blocks and send notice	Blocks and send notice
+normalize	Normalizes packet	Doesn't normalize	Doesn't normalize
+replace		replace content		Doesn't replace		Doesn't replace
+respond		close session		close session		close session
+--------------------------------------------------------------------------------------
+
+
+Behavior of different modes with rules actions.
+---------------------------------------------------------------------------------------------------------------
+Adapter Mode	Snort args					config policy_mode:	Drop Rule Handling
+---------------------------------------------------------------------------------------------------------------
+Passive		snort --treat-drop-as-alert				tap			Alert
+Passive		snort							tap			Not loaded
+Passive		snort --treat-drop-as-alert				inline_test		Alert
+Passive		snort							inline_test		Would Drop
+Passive		snort --treat-drop-as-alert				inline			Alert
+Passive		snort							inline			Not loaded + warning
+Inline Test	snort –enable-inline-test --treat-drop-as-alert		tap			Alert
+Inline Test	snort –enable-inline-test				tap			Would Drop
+Inline Test	snort –enable-inline-test --treat-drop-as-alert		inline_test		Alert
+Inline Test	snort –enable-inline-test				inline_test		Would Drop
+Inline Test	snort –enable-inline-test --treat-drop-as-alert		inline			Alert
+Inline Test	snort –enable-inline-test				inline			Would Drop
+Inline		snort -Q --treat-drop-as-alert				tap			Alert
+Inline		snort -Q						tap			Alert
+Inline		snort -Q --treat-drop-as-alert				inline_test		Alert
+Inline		snort -Q						inline_test		Would Drop
+Inline		snort -Q --treat-drop-as-alert				inline			Alert
+Inline		snort -Q						inline			Drop
+----------------------------------------------------------------------------------------------------------------
+
+
+
+
+

@@ -1,0 +1,43 @@
+Overview
+========
+Arpspoof preprocessor detects ARP attacks, unicast ARP requests, and specific
+ARP mapping monitoring.  
+
+Configuration
+=============
+When no arguments are specified to arpspoof, the preprocessor inspects Ethernet
+addresses and the addresses in the ARP packets. When inconsistency occurs, an 
+alert with GID 112 and SID 2 or 3 is generated.
+
+When "-unicast" is specified as the argument of arpspoof, the preprocessor checks
+for unicast ARP requests. An alert with GID 112 and SID 1 will be generated if a
+unicast ARP request is detected. 
+
+You can also specify a list of the IP and hardware addresses of hosts on the same
+layer 2 segment as Snort is deployed as the argument of arpspoof_detect_host.
+Specify one host IP MAC combo per line. The preprocessor will use this list when
+detecting ARP cache overwrite attacks.  Alert SID 4 is used in this case. 
+
+Example configurations
+======================
+The first example configuration does not have unicast detection.
+preprocessor arpspoof
+preprocessor arpspoof_detect_host: 192.168.40.1 f0:0f:00:f0:0f:00
+preprocessor arpspoof_detect_host: 192.168.40.2 f0:0f:00:f0:0f:01
+
+This example configuration has unicast detection enabled.
+preprocessor arpspoof: -unicast
+preprocessor arpspoof_detect_host: 192.168.40.1 f0:0f:00:f0:0f:00
+preprocessor arpspoof_detect_host: 192.168.40.2 f0:0f:00:f0:0f:01
+
+Alerts
+======
+Arpspoof uses Generator ID 112 and uses the following SIDS for that GID:
+
+ SID     Event description
+-----   -------------------
+  1      Unicast ARP request
+  2      Etherframe ARP mismatch (src)
+  3      Etherframe ARP mismatch (dst)
+  4      ARP cache overwrite attack
+

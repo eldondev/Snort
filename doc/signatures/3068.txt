@@ -1,0 +1,59 @@
+Rule:
+
+--
+Sid:
+3068
+
+--
+Summary:
+This event is generated when an attempt is made to exploit a buffer
+overflow associated with the several commands of the Mercury Mail IMAP service.
+
+--
+Impact:
+A successful attack may cause a denial of service or a buffer overflow
+and the subsequent execution of arbitrary code on a vulnerable server.
+
+--
+Detailed Information:
+A vulnerability exists in the way that the Mercury Mail IMAP service
+handles several commands.  An excessively long command argument can
+trigger a denial of service or a buffer overflow and the subsequent
+execution of arbitrary code on a vulnerable server.
+
+--
+Affected Systems:
+	Pegasus Mail Mercury Mail Transport System 3.32
+	Pegasus Mail Mercury Mail Transport System 4.01a
+
+--
+Attack Scenarios:
+An attacker can supplied an overly long command, causing denial of
+service or a buffer overflow.
+
+--
+Ease of Attack:
+Simple.
+
+--
+False Positives:
+None known.
+
+--
+False Negatives:
+None known.
+
+--
+Corrective Action:
+Upgrade to the latest non-affected version of the software.
+
+--
+Contributors:
+Sourcefire Research Team
+Brian Caswell<bmc@sourcefire.com>
+Judy Novak <judy.novak@sourcefire.com>
+
+--
+Additional References:
+
+--

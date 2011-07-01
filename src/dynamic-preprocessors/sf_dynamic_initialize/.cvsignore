@@ -1,0 +1,7 @@
+*.ncb
+*.opt
+*.plg
+Debug
+Release
+IPv6_Debug
+IPv6_Release

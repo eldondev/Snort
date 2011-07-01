@@ -1,0 +1,15 @@
+# (C) Copyright 2001-2004, Martin Roesch, Brian Caswell, et al.
+#    All rights reserved.
+# $Id: web-attacks.rules,v 1.21 2005/02/10 01:11:04 bmc Exp $
+# ----------------
+# WEB ATTACKS
+# ----------------
+# These signatures are going away.  They were based on generic signatures that
+# would catch common commands issued to exploit form variable vulnerabilities, 
+# but it is so trivial to evade these that it gives the user a false sense of
+# security.
+#
+# plus, many of them were wrong.   uricontent:"ps%20" for example, since
+# http_inspect takes care of decoding for us, that should really look like 
+# "ps ".
+
