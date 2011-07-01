@@ -47,8 +47,12 @@
 #include "debug.h" /* for INLINE */
 
 typedef int bool;
+#ifndef TRUE
 #define TRUE 1
+#endif
+#ifndef FALSE
 #define FALSE 0
+#endif
 
 #define K_BYTES (1024)
 #define M_BYTES (K_BYTES*K_BYTES)
