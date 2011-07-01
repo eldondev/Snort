@@ -48,7 +48,7 @@ libspo_a_AR = $(AR) $(ARFLAGS)
 libspo_a_LIBADD =
 am_libspo_a_OBJECTS = spo_alert_fast.$(OBJEXT) \
 	spo_alert_full.$(OBJEXT) spo_alert_syslog.$(OBJEXT) \
-	spo_alert_unixsock.$(OBJEXT) spo_csv.$(OBJEXT) \
+	spo_alert_unixsock.$(OBJEXT) spo_csv.$(OBJEXT) spo_json.$(OBJEXT) \
 	spo_database.$(OBJEXT) spo_log_null.$(OBJEXT) \
 	spo_log_tcpdump.$(OBJEXT) spo_unified.$(OBJEXT) \
 	spo_unified2.$(OBJEXT) spo_log_ascii.$(OBJEXT) \
