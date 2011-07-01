@@ -522,8 +522,6 @@ static void RealAlertJSON(Packet * p, char *msg, char **args,
 		TextLog_Print(log, "%s", tcpFlags);
 	    }
 	}
-	printf("type : %s\n", type);
-	printf("value : %i\n", log->pos);
 	json_object *jstring = json_object_new_string(log->pos > 0 ? log->buf: "");
 	json_object_object_add(jobj,type, jstring);
 	TextLog_Reset(log); 	
