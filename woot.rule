@@ -1,0 +1,2 @@
+alert tcp any : <> any :
+output alert_json: /var/log/snort/alert.json timestamp,proto,src,srcport,dstport,msg
