@@ -527,6 +527,7 @@ static void RealAlertJSON(Packet * p, char *msg, char **args,
 	TextLog_Reset(log); 	
     }
     TextLog_Print(log, "%s", json_object_to_json_string(jobj));
+    json_object_put(jobj);
     TextLog_NewLine(log);
     TextLog_Flush(log);
 }
