@@ -343,7 +343,7 @@ static void RealAlertJSON(Packet * p, char *msg, char **args,
 	}
 	else if(!strncasecmp("msg", type, 3) && NULL != msg)
 	{
-           if ( !TextLog_Quote(log, msg) )
+           if ( !TextLog_Quote(log, msg)  || !TextLog_Print(log, "\0"))
            {
                FatalError("Not enough buffer space to escape msg string\n");
            }
